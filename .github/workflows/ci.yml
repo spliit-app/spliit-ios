@@ -113,6 +113,7 @@ jobs:
 
       - name: Run UI tests
         run: |
+          make generate
           xcodebuild test \
             -project Spliit.xcodeproj -scheme Spliit \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \

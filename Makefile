@@ -69,6 +69,9 @@ e2e: $(PROJECT) ## Full end-to-end run: server up, UI tests, server down
 		-project $(PROJECT) -scheme $(SCHEME) \
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
+		$(UNSIGNED) \
+		-test-timeouts-enabled YES \
+		-maximum-test-execution-time-allowance 180 \
 		-quiet; \
 		status=$$?; \
 		$(MAKE) e2e-down; \

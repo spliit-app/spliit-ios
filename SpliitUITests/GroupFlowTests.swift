@@ -192,7 +192,8 @@ final class GroupFlowTests: SpliitUITestCase {
         app.staticTexts["Mistake"].tap()
         let delete = app.buttons[AccessibilityID.ExpenseForm.deleteButton]
         assertExists(app.textFields[AccessibilityID.ExpenseForm.titleField], "The editor should open.")
-        while !delete.isHittable { app.swipeUp() }
+        for _ in 0..<10 where !delete.isHittable { app.swipeUp() }
+        XCTAssertTrue(delete.isHittable, "Delete should be reachable by scrolling the form.")
         delete.tap()
 
         assertExists(

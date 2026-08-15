@@ -55,7 +55,7 @@ jobs:
   e2e:
     name: End-to-end tests
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -119,6 +119,8 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
+            -test-timeouts-enabled YES \
+            -maximum-test-execution-time-allowance 180 \
             -resultBundlePath build/e2e.xcresult
 
       - name: Upload test results

@@ -32,6 +32,9 @@ Packages/*/.build/
 .env
 .env.local
 
+# The Spliit server, checked out by CI to run the end-to-end suite
+.spliit-server/
+
 # Test output
 *.xcresult
 TestResults/

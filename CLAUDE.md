@@ -106,6 +106,12 @@ API fixtures under `Packages/SpliitKit/Tests/SpliitAPITests/Fixtures` are **reco
 real server** by `make fixtures`, never hand-written — hand-written fixtures only prove the
 decoder agrees with our own assumptions.
 
+**Keep UI test classes small and similar in size.** XCUITest parallelises by class, cloning a
+simulator per worker, so a single large class is a long pole no worker count can shorten. Put a
+new flow in the suite it belongs to, and split a suite once it grows past five or six tests.
+Override the worker count with `make e2e WORKERS=n`; more workers than cores is slower, not
+faster.
+
 ## CI
 
 `unit` and `build` run on every push and every pull request. **`e2e` runs only on pull requests

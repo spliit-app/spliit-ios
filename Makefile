@@ -10,6 +10,12 @@
 SIMULATOR ?= iPhone 17 Pro
 DEVICE     ?= Sebastien’s iPhone
 UNSIGNED   := CODE_SIGNING_ALLOWED=NO
+
+# XCUITest parallelises by test *class*, cloning a simulator per worker. Keep suites small and
+# similar in size, or one long class becomes a pole no worker count can shorten. More workers
+# than cores makes things slower, not faster — override with WORKERS=n.
+WORKERS   ?= 3
+PARALLEL  := -parallel-testing-enabled YES -maximum-parallel-testing-workers $(WORKERS)
 SCHEME    := Spliit
 PROJECT   := Spliit.xcodeproj
 E2E_URL   ?= http://localhost:3009/
@@ -70,6 +76,7 @@ e2e: $(PROJECT) ## Full end-to-end run: server up, UI tests, server down
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
 		$(UNSIGNED) \
+		$(PARALLEL) \
 		-test-timeouts-enabled YES \
 		-maximum-test-execution-time-allowance 180 \
 		-quiet; \

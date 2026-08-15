@@ -168,6 +168,10 @@ struct ExpenseFormView: View {
                     )
 
                     if participant.isIncluded, form.wrappedValue.splitMode != .evenly {
+                        // Without this the row's content is centred, so the value lands in a
+                        // different place on every row depending on how long the name is.
+                        Spacer(minLength: 12)
+
                         TextField("0", text: $participant.valueText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)

@@ -42,6 +42,23 @@ struct MonogramPaletteTests {
         #expect(indices.count == MonogramPalette.count)
     }
 
+    /// The reason positions exist: a group of four hashed into eight buckets collides more often
+    /// than not, and two people in one group sharing a colour is the failure the colour was added
+    /// to prevent.
+    @Test("Everyone in a group up to the palette size gets their own colour")
+    func positionsDoNotCollide() {
+        let indices = (0..<MonogramPalette.count).map(MonogramPalette.index(atPosition:))
+        #expect(Set(indices).count == MonogramPalette.count)
+    }
+
+    @Test("Positions past the palette wrap instead of running off it")
+    func positionsWrap() {
+        #expect(MonogramPalette.index(atPosition: MonogramPalette.count) == 0)
+        #expect(MonogramPalette.index(atPosition: MonogramPalette.count + 3) == 3)
+        // Defensive: a negative position should still land on a real colour.
+        #expect(MonogramPalette.index(atPosition: -1) == MonogramPalette.count - 1)
+    }
+
     @Test("Initials come from the first two words")
     func initials() {
         #expect(MonogramPalette.initials(for: "Sébastien Castiel") == "SC")

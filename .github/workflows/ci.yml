@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast feedback: the decoders, the storage migration and the money maths, on the host.
+  # No simulator, no server — this should stay under a minute.
+  unit:
+    name: Unit tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Run unit tests
+        working-directory: Packages/SpliitKit
+        run: swift test
+
+  build:
+    name: Build app
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build for simulator
+        run: make build
+
+  # The real thing: the app driving a real Spliit instance in the simulator.
+  #
+  # GitHub's macOS runners have no Docker daemon, so Colima provides one. It is the slow part
+  # of this workflow; if it ever becomes the bottleneck, the alternative is running Postgres
+  # from Homebrew and the web app from source, which trades container startup for a Next.js
+  # build.
+  e2e:
+    name: End-to-end tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Install tooling
+        run: brew install xcodegen colima docker docker-compose
+
+      - name: Start Docker
+        run: colima start --cpu 2 --memory 4 --disk 20
+
+      - name: Start Spliit
+        run: make e2e-up
+
+      - name: Verify the API client against the real server
+        run: make test-live
+
+      - name: Run UI tests
+        run: |
+          xcodebuild test \
+            -project Spliit.xcodeproj -scheme Spliit \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -derivedDataPath build \
+            -resultBundlePath build/e2e.xcresult
+
+      - name: Stop Spliit
+        if: always()
+        run: make e2e-down
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: build/e2e.xcresult
+          retention-days: 7
+
+  # Catches the case the fixtures cannot: the production API changing shape under us. Runs on
+  # a schedule so a server-side change fails here rather than in the field.
+  live-api:
+    name: Live API check
+    if: github.event_name == 'schedule'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Read-only checks against spliit.app
+        working-directory: Packages/SpliitKit
+        run: swift test --filter 'Decoding real API responses'

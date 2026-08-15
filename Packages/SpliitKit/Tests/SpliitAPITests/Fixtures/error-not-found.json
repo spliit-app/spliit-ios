@@ -1,0 +1,1 @@
+{"error":{"json":{"message":"Group not found.","code":-32004,"data":{"code":"NOT_FOUND","httpStatus":404,"path":"groups.getDetails"}}}}

@@ -1,0 +1,44 @@
+name: spliit-ios-e2e
+
+# A throwaway Spliit instance for the end-to-end suite.
+#
+# The database lives in tmpfs, so every `docker compose up` starts from an empty schema and
+# tests never inherit state from a previous run. Port 3009 keeps this clear of a Spliit dev
+# server running on the usual 3000.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spliit
+      POSTGRES_PASSWORD: spliit
+      POSTGRES_DB: spliit
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U spliit -d spliit']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    image: ghcr.io/spliit-app/spliit:latest
+    ports:
+      - '3009:3000'
+    environment:
+      POSTGRES_PRISMA_URL: postgresql://spliit:spliit@db:5432/spliit
+      POSTGRES_URL_NON_POOLING: postgresql://spliit:spliit@db:5432/spliit
+      NEXT_PUBLIC_DEFAULT_CURRENCY_CODE: ''
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api/health/readiness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 20s

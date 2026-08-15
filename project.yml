@@ -1,0 +1,114 @@
+# The Xcode project is generated from this file — never edit Spliit.xcodeproj by hand, and
+# never commit it. Run `make generate` after adding a target, a build setting or a resource.
+# Adding source files needs nothing: the whole Spliit/ folder is picked up.
+
+name: Spliit
+
+options:
+  bundleIdPrefix: app.spliit
+  deploymentTarget:
+    iOS: '26.0'
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+packages:
+  SpliitKit:
+    path: Packages/SpliitKit
+
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    CLANG_ENABLE_MODULES: YES
+
+targets:
+  Spliit:
+    type: application
+    platform: iOS
+    sources:
+      - path: Spliit
+      - path: Shared
+    dependencies:
+      - package: SpliitKit
+        product: SpliitAPI
+      - package: SpliitKit
+        product: SpliitCore
+    settings:
+      base:
+        # The App Store record this replaces. Changing it would ship a second, separate app
+        # and strand every existing user's local data.
+        PRODUCT_BUNDLE_IDENTIFIER: app.spliit.spliitmobile
+        PRODUCT_NAME: Spliit
+        MARKETING_VERSION: 2.0.0
+        CURRENT_PROJECT_VERSION: 1
+        INFOPLIST_KEY_CFBundleDisplayName: Spliit
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: >-
+          UIInterfaceOrientationPortrait
+          UIInterfaceOrientationLandscapeLeft
+          UIInterfaceOrientationLandscapeRight
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        # Swift 6.2: UI code is main-actor by default, so views and stores need no annotation
+        # and the concurrency that remains is the concurrency that is actually deliberate.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        CODE_SIGN_IDENTITY: ''
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+    info:
+      path: Spliit/Info.plist
+      properties:
+        CFBundleDisplayName: Spliit
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        UIUserInterfaceStyle: Automatic
+        # Without this the app is letterboxed into a legacy screen size. An empty dictionary
+        # asks for the standard generated launch screen.
+        UILaunchScreen: {}
+        # Carried over from the React Native app so existing deep links keep working.
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - app.spliit.spliitmobile
+        # Self-hosted instances on a home network, and the end-to-end harness on localhost,
+        # are reachable over plain HTTP. Everything else still requires TLS.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSAllowsLocalNetworking: true
+
+  SpliitUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SpliitUITests
+      - path: Shared
+    dependencies:
+      - target: Spliit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.spliit.spliitmobile.uitests
+        TEST_TARGET_NAME: Spliit
+        CODE_SIGN_IDENTITY: ''
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+
+schemes:
+  Spliit:
+    build:
+      targets:
+        Spliit: all
+        SpliitUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - SpliitUITests
+      environmentVariables:
+        # Where the UI tests expect the throwaway instance from `make e2e-up` to be.
+        SPLIIT_E2E_BASE_URL: http://localhost:3009/

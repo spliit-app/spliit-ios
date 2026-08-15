@@ -1,0 +1,37 @@
+# Xcode — the project and Info.plist are generated from project.yml by `make generate`
+Spliit.xcodeproj/
+Spliit/Info.plist
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/*/.build/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Fastlane / signing
+*.mobileprovision
+*.p12
+*.cer
+
+# Local config
+.env
+.env.local
+
+# Test output
+*.xcresult
+TestResults/

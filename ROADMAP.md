@@ -1,0 +1,438 @@
+# Spliit for iOS — SwiftUI rewrite roadmap
+
+A ground-up rewrite of the Spliit mobile app in SwiftUI, shipped as an in-place
+update to the existing App Store listing.
+
+- **Replaces:** `../spliit-mobile` (Expo / React Native 0.74, v1.1.0)
+- **Reference implementation:** `../spliit` (Next.js web app)
+- **Ships as:** bundle ID `app.spliit.spliitmobile`, version `2.0.0`
+
+---
+
+## 1. Goals
+
+1. **Feature parity with the current mobile app** — the first shippable milestone.
+2. **A UI that feels like iOS**, not like a web app in a wrapper. Native
+   navigation, native controls, Liquid Glass, dark mode, Dynamic Type.
+3. **End-to-end tests from day one**, not bolted on later.
+4. **Eventually, feature parity with the web version.**
+
+Non-goals for now: Android, iPad-optimised layouts (should not *break* on iPad,
+but no split-view design work until M4), offline-first sync.
+
+---
+
+## 2. Decisions
+
+| Decision | Choice | Consequence |
+|---|---|---|
+| Backend contract | Hand-written tRPC client over URLSession | No changes needed in the web repo; works against `spliit.app` and every self-hosted instance today. Models must be kept in sync by hand. |
+| E2E harness | XCUITest against a real local backend | Faithful, first-party, no runtime deps. Needs Postgres + the Next.js app running in CI. |
+| Minimum iOS | **iOS 26** | Full access to Liquid Glass, the newest SwiftUI, Swift 6.2 concurrency defaults, on-device Foundation Models and Vision document recognition. Users below iOS 26 keep receiving 1.1.0 via the App Store's last-compatible-version fallback — their data is untouched and they are not broken, just not updated. |
+| Localization | String Catalog from the first commit, English-only until M3 | No large retrofit later; importing the web's 35 locales becomes mechanical. |
+
+---
+
+## 3. Constraints inherited from the shipped app
+
+### 3.1 Identity
+
+The new app must reuse the existing App Store record, so:
+
+- `CFBundleIdentifier` = `app.spliit.spliitmobile` (unchanged)
+- `CFBundleShortVersionString` → `2.0.0`, `CFBundleVersion` → `2` or higher
+- Keep the custom URL scheme `app.spliit.spliitmobile`
+- Port `PrivacyInfo.xcprivacy` (the RN app ships one)
+- Keep `ITSAppUsesNonExemptEncryption = false`
+- The Expo-specific bits (`exp+spliit-mobile` scheme, `NSUserActivityTypes`
+  entry for `…expo.index_route`) can be dropped
+
+### 3.2 Local storage that must survive the update
+
+The RN app writes exactly **two** AsyncStorage keys:
+
+| Key | Shape |
+|---|---|
+| `recent-groups` | `[{ "groupId": String, "groupName": String }]` |
+| `spliit-settings` | `{ "baseUrl": String }` — defaults to `https://spliit.app/` |
+
+On iOS, `@react-native-async-storage/async-storage@1.23.1` persists these to:
+
+```
+<container>/Library/Application Support/app.spliit.spliitmobile/RCTAsyncLocalStorage_V1/
+├── manifest.json      → { "recent-groups": "<json string>", "spliit-settings": "<json string>" }
+└── <md5(key)>         → sidecar file, only when a value exceeds 1024 characters
+```
+
+Rules, straight from `RNCAsyncStorage.mm`:
+
+- Values **≤ 1024 characters** are stored **inline** in `manifest.json` as a
+  JSON string.
+- Values **> 1024 characters** have `null` as their manifest value, and the real
+  content lives in a sibling file named the **lowercase hex MD5 of the key**:
+  - `md5("recent-groups")` = `1cbcb324ae1107e8720de37fcf7616c1`
+  - `md5("spliit-settings")` = `2109ef73d295fd69ac535e9f1380245a`
+- A user with roughly 15+ recent groups will cross the threshold, so **both
+  paths must be implemented** — this is not a theoretical branch.
+- Belt and braces: also probe the deprecated locations
+  (`Documents/RCTAsyncLocalStorage_V1`, `Documents/RNCAsyncLocalStorage_V1`,
+  `Documents/RCTAsyncLocalStorage`) in case an install never ran a version that
+  migrated them.
+
+**Migration policy:** on first launch of 2.0.0, if the new store is absent and a
+legacy manifest is present, import both keys, write the new store, and set a
+`didMigrateFromReactNative` flag. **Do not delete the legacy files** — leave them
+for at least one release.
+
+### 3.3 Backend contract
+
+The web app exposes tRPC v11 with the **superjson** transformer at
+`{baseUrl}api/trpc`. Verified against production:
+
+```
+GET {base}/api/trpc/categories.list?input={"json":null,"meta":{"values":["undefined"]}}
+→ {"result":{"data":{"json":{"categories":[…]}}}}
+```
+
+Unbatched requests work, so the Swift client does not need to implement
+batching. Queries are `GET` with a URL-encoded `input`; mutations are `POST`
+with `{"json": …}` as the body. Responses may carry a `meta.values` map marking
+which fields were `Date`, `undefined`, or `Decimal` — the decoder has to apply
+it, since `expenseDate` and `createdAt` arrive as ISO strings tagged this way.
+
+Router surface available today:
+
+```
+groups.list / get / getDetails / create / update
+groups.expenses.list / get / create / update / delete
+groups.balances.list
+groups.stats.get
+groups.activities.list
+categories.list
+```
+
+There is **no delete-group procedure** — the web app cannot delete groups
+either, only remove them from the local recent list.
+
+**Money is integer minor units** (`amount = 1234` means 12.34). One sharp edge
+worth encoding in a test: `paidFor[].shares` is stored as the share value ×100
+for `EVENLY`, `BY_SHARES` and `BY_PERCENTAGE`, but as a **raw minor-unit amount**
+for `BY_AMOUNT`.
+
+---
+
+## 4. Architecture
+
+```
+spliit-new-mobile/
+├── Spliit.xcodeproj
+├── Spliit/                    # app target — SwiftUI views, assets, Info.plist
+├── Packages/
+│   ├── SpliitAPI/             # TRPCClient, DTOs, endpoint definitions
+│   └── SpliitCore/            # domain models, storage, formatting, migration
+├── SpliitTests/               # unit tests (Swift Testing)
+├── SpliitUITests/             # XCUITest end-to-end suites
+└── e2e/                       # backend harness: compose file, seed scripts
+```
+
+Keeping `SpliitAPI` and `SpliitCore` as local SwiftPM packages means the
+protocol, the money maths and the AsyncStorage migration are all unit-testable
+without launching a simulator.
+
+**State:** `@Observable` stores, `async`/`await`, Swift 6.2 with
+`MainActor`-by-default isolation. No third-party dependencies — it keeps builds
+fast, CI simple, and the App Store review surface small.
+
+**Navigation:**
+
+- Root `NavigationStack` → groups list
+- Group screen hosts a group-scoped `TabView` (Expenses, Balances) with
+  `.tabBarMinimizeBehavior(.onScrollDown)`; it grows naturally into the web's
+  six tabs later
+- Sheets for create/edit expense, group settings, about
+- `.navigationTransition(.zoom(sourceID:in:))` from a group row into the group
+
+**Persistence:**
+
+- Settings → `UserDefaults`, so XCUITest can override them with launch
+  arguments for free (`-baseURL http://localhost:3000/`)
+- Recent groups → a small JSON file in Application Support, seedable in tests
+  via a launch argument
+
+**Design language:** brand `#059669` as the accent (secondary `#be185d`),
+system materials everywhere else, `ContentUnavailableView` for empty states,
+`Charts` for the balances view instead of the hand-rolled bars.
+
+---
+
+## 5. Testing strategy
+
+Three layers, all present from M0:
+
+**Unit (`SpliitTests`, Swift Testing)** — superjson encode/decode round-trips,
+the `meta.values` date handling, currency formatting against a
+symbol-not-code currency, split-mode share arithmetic, and the AsyncStorage
+migration against checked-in fixture manifests (inline *and* sidecar variants).
+
+**End-to-end (`SpliitUITests`, XCUITest)** — the real app driving a real
+backend:
+
+```
+docker compose up            →  http://localhost:3000
+        │
+        ▼
+seed script (tRPC mutations) →  known groups, participants, expenses
+        │
+        ▼
+app launched with:  -baseURL http://localhost:3000/
+                    -resetLocalStore YES
+                    -seedRecentGroups fixtures/two-groups.json
+        │
+        ▼
+assertions on accessibilityIdentifiers
+```
+
+Seeding through the tRPC API rather than the database keeps the harness
+decoupled from Prisma migrations.
+
+**Practical rule:** every interactive view gets an
+`accessibilityIdentifier` in the same commit that creates it. Retrofitting them
+is the thing that makes UI test suites get abandoned.
+
+**CI.** GitHub Actions macOS runners can't run Docker, so CI installs Postgres
+via Homebrew and runs the Next.js app directly with `npm start`; the compose
+file stays for local development. A fast PR smoke configuration in the test plan
+can run the same XCUITest flows against a `URLProtocol` stub replaying recorded
+tRPC fixtures, with the full backend suite on merge.
+
+### E2E flows to cover by end of M1
+
+1. Cold start with no groups → empty state → create group → land in the group
+2. Add group by URL → appears in recents; invalid URL → error message
+3. Create expense split evenly → appears in the list with the right amount
+4. Create expense split by amount that doesn't add up → validation error
+5. Balances reflect a new expense; "Mark as paid" prefills the reimbursement
+6. Edit an expense; delete an expense
+7. Edit group: rename, add a participant, blocked deletion of a participant
+   who has expenses
+8. Change base URL in settings → app talks to the new instance
+9. **Upgrade test:** launch with a legacy AsyncStorage manifest planted in the
+   container (both inline and sidecar variants) → recent groups appear
+
+---
+
+## 6. Milestones
+
+### M0 — Foundations · size M
+
+The point of M0 is that by the end of it, a feature can be built test-first.
+
+- Xcode project, app target, two local SwiftPM packages, Swift 6.2 strict
+  concurrency, iOS 26 deployment target
+- `TRPCClient`: superjson envelope encoding/decoding, `meta.values` handling,
+  typed errors, base-URL injection
+- DTOs for the full router surface listed in §3.3
+- AsyncStorage migration + the new stores, with fixture-based unit tests
+- String Catalog wired up; all strings localised from the start
+- XCUITest target, launch-argument plumbing, `e2e/` backend harness, seed script
+- GitHub Actions: build, unit tests, E2E against a local backend
+- App icon and assets ported from the RN app
+
+**Exit:** an empty app launches, reads migrated recent groups, and one
+end-to-end test goes green in CI.
+
+### M1 — Parity with the current mobile app · size L · **ship as 2.0.0**
+
+Everything the RN app does today, and nothing more.
+
+**Groups list**
+- Recent groups from local storage, enriched with `groups.list` (participant
+  count, creation date)
+- Row context menu: open, remove from list
+- Empty state: welcome, create group, add group by URL
+- Settings entry point
+
+**Create group / group settings**
+- Name, currency symbol, information, participants
+- Add/remove participants; participants with expenses cannot be removed
+- Validation: 2–50 chars, no duplicate names, at least one participant
+
+**Add group by URL**
+- Parse `/groups/:id` out of a pasted URL, verify against the server, add to
+  recents, error state for anything invalid
+
+**Group screen**
+- Title from the group, overflow menu: edit group, share group
+  (`{baseUrl}groups/{groupId}` via the system share sheet)
+- Expenses / Balances tabs
+
+**Expense list**
+- Paginated, 20 per page, infinite scroll
+- Date-bucket sections: Upcoming, This week, Earlier this month, Last month,
+  Earlier this year, Last year, Older
+- Row: title (italic for reimbursements), "Paid by X for A, B", amount, date
+- Swipe actions and context menu: edit, delete
+- Empty state
+
+**Balances**
+- Diverging bar per participant, scaled to the largest absolute balance
+- Suggested reimbursements, with "Mark as paid" prefilling a reimbursement
+  expense
+- Empty state when nothing is owed
+
+**Expense form (create + edit)**
+- Title, date, amount, reimbursement toggle, category, paid-by, notes
+- Split mode: Evenly / Shares / Percentage / Amount
+- Per-participant paid-for list with mode-appropriate share inputs
+- Full validation parity with `expenseFormSchema`
+
+**Settings / About**
+- About text, website and GitHub links, version and build
+- Base URL for self-hosted instances
+
+**Cross-cutting**
+- Plausible analytics: same screen names and events as today
+  (`home`, `create-group`, `add-group-by-url`, `about`, `group-settings`,
+  `group-expenses`, `group-balances`, `group-create-expense`,
+  `group-edit-expense`; events `create-group`, `create-expense`) — a plain
+  `POST https://plausible.io/api/event`, no library needed
+- Dark mode (the RN app is light-only; this comes free and should not be
+  deferred)
+
+**Exit:** TestFlight build, the nine E2E flows green, migration verified on a
+device upgrading from 1.1.0.
+
+### M2 — Make it feel native · size M
+
+Things the RN app could not reasonably do. This is what justifies the rewrite
+to a user opening it for the first time.
+
+- Liquid Glass treatment: glass toolbars, `GlassEffectContainer` on the
+  balances and expense cards, zoom transitions between list and detail
+- Pull-to-refresh, `.searchable` on the expense list (the API already accepts a
+  `filter` argument — free server-side search)
+- Swipe-to-delete with undo instead of a menu item
+- Haptics, Dynamic Type audit, VoiceOver audit
+- Universal Links for `spliit.app/groups/…` (needs an
+  `apple-app-site-association` file on the web side)
+- Share extension / share sheet target: paste a group URL from anywhere
+- Widget: balances at a glance for a starred group
+- App Intents + Spotlight: "Add expense to <group>"
+
+### M3 — Toward web parity · size L, delivered in waves
+
+Ordered by value to a phone user, not by web-app order.
+
+**Wave 1 — the gaps that hurt most**
+- Currency **code** (ISO-4217) alongside the free-text symbol, with a proper
+  currency picker
+- Multi-currency expenses: original amount, original currency, conversion rate
+- Active user ("who are you in this group?") and the personal balance summary
+- Select all / none in the paid-for list, and saved default splitting options
+- Starred and archived groups on the home screen
+
+**Wave 2 — the missing tabs**
+- Information tab
+- Stats tab (total group spending, your spending, your share)
+- Activity log tab
+- Export to CSV / JSON via the share sheet
+
+**Wave 3 — media and automation**
+- Expense documents: attach photos, S3 upload, gallery viewer
+- Receipt scanning. The web version calls OpenAI server-side; on iOS 26 this can
+  run **on device** with Vision's document recognition plus Foundation Models —
+  faster, free, private, and works against self-hosted instances that have no
+  OpenAI key configured
+- Category auto-suggestion, same approach
+- Recurring expenses (`NONE` / `DAILY` / `WEEKLY` / `MONTHLY`)
+
+**Wave 4 — localization**
+- Import the web repo's `messages/*.json` into the String Catalog
+- RTL layout pass (the web app supports Arabic and Hebrew)
+
+### M4 — Beyond the web · size TBD
+
+Candidates, not commitments: offline reading with background refresh, Live
+Activity for a trip in progress, iPad `NavigationSplitView` layout, Apple Watch
+complication for a group balance, Splitwise import.
+
+---
+
+## 7. Feature inventory
+
+Legend: ✅ present · ➖ absent · 🔜 planned milestone
+
+| Feature | RN app | Web | New app |
+|---|:--:|:--:|:--:|
+| Recent groups list | ✅ | ✅ | M1 |
+| Create / edit group | ✅ | ✅ | M1 |
+| Add group by URL | ✅ | ✅ | M1 |
+| Share group | ✅ | ✅ | M1 |
+| Expense list, paginated + date buckets | ✅ | ✅ | M1 |
+| Create / edit / delete expense | ✅ | ✅ | M1 |
+| Split evenly / shares / percentage / amount | ✅ | ✅ | M1 |
+| Reimbursement expenses | ✅ | ✅ | M1 |
+| Categories | ✅ | ✅ | M1 |
+| Notes on expenses | ✅ | ✅ | M1 |
+| Balances + suggested reimbursements | ✅ | ✅ | M1 |
+| Self-hosted base URL | ✅ | n/a | M1 |
+| Analytics | ✅ | ✅ | M1 |
+| Dark mode | ➖ | ✅ | M1 |
+| Expense search | ➖ | ✅ | M2 |
+| Universal Links | ➖ | n/a | M2 |
+| Widgets / App Intents | ➖ | ➖ | M2 |
+| Currency code + picker | ➖ | ✅ | M3.1 |
+| Multi-currency expenses | ➖ | ✅ | M3.1 |
+| Active user / personal balance | ➖ | ✅ | M3.1 |
+| Select all-or-none participants | ➖ | ✅ | M3.1 |
+| Default splitting options | ➖ | ✅ | M3.1 |
+| Starred / archived groups | ➖ | ✅ | M3.1 |
+| Group information tab | ➖ | ✅ | M3.2 |
+| Stats | ➖ | ✅ | M3.2 |
+| Activity log | ➖ | ✅ | M3.2 |
+| Export CSV / JSON | ➖ | ✅ | M3.2 |
+| Expense documents | ➖ | ✅ | M3.3 |
+| Receipt scanning | ➖ | ✅ | M3.3 |
+| Recurring expenses | ➖ | ✅ | M3.3 |
+| 35 locales | ➖ | ✅ | M3.4 |
+| Delete a group | ➖ | ➖ | — (no API) |
+
+---
+
+## 8. Risks
+
+**Model drift.** Hand-written DTOs will fall out of sync with the web repo's Zod
+schemas. Mitigation: a CI job that runs the E2E suite against `spliit.app`
+nightly, so a server-side shape change fails loudly rather than in the field.
+
+**iOS 26 floor.** Some share of the installed base stays on 1.1.0 indefinitely.
+This is an accepted cost of the choice, but worth checking actual App Store
+Connect version-adoption numbers before shipping M1, and worth a line in the
+release notes.
+
+**Migration is one-shot and unattended.** If the AsyncStorage import fails, a
+user silently loses their group list — and since groups are only reachable by
+ID, that is unrecoverable for them. Mitigation: the migration must never throw,
+must log its outcome to analytics, and the legacy files must not be deleted. The
+upgrade E2E test is the highest-value test in the suite.
+
+**Self-hosted instances lag.** Older self-hosted deployments may not have every
+procedure the app calls. Mitigation: treat unknown-procedure errors as a
+feature-unavailable state rather than a crash, and degrade the affected screen.
+
+**E2E flakiness in CI.** UI tests that depend on network timing rot fast.
+Mitigation: seed deterministically, never assert on animations, and keep the
+smoke configuration (stubbed network) as the required PR check with the full
+backend suite on merge.
+
+---
+
+## 9. Immediate next steps
+
+1. Create the Xcode project and the two SwiftPM packages
+2. Write `TRPCClient` + superjson coding, with round-trip unit tests, against
+   recorded fixtures from `spliit.app`
+3. Write the AsyncStorage migration with fixture manifests for both the inline
+   and the sidecar case
+4. Stand up `e2e/` and get one trivial XCUITest green in GitHub Actions
+5. Then start M1 at the groups list

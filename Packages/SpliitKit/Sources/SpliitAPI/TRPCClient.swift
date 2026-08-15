@@ -1,0 +1,113 @@
+import Foundation
+
+/// Talks to a Spliit instance's tRPC endpoint.
+///
+/// Requests are sent unbatched: queries as `GET …/api/trpc/<path>?input=<envelope>`, mutations
+/// as `POST` with the envelope as the body. The server accepts both, so there's no need to
+/// implement tRPC's batching protocol.
+public struct TRPCClient: Sendable {
+
+    public let baseURL: URL
+    private let session: URLSession
+
+    /// - Parameter baseURL: the instance root, with or without a trailing slash — the settings
+    ///   screen stores it as `https://spliit.app/`.
+    public init(baseURL: URL, session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+
+    public func call<Input, Output>(
+        _ procedure: TRPCProcedure<Input, Output>
+    ) async throws -> Output {
+        let request = try makeRequest(for: procedure)
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw TRPCClientError.network(error.localizedDescription)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw TRPCClientError.network("The response wasn’t an HTTP response.")
+        }
+
+        if (200..<300).contains(http.statusCode) {
+            do {
+                return try SuperJSON.decode(Output.self, fromResponse: data)
+            } catch {
+                throw TRPCClientError.decoding(String(describing: error))
+            }
+        }
+
+        if let failure = SuperJSON.decodeError(fromResponse: data) {
+            throw TRPCServerError(
+                code: failure.code,
+                message: failure.message,
+                httpStatus: failure.httpStatus ?? http.statusCode,
+                path: failure.path
+            )
+        }
+
+        throw TRPCClientError.unexpectedResponse(
+            status: http.statusCode,
+            body: String(decoding: data.prefix(512), as: UTF8.self)
+        )
+    }
+
+    // MARK: - Requests
+
+    func makeRequest<Input, Output>(
+        for procedure: TRPCProcedure<Input, Output>
+    ) throws -> URLRequest {
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false),
+              components.scheme != nil, components.host != nil
+        else {
+            throw TRPCClientError.invalidBaseURL(baseURL.absoluteString)
+        }
+
+        var path = components.path
+        if !path.hasSuffix("/") { path += "/" }
+        components.path = path + "api/trpc/" + procedure.path
+
+        let takesInput = Input.self != NoInput.self
+
+        switch procedure.kind {
+        case .query:
+            if takesInput {
+                let envelope = try SuperJSON.envelope(encoding: procedure.input)
+                let text = String(decoding: envelope, as: UTF8.self)
+                components.percentEncodedQuery = "input=" + percentEncoded(text)
+            }
+            guard let url = components.url else {
+                throw TRPCClientError.invalidBaseURL(baseURL.absoluteString)
+            }
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            return request
+
+        case .mutation:
+            guard let url = components.url else {
+                throw TRPCClientError.invalidBaseURL(baseURL.absoluteString)
+            }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.httpBody = try SuperJSON.envelope(encoding: procedure.input)
+            return request
+        }
+    }
+
+    /// `URLComponents` leaves characters like `+` and `&` alone inside a query value, which
+    /// would corrupt the JSON envelope, so escape everything outside the unreserved set.
+    private func percentEncoded(_ text: String) -> String {
+        let unreserved = CharacterSet(
+            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+        )
+        return text.addingPercentEncoding(withAllowedCharacters: unreserved) ?? text
+    }
+}

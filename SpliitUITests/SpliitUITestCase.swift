@@ -99,11 +99,15 @@ class SpliitUITestCase: XCTestCase {
     }
 
     /// Fails with a useful message instead of timing out somewhere deeper in the test.
+    ///
+    /// The timeout is generous because CI runners are markedly slower than a development
+    /// machine, and a long timeout costs nothing on a passing run — it is only ever reached
+    /// when the test is going to fail anyway.
     @MainActor
     func assertExists(
         _ element: XCUIElement,
         _ message: String,
-        timeout: TimeInterval = 10,
+        timeout: TimeInterval = 30,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {

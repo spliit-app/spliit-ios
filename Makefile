@@ -8,6 +8,8 @@
 #   make shot         screenshot whatever the simulator is showing
 
 SIMULATOR ?= iPhone 17 Pro
+DEVICE     ?= Sebastien’s iPhone
+UNSIGNED   := CODE_SIGNING_ALLOWED=NO
 SCHEME    := Spliit
 PROJECT   := Spliit.xcodeproj
 E2E_URL   ?= http://localhost:3009/
@@ -16,7 +18,7 @@ BUNDLE_ID := app.spliit.spliitmobile
 DERIVED   := build
 
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build test test-live e2e e2e-up e2e-down e2e-seed fixtures run shot clean lint
+.PHONY: help setup generate build build-device device test test-live e2e e2e-up e2e-down e2e-seed fixtures run shot clean lint
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +39,7 @@ build: $(PROJECT) ## Build the app for the simulator
 		-project $(PROJECT) -scheme $(SCHEME) \
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
+		$(UNSIGNED) \
 		-quiet
 
 test: ## Run the unit suites on the host (no simulator)
@@ -70,6 +73,19 @@ e2e: $(PROJECT) ## Full end-to-end run: server up, UI tests, server down
 		status=$$?; \
 		$(MAKE) e2e-down; \
 		exit $$status
+
+build-device: $(PROJECT) ## Build a signed build for a physical device
+	@xcodebuild build \
+		-project $(PROJECT) -scheme $(SCHEME) \
+		-destination 'generic/platform=iOS' \
+		-derivedDataPath $(DERIVED) \
+		-allowProvisioningUpdates \
+		-quiet
+
+device: build-device ## Install and launch on a connected iPhone
+	@xcrun devicectl device install app --device "$(DEVICE)" \
+		"$$(find $(DERIVED)/Build/Products/Debug-iphoneos -name 'Spliit.app' -maxdepth 2 | head -1)"
+	@xcrun devicectl device process launch --device "$(DEVICE)" $(BUNDLE_ID)
 
 run: build ## Install and launch the app on a booted simulator
 	@xcrun simctl boot "$(SIMULATOR)" 2>/dev/null || true

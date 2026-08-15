@@ -40,7 +40,10 @@ but no split-view design work until M4), offline-first sync.
 The new app must reuse the existing App Store record, so:
 
 - `CFBundleIdentifier` = `app.spliit.spliitmobile` (unchanged)
-- `CFBundleShortVersionString` → `2.0.0`, `CFBundleVersion` → `2` or higher
+- `CFBundleShortVersionString` → `2.0.0`, `CFBundleVersion` → `21` or higher.
+  The App Store has **1.2.0 (build 20)**, not the 1.1.0 that `../spliit-mobile`
+  claims — that checkout is behind what shipped, so treat App Store Connect as
+  the source of truth for version numbers.
 - Keep the custom URL scheme `app.spliit.spliitmobile`
 - Port `PrivacyInfo.xcprivacy` (the RN app ships one)
 - Keep `ITSAppUsesNonExemptEncryption = false`
@@ -306,8 +309,13 @@ device upgrading from 1.1.0.
 write round-trips against a real server, and 18 UI flows driving the app in a
 simulator. Still open before this can ship:
 
-- Verify on a physical device upgrading from a real 1.1.0 install — the
-  migration is only proven against a planted store in the simulator
+- ~~Verify the migration on a physical device~~ — **done**. A signed build
+  installed *over* App Store 1.2.0 on an iPhone 16 Pro (iOS 26.6.1) without
+  deleting it, and the migration read the real `RCTAsyncLocalStorage_V1`
+  manifest: 4 groups carried across with matching IDs and names, and the legacy
+  files were left in place. Worth knowing: iOS accepted the re-signed install as
+  an upgrade, so the container survived — deleting the app first would have been
+  both destructive and pointless
 - App Store Connect: screenshots, release notes, and a check of how much of the
   installed base is below iOS 26
 - A pass over Dynamic Type and VoiceOver

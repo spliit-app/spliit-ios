@@ -43,7 +43,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.spliit.spliitmobile
         PRODUCT_NAME: Spliit
         MARKETING_VERSION: 2.0.0
-        CURRENT_PROJECT_VERSION: 1
+        # Must exceed the shipped build. The App Store currently has 1.2.0 (20) — note that
+        # the ../spliit-mobile checkout says 1.1.0, so the source of truth is App Store
+        # Connect, not that repo.
+        CURRENT_PROJECT_VERSION: 21
         INFOPLIST_KEY_CFBundleDisplayName: Spliit
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: >-
@@ -57,9 +60,8 @@ targets:
         # and the concurrency that remains is the concurrency that is actually deliberate.
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         SWIFT_APPROACHABLE_CONCURRENCY: YES
-        CODE_SIGN_IDENTITY: ''
-        CODE_SIGNING_REQUIRED: NO
-        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: VKY5EKKU47
     info:
       path: Spliit/Info.plist
       properties:
@@ -93,9 +95,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.spliit.spliitmobile.uitests
         TEST_TARGET_NAME: Spliit
-        CODE_SIGN_IDENTITY: ''
-        CODE_SIGNING_REQUIRED: NO
-        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: VKY5EKKU47
 
 schemes:
   Spliit:

@@ -149,8 +149,11 @@ jobs:
       - name: Verify the API client against the real server
         run: make test-live
 
-      # Runs the suites in parallel across simulator clones. Two workers, not more: the runner
-      # has few cores, and every worker also adds load to the single Spliit server they share.
+      # Deliberately serial. Two workers measured *slower* than one on this runner — 17+
+      # minutes against a 14-minute serial baseline — because the clones contend for a few
+      # cores and then queue behind one shared server anyway. The suites are split so
+      # parallelism is available (`make e2e WORKERS=n` locally), but it only pays once the
+      # server has stopped being the bottleneck. Re-measure before turning it on here.
       - name: Run UI tests
         run: |
           make generate
@@ -159,8 +162,6 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            -parallel-testing-enabled YES \
-            -maximum-parallel-testing-workers 2 \
             -test-timeouts-enabled YES \
             -maximum-test-execution-time-allowance 180 \
             -resultBundlePath build/e2e.xcresult

@@ -218,9 +218,9 @@ struct GroupSettingsView: View {
                         onCancel: { dismiss() }
                     )
                 } else if failure != nil {
-                    ContentUnavailableView(
-                        "Couldn’t load the group",
-                        systemImage: "exclamationmark.triangle",
+                    EmptyState(
+                        art: .icon("exclamationmark.triangle"),
+                        title: Text("Couldn’t load the group"),
                         description: Text(failure ?? "")
                     )
                 } else {

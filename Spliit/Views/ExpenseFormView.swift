@@ -38,9 +38,9 @@ struct ExpenseFormView: View {
                 if let form {
                     formBody(Binding(get: { form }, set: { self.form = $0 }))
                 } else if failure != nil {
-                    ContentUnavailableView(
-                        "Couldn’t load the expense",
-                        systemImage: "exclamationmark.triangle",
+                    EmptyState(
+                        art: .icon("exclamationmark.triangle"),
+                        title: Text("Couldn’t load the expense"),
                         description: Text(failure ?? "")
                     )
                 } else {

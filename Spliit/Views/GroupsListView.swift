@@ -86,11 +86,11 @@ struct GroupsListView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Welcome to Spliit", systemImage: "person.2")
-        } description: {
-            Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
-        } actions: {
+        EmptyState(
+            art: .logo,
+            title: Text("Welcome to Spliit"),
+            description: Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
+        ) {
             VStack(spacing: 12) {
                 Button("Create group") { sheet = .createGroup }
                     .buttonStyle(.borderedProminent)

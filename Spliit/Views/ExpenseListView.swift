@@ -20,11 +20,11 @@ struct ExpenseListView: View {
         if model.isLoadingExpenses {
             ProgressView().controlSize(.large)
         } else if model.didFailToLoad || model.didFailToLoadExpenses {
-            ContentUnavailableView {
-                Label(errorTitle, systemImage: "wifi.exclamationmark")
-            } description: {
-                Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
-            } actions: {
+            EmptyState(
+                art: .icon("wifi.exclamationmark"),
+                title: Text(errorTitle),
+                description: Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
+            ) {
                 Button("Try again") {
                     Task { await model.retry(using: app.client) }
                 }
@@ -32,11 +32,11 @@ struct ExpenseListView: View {
                 .accessibilityIdentifier(AccessibilityID.ExpenseList.retryButton)
             }
         } else if model.expenses.isEmpty {
-            ContentUnavailableView {
-                Label("No expenses yet", systemImage: "list.bullet")
-            } description: {
-                Text("Add the first expense and Spliit will work out who owes what.")
-            } actions: {
+            EmptyState(
+                art: .icon("list.bullet"),
+                title: Text("No expenses yet"),
+                description: Text("Add the first expense and Spliit will work out who owes what.")
+            ) {
                 Button("Add expense", action: onAdd)
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.emptyAddButton)

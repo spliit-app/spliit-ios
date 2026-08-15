@@ -20,11 +20,11 @@ struct BalancesView: View {
         if model.isLoadingGroup || model.isLoadingBalances {
             ProgressView().controlSize(.large)
         } else if model.didFailToLoad || model.didFailToLoadBalances {
-            ContentUnavailableView {
-                Label(errorTitle, systemImage: "wifi.exclamationmark")
-            } description: {
-                Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
-            } actions: {
+            EmptyState(
+                art: .icon("wifi.exclamationmark"),
+                title: Text(errorTitle),
+                description: Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
+            ) {
                 Button("Try again") {
                     Task { await model.retry(using: app.client) }
                 }

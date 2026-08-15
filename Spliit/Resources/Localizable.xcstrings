@@ -1,5 +1,76 @@
 {
   "sourceLanguage" : "en",
-  "strings" : { },
+  "strings" : {
+    "%@ appears on at least one expense, so they can’t be removed. Delete or reassign those expenses first." : {
+
+    },
+    "%@ owes %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ owes %2$@"
+          }
+        }
+      }
+    },
+    "About" : {
+
+    },
+    "Add the first expense and Spliit will work out who owes what." : {
+
+    },
+    "Balances" : {
+
+    },
+    "Create a group to start splitting expenses with friends, or add one that was shared with you." : {
+
+    },
+    "Everyone is settled up." : {
+
+    },
+    "Group information" : {
+
+    },
+    "Group link" : {
+
+    },
+    "Paid for" : {
+
+    },
+    "Participants" : {
+
+    },
+    "Paste the link to a group that was shared with you, and it will appear in your list." : {
+
+    },
+    "Point the app at your own Spliit instance. Leave this alone if you use the official one." : {
+
+    },
+    "Server" : {
+
+    },
+    "Spliit is an open source project by Sebastien Castiel, with help from many contributors." : {
+
+    },
+    "Suggested payments" : {
+
+    },
+    "Swipe a participant to remove them. Anyone who already appears on an expense can’t be removed." : {
+
+    },
+    "That doesn’t look like a web address. Try something like spliit.example.com." : {
+
+    },
+    "The currency symbol is shown next to every amount, for example $ or CHF." : {
+
+    },
+    "The fewest payments that settle the group." : {
+
+    },
+    "What each participant paid, against what was spent on them." : {
+
+    }
+  },
   "version" : "1.0"
 }

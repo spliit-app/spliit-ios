@@ -223,7 +223,7 @@ tRPC fixtures, with the full backend suite on merge.
 
 ## 6. Milestones
 
-### M0 — Foundations · size M
+### M0 — Foundations · size M · ✅ done
 
 The point of M0 is that by the end of it, a feature can be built test-first.
 
@@ -241,7 +241,7 @@ The point of M0 is that by the end of it, a feature can be built test-first.
 **Exit:** an empty app launches, reads migrated recent groups, and one
 end-to-end test goes green in CI.
 
-### M1 — Parity with the current mobile app · size L · **ship as 2.0.0**
+### M1 — Parity with the current mobile app · size L · **ship as 2.0.0** · 🟡 in progress
 
 Everything the RN app does today, and nothing more.
 
@@ -301,6 +301,17 @@ Everything the RN app does today, and nothing more.
 
 **Exit:** TestFlight build, the nine E2E flows green, migration verified on a
 device upgrading from 1.1.0.
+
+**Status.** Everything above is built and covered by tests: 106 unit tests, 8
+write round-trips against a real server, and 18 UI flows driving the app in a
+simulator. Still open before this can ship:
+
+- Verify on a physical device upgrading from a real 1.1.0 install — the
+  migration is only proven against a planted store in the simulator
+- App Store Connect: screenshots, release notes, and a check of how much of the
+  installed base is below iOS 26
+- A pass over Dynamic Type and VoiceOver
+- Empty and error states for an instance that can't be reached mid-flow
 
 ### M2 — Make it feel native · size M
 
@@ -378,6 +389,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Self-hosted base URL | ✅ | n/a | M1 |
 | Analytics | ✅ | ✅ | M1 |
 | Dark mode | ➖ | ✅ | M1 |
+| Group notes field | ✅ | ✅ | M1 (edit only; shown in M3.2) |
 | Expense search | ➖ | ✅ | M2 |
 | Universal Links | ➖ | n/a | M2 |
 | Widgets / App Intents | ➖ | ➖ | M2 |

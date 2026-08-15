@@ -3,7 +3,7 @@ import Foundation
 // Money crosses the wire as an integer count of minor units: `amount == 1234` is 12.34.
 // This holds for expense amounts, balances and reimbursements alike.
 
-public struct Category: Codable, Sendable, Identifiable, Hashable {
+public struct ExpenseCategory: Codable, Sendable, Identifiable, Hashable {
     public let id: Int
     /// The heading this category sits under in the picker, e.g. "Food and Drink".
     public let grouping: String
@@ -165,7 +165,7 @@ public struct ExpenseListItem: Decodable, Sendable, Identifiable, Hashable {
     public let isReimbursement: Bool
     public let splitMode: SplitMode
     public let recurrenceRule: RecurrenceRule?
-    public let category: Category?
+    public let category: ExpenseCategory?
     public let paidBy: Participant
     public let paidFor: [PaidFor]
     public let documentCount: Int
@@ -190,7 +190,7 @@ public struct ExpenseListItem: Decodable, Sendable, Identifiable, Hashable {
         isReimbursement = try container.decode(Bool.self, forKey: .isReimbursement)
         splitMode = try container.decode(SplitMode.self, forKey: .splitMode)
         recurrenceRule = try container.decodeIfPresent(RecurrenceRule.self, forKey: .recurrenceRule)
-        category = try container.decodeIfPresent(Category.self, forKey: .category)
+        category = try container.decodeIfPresent(ExpenseCategory.self, forKey: .category)
         paidBy = try container.decode(Participant.self, forKey: .paidBy)
         paidFor = try container.decode([PaidFor].self, forKey: .paidFor)
         documentCount = try container.decodeIfPresent(Counts.self, forKey: .count)?.documents ?? 0
@@ -204,6 +204,11 @@ public struct ExpenseDetails: Decodable, Sendable, Identifiable, Hashable {
         /// For `.evenly`, `.byShares` and `.byPercentage` this is the share value ×100.
         /// For `.byAmount` it is a raw minor-unit amount. See `ExpenseFormValues`.
         public let shares: Int
+
+        public init(participantId: String, shares: Int) {
+            self.participantId = participantId
+            self.shares = shares
+        }
     }
 
     public let id: String
@@ -212,7 +217,7 @@ public struct ExpenseDetails: Decodable, Sendable, Identifiable, Hashable {
     /// Minor units.
     public let amount: Int
     public let categoryId: Int
-    public let category: Category?
+    public let category: ExpenseCategory?
     public let expenseDate: Date
     public let createdAt: Date
     public let paidById: String
@@ -226,6 +231,48 @@ public struct ExpenseDetails: Decodable, Sendable, Identifiable, Hashable {
     public let originalAmount: Int?
     public let originalCurrency: String?
     public let conversionRate: LenientDecimal?
+
+    public init(
+        id: String,
+        groupId: String,
+        title: String,
+        amount: Int,
+        categoryId: Int,
+        category: ExpenseCategory?,
+        expenseDate: Date,
+        createdAt: Date,
+        paidById: String,
+        paidBy: Participant,
+        paidFor: [PaidFor],
+        isReimbursement: Bool,
+        splitMode: SplitMode,
+        notes: String?,
+        documents: [ExpenseDocument],
+        recurrenceRule: RecurrenceRule?,
+        originalAmount: Int?,
+        originalCurrency: String?,
+        conversionRate: LenientDecimal?
+    ) {
+        self.id = id
+        self.groupId = groupId
+        self.title = title
+        self.amount = amount
+        self.categoryId = categoryId
+        self.category = category
+        self.expenseDate = expenseDate
+        self.createdAt = createdAt
+        self.paidById = paidById
+        self.paidBy = paidBy
+        self.paidFor = paidFor
+        self.isReimbursement = isReimbursement
+        self.splitMode = splitMode
+        self.notes = notes
+        self.documents = documents
+        self.recurrenceRule = recurrenceRule
+        self.originalAmount = originalAmount
+        self.originalCurrency = originalCurrency
+        self.conversionRate = conversionRate
+    }
 }
 
 public struct Balance: Decodable, Sendable, Hashable {
@@ -311,7 +358,7 @@ public struct ExpenseFormValues: Encodable, Sendable {
     public let expenseDate: Date
     /// Minor units. The server writes this straight to the database.
     public let amount: Int
-    /// Category ID; 0 is "General".
+    /// ExpenseCategory ID; 0 is "General".
     public let category: Int
     public let paidBy: String
     public let paidFor: [PaidFor]

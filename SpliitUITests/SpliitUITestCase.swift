@@ -48,6 +48,56 @@ class SpliitUITestCase: XCTestCase {
         return app
     }
 
+    var api: SpliitTestAPI {
+        SpliitTestAPI(baseURL: URL(string: baseURL)!)
+    }
+
+    /// Clears a text field and types something new.
+    ///
+    /// Every trap here fails silently — you get wrong input rather than an error.
+    /// `typeText` appends instead of replacing. A plain `tap()` leaves the cursor wherever the
+    /// tap landed, so backspaces from there do nothing and new text lands mid-value. Focusing
+    /// raises the keyboard, which reflows the form under any coordinate taken beforehand. And
+    /// the amount fields are trailing-aligned, so a tap even slightly short of the edge lands
+    /// *before* the last character. So: clear, verify, and fall back to the edit menu.
+    @MainActor
+    func replaceText(in field: XCUIElement, with text: String) {
+        let app = XCUIApplication()
+        field.tap()
+        _ = app.keyboards.element.waitForExistence(timeout: 5)
+
+        if !isEffectivelyEmpty(field) {
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+            // Over-deleting is harmless; extra backspaces on an empty field do nothing.
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 32))
+        }
+
+        if !isEffectivelyEmpty(field) {
+            field.press(forDuration: 1.2)
+            let selectAll = app.menuItems["Select All"]
+            if selectAll.waitForExistence(timeout: 3) { selectAll.tap() }
+        }
+
+        field.typeText(text)
+    }
+
+    /// A field with no content reports its placeholder as its value.
+    @MainActor
+    private func isEffectivelyEmpty(_ field: XCUIElement) -> Bool {
+        let value = (field.value as? String) ?? ""
+        return value.isEmpty || value == field.placeholderValue
+    }
+
+    /// Saves a screenshot into the result bundle, so a failing run can be looked at without
+    /// re-running it, and so the flow can be reviewed without a Mac in front of you.
+    @MainActor
+    func capture(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     /// Fails with a useful message instead of timing out somewhere deeper in the test.
     @MainActor
     func assertExists(

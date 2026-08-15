@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "SpliitKit",
+    defaultLocalization: "en",
     // The app only ships for iOS. macOS is declared so `swift test` runs the unit suites on
     // the host in a couple of seconds, with no simulator involved.
     platforms: [.iOS(.v26), .macOS(.v15)],
@@ -12,7 +13,14 @@ let package = Package(
     ],
     targets: [
         .target(name: "SpliitAPI"),
-        .target(name: "SpliitCore"),
+        .target(
+            name: "SpliitCore",
+            dependencies: ["SpliitAPI"],
+            // The validation messages live here, so this target needs its own catalog and
+            // resource bundle — otherwise `String(localized:)` would look in the app bundle
+            // and package translations could never be found.
+            resources: [.process("Resources")]
+        ),
         .testTarget(
             name: "SpliitAPITests",
             dependencies: ["SpliitAPI"],

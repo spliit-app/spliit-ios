@@ -11,23 +11,24 @@ struct GroupsListView: View {
 
     @Environment(AppModel.self) private var app
     @State private var model = GroupsListModel()
-    @State private var isShowingSettings = false
+    @State private var path: [String] = []
+    @State private var sheet: Sheet?
+
+    private enum Sheet: String, Identifiable {
+        case settings, createGroup, addByURL
+        var id: String { rawValue }
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .navigationTitle("Groups")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Settings", systemImage: "gearshape") {
-                            isShowingSettings = true
-                        }
-                        .accessibilityIdentifier(AccessibilityID.GroupsList.settingsButton)
-                    }
+                .navigationDestination(for: String.self) { groupID in
+                    GroupDetailView(groupID: groupID)
                 }
-                .sheet(isPresented: $isShowingSettings) {
-                    SettingsView()
-                }
+                .toolbar { toolbarContent }
+                .sheet(item: $sheet, content: sheetContent)
+                .trackScreen(.home)
         }
         .task(id: reloadToken) {
             await model.load(ids: app.recentGroups.groups.map(\.groupId), using: app.client)
@@ -38,6 +39,41 @@ struct GroupsListView: View {
     private var reloadToken: String {
         app.recentGroups.groups.map(\.groupId).joined(separator: ",")
             + "@" + app.settings.baseURL.absoluteString
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                .accessibilityIdentifier(AccessibilityID.GroupsList.settingsButton)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button("Create group", systemImage: "plus") { sheet = .createGroup }
+                    .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
+                Button("Add by link", systemImage: "link") { sheet = .addByURL }
+                    .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+            } label: {
+                Label("Add group", systemImage: "plus")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sheetContent(_ sheet: Sheet) -> some View {
+        switch sheet {
+        case .settings:
+            SettingsView()
+        case .createGroup:
+            CreateGroupView { group in
+                app.recentGroups.remember(group)
+                path = [group.groupId]
+            }
+        case .addByURL:
+            AddGroupByURLView { group in
+                app.recentGroups.remember(group)
+            }
+        }
     }
 
     @ViewBuilder
@@ -56,11 +92,11 @@ struct GroupsListView: View {
             Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
         } actions: {
             VStack(spacing: 12) {
-                Button("Create group") {}
+                Button("Create group") { sheet = .createGroup }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
 
-                Button("Add group by URL") {}
+                Button("Add group by link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
             }
         }
@@ -79,12 +115,14 @@ struct GroupsListView: View {
 
             Section("Recent groups") {
                 ForEach(app.recentGroups.groups) { group in
-                    GroupRow(group: group, summary: model.summaries[group.groupId])
-                        .swipeActions(edge: .trailing) {
-                            Button("Remove", systemImage: "trash", role: .destructive) {
-                                app.recentGroups.forget(groupId: group.groupId)
-                            }
+                    NavigationLink(value: group.groupId) {
+                        GroupRow(group: group, summary: model.summaries[group.groupId])
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button("Remove", systemImage: "trash", role: .destructive) {
+                            app.recentGroups.forget(groupId: group.groupId)
                         }
+                    }
                 }
             }
         }

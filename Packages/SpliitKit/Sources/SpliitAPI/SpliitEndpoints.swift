@@ -185,7 +185,7 @@ public enum Spliit {
     // MARK: - Categories
 
     public struct CategoriesResponse: Decodable, Sendable {
-        public let categories: [Category]
+        public let categories: [ExpenseCategory]
     }
 
     public static func categories() -> TRPCProcedure<NoInput, CategoriesResponse> {

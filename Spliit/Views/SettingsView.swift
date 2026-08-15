@@ -68,6 +68,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .trackScreen(.about)
         .onAppear {
             addressText = app.settings.baseURL.absoluteString
         }

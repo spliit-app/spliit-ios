@@ -14,6 +14,11 @@ struct ExpenseFormView: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Wide enough for "100.00" at the body size, and it has to grow with the text or the
+    /// digits are clipped long before the largest sizes.
+    @ScaledMetric private var shareFieldWidth: CGFloat = 100
 
     let mode: Mode
     let group: SpliitAPI.Group
@@ -146,19 +151,16 @@ struct ExpenseFormView: View {
     @ViewBuilder
     private func splitSection(_ form: Binding<ExpenseFormDraft>) -> some View {
         Section {
-            Picker("Split", selection: form.splitMode) {
-                ForEach(SplitMode.allCases, id: \.self) { mode in
-                    Text(mode.title)
-                        .tag(mode)
-                        .accessibilityIdentifier(
-                            AccessibilityID.ExpenseForm.splitModeOption(mode.rawValue)
-                        )
-                }
+            // Four segments share the width of the screen, so at accessibility sizes each label
+            // is down to a character or two. A menu keeps the full words at any size.
+            if dynamicTypeSize.isAccessibilitySize {
+                splitModePicker(form).pickerStyle(.menu)
+            } else {
+                splitModePicker(form).pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             ForEach(form.participants) { $participant in
-                HStack {
+                AdaptiveHStack {
                     Toggle(isOn: $participant.isIncluded) {
                         Text(participant.name)
                     }
@@ -168,17 +170,22 @@ struct ExpenseFormView: View {
                     )
 
                     if participant.isIncluded, form.wrappedValue.splitMode != .evenly {
-                        TextField("0", text: $participant.valueText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 100)
-                            .accessibilityIdentifier(
-                                AccessibilityID.ExpenseForm.participantValue(participant.id)
-                            )
+                        HStack(spacing: 4) {
+                            TextField("0", text: $participant.valueText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: shareFieldWidth)
+                                .accessibilityIdentifier(
+                                    AccessibilityID.ExpenseForm.participantValue(participant.id)
+                                )
+                                // Only its position beside a name says whose share this is, and
+                                // position is exactly what a screen reader flattens away.
+                                .accessibilityLabel(Text("\(participant.name)’s share"))
 
-                        Text(form.wrappedValue.splitMode.unitLabel(currency: group.currency))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            Text(form.wrappedValue.splitMode.unitLabel(currency: group.currency))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -186,6 +193,18 @@ struct ExpenseFormView: View {
             Text("Paid for")
         } footer: {
             splitFooter(form.wrappedValue)
+        }
+    }
+
+    private func splitModePicker(_ form: Binding<ExpenseFormDraft>) -> some View {
+        Picker("Split", selection: form.splitMode) {
+            ForEach(SplitMode.allCases, id: \.self) { mode in
+                Text(mode.title)
+                    .tag(mode)
+                    .accessibilityIdentifier(
+                        AccessibilityID.ExpenseForm.splitModeOption(mode.rawValue)
+                    )
+            }
         }
     }
 
@@ -359,9 +378,20 @@ private struct CheckboxToggleStyle: ToggleStyle {
                 configuration.label
                     .foregroundStyle(.primary)
             }
+            // Claim the rest of the row, so the tappable area matches the area the row appears
+            // to occupy. Sized to its content, the checkbox left most of the row dead to a tap
+            // and put the centre an assistive technology aims for outside the control.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        // Built out of a Button, so VoiceOver would otherwise call it one and never say whether
+        // the participant is in the split — the filled checkmark is the only cue there is, and
+        // it is purely visual. Representing it as the Toggle it actually is restores the state
+        // and the "double tap to toggle" that comes with it.
+        .accessibilityRepresentation {
+            Toggle(isOn: configuration.$isOn) { configuration.label }
+        }
     }
 }
 

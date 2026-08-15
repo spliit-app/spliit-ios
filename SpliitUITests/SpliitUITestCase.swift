@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Shared setup for the end-to-end suites.
@@ -25,16 +26,26 @@ class SpliitUITestCase: XCTestCase {
     ///     test that checks what the app *chose* must not also be forcing the choice.
     ///   - serverURL: point the app somewhere other than the test server, to exercise what
     ///     happens when it cannot be reached.
+    ///   - textSize: launch as if the user had chosen this size in Settings. UIKit reads the
+    ///     preference from the argument domain, so this needs no host configuration and does
+    ///     not leak into the next test.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
         legacyStore: [String: String]? = nil,
         resetState: Bool = true,
         overrideBaseURL: Bool = true,
-        serverURL: String? = nil
+        serverURL: String? = nil,
+        textSize: UIContentSizeCategory? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
+
+        if let textSize {
+            app.launchArguments += [
+                "-UIPreferredContentSizeCategoryName", textSize.rawValue
+            ]
+        }
 
         if resetState {
             app.launchArguments.append("-uiTestResetState")

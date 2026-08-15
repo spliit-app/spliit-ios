@@ -84,6 +84,7 @@ struct ExpenseListView: View {
                 HStack {
                     Spacer()
                     ProgressView()
+                        .accessibilityLabel(Text("Loading more expenses"))
                     Spacer()
                 }
                 .task { await model.loadNextPage(using: app.client) }
@@ -97,12 +98,15 @@ private struct ExpenseRow: View {
     let expense: ExpenseListItem
     let formatter: MoneyFormatter
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        AdaptiveHStack(verticalAlignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(expense.title)
                     .italic(expense.isReimbursement)
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.rowTitle(expense.id))
+                    .accessibilityHint(Text("Opens this expense for editing"))
 
                 Text(paidByDescription)
                     .font(.caption)
@@ -110,10 +114,9 @@ private struct ExpenseRow: View {
                     .lineLimit(2)
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.rowPaidBy(expense.id))
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 0)
-
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: detailAlignment, spacing: 4) {
                 Text(formatter.string(minorUnits: expense.amount))
                     .fontWeight(.semibold)
                     .monospacedDigit()
@@ -125,6 +128,12 @@ private struct ExpenseRow: View {
             }
         }
         .contentShape(.rect)
+    }
+
+    /// Right-aligned against the amount column, until the row stacks and there is no column to
+    /// align against.
+    private var detailAlignment: HorizontalAlignment {
+        dynamicTypeSize.isAccessibilitySize ? .leading : .trailing
     }
 
     private var paidByDescription: String {

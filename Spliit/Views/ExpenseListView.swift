@@ -17,11 +17,11 @@ struct ExpenseListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if model.isLoadingGroup, model.expenses.isEmpty {
+        if model.isLoadingExpenses {
             ProgressView().controlSize(.large)
-        } else if model.didFailToLoad {
+        } else if model.didFailToLoad || model.didFailToLoadExpenses {
             ContentUnavailableView {
-                Label("Couldn’t load this group", systemImage: "wifi.exclamationmark")
+                Label(errorTitle, systemImage: "wifi.exclamationmark")
             } description: {
                 Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
             } actions: {
@@ -44,6 +44,11 @@ struct ExpenseListView: View {
         } else {
             list
         }
+    }
+
+    /// The group can arrive and its expenses still fail, so name whichever one is missing.
+    private var errorTitle: LocalizedStringKey {
+        model.didFailToLoad ? "Couldn’t load this group" : "Couldn’t load the expenses"
     }
 
     private var list: some View {

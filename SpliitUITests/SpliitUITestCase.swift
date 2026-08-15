@@ -23,15 +23,18 @@ class SpliitUITestCase: XCTestCase {
     ///   - overrideBaseURL: pass `false` to let the app decide its own address. `-baseURL`
     ///     lands in `UserDefaults`' argument domain, which outranks every stored value — so a
     ///     test that checks what the app *chose* must not also be forcing the choice.
+    ///   - serverURL: point the app somewhere other than the test server, to exercise what
+    ///     happens when it cannot be reached.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
         legacyStore: [String: String]? = nil,
         resetState: Bool = true,
-        overrideBaseURL: Bool = true
+        overrideBaseURL: Bool = true,
+        serverURL: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = overrideBaseURL ? ["-baseURL", baseURL] : []
+        app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
 
         if resetState {
             app.launchArguments.append("-uiTestResetState")
@@ -63,8 +66,7 @@ class SpliitUITestCase: XCTestCase {
     @MainActor
     func replaceText(in field: XCUIElement, with text: String) {
         let app = XCUIApplication()
-        field.tap()
-        _ = app.keyboards.element.waitForExistence(timeout: 5)
+        focus(field)
 
         if !isEffectivelyEmpty(field) {
             field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
@@ -79,6 +81,30 @@ class SpliitUITestCase: XCTestCase {
         }
 
         field.typeText(text)
+    }
+
+    /// Taps a field until it actually holds keyboard focus.
+    ///
+    /// A single `tap()` is not enough on a slow machine: a sheet still animating swallows the
+    /// tap, and `typeText` then fails with "neither element nor any descendant has keyboard
+    /// focus" — after the test has already done real work. Waiting for a keyboard to exist
+    /// isn't sufficient either, since one may be up for a *different* field.
+    @MainActor
+    private func focus(_ field: XCUIElement) {
+        XCTAssertTrue(field.waitForExistence(timeout: 15), "The field never appeared.")
+
+        for attempt in 1...3 {
+            field.tap()
+            _ = XCUIApplication().keyboards.element.waitForExistence(timeout: 5)
+
+            // `hasKeyboardFocus` is not public API, but it is the only direct read of the state
+            // that actually matters here. If it ever stops resolving, fall back to assuming the
+            // tap worked rather than failing outright.
+            guard let hasFocus = field.value(forKey: "hasKeyboardFocus") as? Bool else { return }
+            if hasFocus { return }
+
+            XCTAssertLessThan(attempt, 3, "The field never took keyboard focus.")
+        }
     }
 
     /// A field with no content reports its placeholder as its value.

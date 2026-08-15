@@ -36,6 +36,18 @@ final class GroupDetailModel {
         group?.participants.first { $0.id == id }
     }
 
+    /// The group itself never arrived, so there is nothing to show and nothing to add to.
+    /// Distinct from "loaded, but empty", which is a perfectly good state.
+    var didFailToLoad: Bool {
+        !isLoadingGroup && group == nil
+    }
+
+    func retry(using client: TRPCClient) async {
+        isLoadingGroup = true
+        loadFailure = nil
+        await reload(using: client)
+    }
+
     /// Expenses grouped into the sections the list shows, newest bucket first.
     var sections: [(group: ExpenseDateGroup, expenses: [ExpenseListItem])] {
         let buckets = Dictionary(grouping: expenses) {

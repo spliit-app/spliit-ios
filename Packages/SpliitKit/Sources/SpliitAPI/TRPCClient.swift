@@ -10,12 +10,30 @@ public struct TRPCClient: Sendable {
     public let baseURL: URL
     private let session: URLSession
 
-    /// - Parameter baseURL: the instance root, with or without a trailing slash — the settings
-    ///   screen stores it as `https://spliit.app/`.
-    public init(baseURL: URL, session: URLSession = .shared) {
+    /// - Parameters:
+    ///   - baseURL: the instance root, with or without a trailing slash — the settings screen
+    ///     stores it as `https://spliit.app/`.
+    ///   - session: defaults to a session shared by every client, so switching instances does
+    ///     not leak a connection pool per call.
+    public init(baseURL: URL, session: URLSession? = nil) {
         self.baseURL = baseURL
-        self.session = session
+        self.session = session ?? Self.sharedSession
     }
+
+    /// `URLSession.shared` waits 60 seconds before giving up, which a person reads as the app
+    /// having hung. Failing sooner lets the screen offer a retry while the attempt is still
+    /// something they remember making.
+    ///
+    /// Ephemeral because responses to an API are not worth caching, and a cached `GET` would
+    /// quietly serve stale balances.
+    private static let sharedSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 20
+        configuration.timeoutIntervalForResource = 30
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.waitsForConnectivity = false
+        return URLSession(configuration: configuration)
+    }()
 
     public func call<Input, Output>(
         _ procedure: TRPCProcedure<Input, Output>

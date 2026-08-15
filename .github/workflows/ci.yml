@@ -62,6 +62,11 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: macos-26
     timeout-minutes: 30
+    env:
+      # Pinned so a change upstream cannot turn this repo's CI red, and so the built server is
+      # byte-identical from run to run and therefore cacheable. The nightly upstream-drift job
+      # is what tracks the moving target.
+      SPLIIT_SERVER_REF: c3d8d3e50593d5a7c49f71ea82ebaac5c1b4fc74
     steps:
       - uses: actions/checkout@v5
 
@@ -73,10 +78,14 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      # GitHub's macOS runners are themselves VMs and cannot nest virtualization, so Colima
-      # has no way to start a Docker daemon. The server therefore runs natively: Postgres from
-      # Homebrew, and Spliit in dev mode — which skips a multi-minute Next.js production build
-      # that buys nothing for a test run.
+      # GitHub's macOS runners are themselves VMs and cannot nest virtualization, so Colima has
+      # no way to start a Docker daemon. The server therefore runs natively: Postgres from
+      # Homebrew, and a production Next.js build restored from cache.
+      #
+      # Production rather than `next dev` on purpose. Dev mode compiles each route on its first
+      # request, which shows up as multi-second stalls partway through a UI run and gets worse
+      # with parallel workers hammering one server. Caching the build means paying for it once
+      # per server pin instead of once per run.
       - name: Start Postgres
         run: |
           brew install postgresql@16
@@ -93,10 +102,34 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: spliit-app/spliit
-          # Pinned so a change upstream cannot turn this repo's CI red. The nightly
-          # upstream-drift job is what tracks the moving target.
-          ref: c3d8d3e50593d5a7c49f71ea82ebaac5c1b4fc74
+          ref: ${{ env.SPLIIT_SERVER_REF }}
           path: .spliit-server
+
+      - name: Restore the built server
+        id: server-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .spliit-server/node_modules
+            .spliit-server/.next
+          key: spliit-server-${{ runner.os }}-${{ env.SPLIIT_SERVER_REF }}-${{ hashFiles('.spliit-server/package-lock.json') }}
+
+      # Only on a miss, so this is paid once per server pin rather than once per run.
+      # `--ignore-scripts` skips the postinstall, which wants a database it does not need yet;
+      # `build.env` is the repo's own file of mocked values for a build with no real secrets.
+      - name: Build the server
+        if: steps.server-cache.outputs.cache-hit != 'true'
+        working-directory: .spliit-server
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          npm ci --ignore-scripts
+          npx prisma generate
+          cp scripts/build.env .env
+          npm run build
+          # Real environment variables win over a .env file, but leaving one holding a
+          # nonexistent database host around is asking for a confusing failure later.
+          rm .env
 
       - name: Start Spliit
         working-directory: .spliit-server
@@ -105,18 +138,22 @@ jobs:
           POSTGRES_URL_NON_POOLING: postgresql://spliit@localhost:5432/spliit
           NEXT_TELEMETRY_DISABLED: '1'
         run: |
-          npm ci
           npx prisma migrate deploy
-          nohup npx next dev -p 3009 > "$RUNNER_TEMP/spliit.log" 2>&1 &
+          nohup npx next start -p 3009 > "$RUNNER_TEMP/spliit.log" 2>&1 &
           for i in $(seq 1 60); do
             curl -sf http://localhost:3009/api/health/readiness >/dev/null && exit 0
-            sleep 5
+            sleep 2
           done
           echo "Spliit never became ready:"; tail -50 "$RUNNER_TEMP/spliit.log"; exit 1
 
       - name: Verify the API client against the real server
         run: make test-live
 
+      # Deliberately serial. Two workers measured *slower* than one on this runner — 17+
+      # minutes against a 14-minute serial baseline — because the clones contend for a few
+      # cores and then queue behind one shared server anyway. The suites are split so
+      # parallelism is available (`make e2e WORKERS=n` locally), but it only pays once the
+      # server has stopped being the bottleneck. Re-measure before turning it on here.
       - name: Run UI tests
         run: |
           make generate
@@ -139,10 +176,14 @@ jobs:
 
   # Catches what recorded fixtures cannot: the Spliit API changing shape.
   #
-  # This runs against a *fresh* pull of the published image rather than against spliit.app,
+  # Runs against a fresh checkout of the server's main branch rather than against spliit.app,
   # for two reasons — the live suite writes data, which has no business landing in production,
-  # and testing the newest image catches a breaking change before it is deployed rather than
+  # and testing the newest code catches a breaking change before it is deployed rather than
   # after.
+  #
+  # Stays on `next dev`, unlike the end-to-end job: there is nothing to cache against a moving
+  # branch, and this job only round-trips each procedure once, so per-route compilation costs
+  # seconds rather than minutes.
   upstream-drift:
     name: Upstream API drift
     if: github.event_name == 'schedule'

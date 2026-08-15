@@ -169,6 +169,7 @@ private struct GroupRow: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .labelStyle(.compact)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

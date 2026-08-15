@@ -34,9 +34,10 @@ struct BalancesView: View {
         } else if let group = model.group {
             List {
                 Section {
-                    ForEach(group.participants) { participant in
+                    ForEach(Array(group.participants.enumerated()), id: \.element.id) { position, participant in
                         BalanceRow(
                             participant: participant,
+                            position: position,
                             balance: model.balances[participant.id]
                                 ?? Balance(paid: 0, paidFor: 0, total: 0),
                             largest: largestBalance,
@@ -60,7 +61,9 @@ struct BalancesView: View {
                                 index: index,
                                 reimbursement: reimbursement,
                                 from: model.participant(reimbursement.from),
+                                fromPosition: model.participantPosition(reimbursement.from),
                                 to: model.participant(reimbursement.to),
+                                toPosition: model.participantPosition(reimbursement.to),
                                 formatter: model.moneyFormatter,
                                 onSettle: { onSettle(reimbursement) }
                             )
@@ -92,6 +95,7 @@ struct BalancesView: View {
 /// A diverging bar: owed to the right of centre, owing to the left.
 private struct BalanceRow: View {
     let participant: Participant
+    let position: Int
     let balance: Balance
     let largest: Int
     let formatter: MoneyFormatter
@@ -100,7 +104,7 @@ private struct BalanceRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Monogram(name: participant.name, seed: participant.id, size: 26)
+            Monogram(name: participant.name, position: position, size: 26)
 
             VStack(alignment: .leading, spacing: 6) {
                 AdaptiveHStack {
@@ -172,7 +176,9 @@ private struct ReimbursementRow: View {
     let index: Int
     let reimbursement: Reimbursement
     let from: Participant?
+    let fromPosition: Int
     let to: Participant?
+    let toPosition: Int
     let formatter: MoneyFormatter
     let onSettle: () -> Void
 
@@ -182,11 +188,11 @@ private struct ReimbursementRow: View {
                 // Who pays whom, as a picture. The sentence beside it says the same thing, which
                 // is why this pair is invisible to VoiceOver rather than read out twice.
                 HStack(spacing: 6) {
-                    Monogram(name: from?.name ?? "", seed: reimbursement.from, size: 24)
+                    Monogram(name: from?.name ?? "", position: fromPosition, size: 24)
                     Image(systemName: "arrow.forward")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Monogram(name: to?.name ?? "", seed: reimbursement.to, size: 24)
+                    Monogram(name: to?.name ?? "", position: toPosition, size: 24)
                 }
                 .accessibilityHidden(true)
 

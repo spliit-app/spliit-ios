@@ -49,11 +49,17 @@ struct GroupFormView: View {
             Section {
                 ForEach(Array($draft.participants.enumerated()), id: \.element.id) { index, $participant in
                     VStack(alignment: .leading, spacing: 4) {
-                        TextField("Name", text: $participant.name)
-                            .focused($focusedParticipant, equals: participant.id)
-                            .accessibilityIdentifier(
-                                AccessibilityID.GroupForm.participantField(index)
-                            )
+                        HStack(spacing: 10) {
+                            // The colour this participant will wear on the balances screen, shown
+                            // where the list that decides it is actually being edited.
+                            ParticipantDot(position: index, size: 9)
+
+                            TextField("Name", text: $participant.name)
+                                .focused($focusedParticipant, equals: participant.id)
+                                .accessibilityIdentifier(
+                                    AccessibilityID.GroupForm.participantField(index)
+                                )
+                        }
 
                         if hasAttemptedSave,
                            let problem = draft.problems(forParticipant: participant.id).first {

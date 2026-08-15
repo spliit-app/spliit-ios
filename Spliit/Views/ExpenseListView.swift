@@ -68,7 +68,11 @@ struct ExpenseListView: View {
                         Button {
                             onEdit(expense.id)
                         } label: {
-                            ExpenseRow(expense: expense, formatter: model.moneyFormatter)
+                            ExpenseRow(
+                                expense: expense,
+                                payerPosition: model.participantPosition(expense.paidBy.id),
+                                formatter: model.moneyFormatter
+                            )
                         }
                         .buttonStyle(.plain)
                         .swipeActions(edge: .trailing) {
@@ -96,6 +100,7 @@ struct ExpenseListView: View {
 
 private struct ExpenseRow: View {
     let expense: ExpenseListItem
+    let payerPosition: Int
     let formatter: MoneyFormatter
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -108,11 +113,17 @@ private struct ExpenseRow: View {
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.rowTitle(expense.id))
                     .accessibilityHint(Text("Opens this expense for editing"))
 
-                Text(paidByDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .accessibilityIdentifier(AccessibilityID.ExpenseList.rowPaidBy(expense.id))
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    // Who paid, in the colour they have on the balances screen. The names are
+                    // spelled out beside it, so this is the glanceable half of the same fact.
+                    ParticipantDot(position: payerPosition, size: 7)
+
+                    Text(paidByDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .accessibilityIdentifier(AccessibilityID.ExpenseList.rowPaidBy(expense.id))
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 

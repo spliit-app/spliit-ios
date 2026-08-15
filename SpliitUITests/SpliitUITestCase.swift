@@ -23,15 +23,18 @@ class SpliitUITestCase: XCTestCase {
     ///   - overrideBaseURL: pass `false` to let the app decide its own address. `-baseURL`
     ///     lands in `UserDefaults`' argument domain, which outranks every stored value — so a
     ///     test that checks what the app *chose* must not also be forcing the choice.
+    ///   - serverURL: point the app somewhere other than the test server, to exercise what
+    ///     happens when it cannot be reached.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
         legacyStore: [String: String]? = nil,
         resetState: Bool = true,
-        overrideBaseURL: Bool = true
+        overrideBaseURL: Bool = true,
+        serverURL: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = overrideBaseURL ? ["-baseURL", baseURL] : []
+        app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
 
         if resetState {
             app.launchArguments.append("-uiTestResetState")

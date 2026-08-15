@@ -19,6 +19,18 @@ struct ExpenseListView: View {
     private var content: some View {
         if model.isLoadingGroup, model.expenses.isEmpty {
             ProgressView().controlSize(.large)
+        } else if model.didFailToLoad {
+            ContentUnavailableView {
+                Label("Couldn’t load this group", systemImage: "wifi.exclamationmark")
+            } description: {
+                Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
+            } actions: {
+                Button("Try again") {
+                    Task { await model.retry(using: app.client) }
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(AccessibilityID.ExpenseList.retryButton)
+            }
         } else if model.expenses.isEmpty {
             ContentUnavailableView {
                 Label("No expenses yet", systemImage: "list.bullet")

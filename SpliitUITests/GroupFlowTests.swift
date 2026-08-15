@@ -221,6 +221,26 @@ final class GroupFlowTests: SpliitUITestCase {
         XCTAssertTrue(app.staticTexts["Older"].exists, "A two-year-old expense belongs in Older.")
     }
 
+    /// A server that never answers used to leave a spinner on screen with no way out. It
+    /// should give up in seconds and offer a retry.
+    @MainActor
+    func testUnreachableServerOffersRetryInsteadOfSpinning() async throws {
+        let group = try await api.createGroup(name: "Offline", participants: ["Ana", "Bruno"])
+        let app = launchApp(
+            recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Offline")]),
+            // Nothing is listening on this port, so every request fails.
+            serverURL: "http://localhost:9/"
+        )
+
+        app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
+
+        assertExists(
+            app.buttons[AccessibilityID.ExpenseList.retryButton],
+            "An unreachable server should offer a retry rather than spin."
+        )
+        capture(app, "unreachable-server")
+    }
+
     // MARK: - Balances
 
     @MainActor

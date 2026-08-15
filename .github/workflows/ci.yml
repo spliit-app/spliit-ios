@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   schedule:
     # Nightly, to catch the API changing shape under us.
     - cron: '17 4 * * *'
@@ -52,8 +53,13 @@ jobs:
         run: make build
 
   # The real thing: the app driving a real Spliit instance in the simulator.
+  #
+  # Only on pull requests that are ready for review. It takes 10-20 minutes, which is too slow
+  # to pay on every push to a branch still being worked on. Because every change reaches main
+  # through a PR, main is still covered — by the run that gated the merge.
   e2e:
     name: End-to-end tests
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: macos-26
     timeout-minutes: 30
     steps:

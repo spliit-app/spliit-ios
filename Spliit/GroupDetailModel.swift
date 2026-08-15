@@ -16,10 +16,14 @@ final class GroupDetailModel {
     private(set) var reimbursements: [Reimbursement] = []
     private(set) var categories: [ExpenseCategory] = []
 
-    private(set) var isLoadingGroup = true
+    /// One per request, because they run concurrently and finish in any order. Sharing a
+    /// single flag is what made the list say "no expenses yet" the moment the *group* arrived.
+    private(set) var groupLoad = LoadState()
+    private(set) var expensesLoad = LoadState()
+    private(set) var balancesLoad = LoadState()
+
     private(set) var isLoadingMore = false
     private(set) var hasMoreExpenses = false
-    private(set) var loadFailure: String?
 
     private var nextCursor = 0
     private static let pageSize = 20
@@ -36,15 +40,45 @@ final class GroupDetailModel {
         group?.participants.first { $0.id == id }
     }
 
+    /// Whatever went wrong most recently, preferring the failure that explains the most.
+    var loadFailure: String? {
+        groupLoad.failure ?? expensesLoad.failure ?? balancesLoad.failure
+    }
+
+    /// Nothing about the group is known yet: no name, no currency, nothing to lay a list out
+    /// with.
+    var isLoadingGroup: Bool {
+        groupLoad.isAwaitingFirstResult && group == nil
+    }
+
     /// The group itself never arrived, so there is nothing to show and nothing to add to.
     /// Distinct from "loaded, but empty", which is a perfectly good state.
     var didFailToLoad: Bool {
-        !isLoadingGroup && group == nil
+        !groupLoad.isAwaitingFirstResult && group == nil
+    }
+
+    /// The first page of expenses hasn't landed, so an empty list means "not yet", not "none".
+    /// The group counts too: its currency is what the amounts are formatted with.
+    var isLoadingExpenses: Bool {
+        expenses.isEmpty && (expensesLoad.isAwaitingFirstResult || isLoadingGroup)
+    }
+
+    /// The expenses request failed with nothing to show — which is not a group without
+    /// expenses, and must not be dressed up as one.
+    var didFailToLoadExpenses: Bool {
+        expensesLoad.failedWithNothingToShow
+    }
+
+    /// Until the balances arrive, "everyone is settled up" would be a guess.
+    var isLoadingBalances: Bool {
+        balancesLoad.isAwaitingFirstResult
+    }
+
+    var didFailToLoadBalances: Bool {
+        balancesLoad.failedWithNothingToShow
     }
 
     func retry(using client: TRPCClient) async {
-        isLoadingGroup = true
-        loadFailure = nil
         await reload(using: client)
     }
 
@@ -81,20 +115,23 @@ final class GroupDetailModel {
     }
 
     private func loadGroup(using client: TRPCClient) async {
-        defer { isLoadingGroup = false }
+        groupLoad.begin()
         do {
             group = try await client.call(Spliit.group(id: groupID)).group
             if group == nil {
-                loadFailure = String(
-                    localized: "This group no longer exists on this server."
+                groupLoad.failed(
+                    String(localized: "This group no longer exists on this server.")
                 )
+            } else {
+                groupLoad.succeeded()
             }
         } catch {
-            loadFailure = error.localizedDescription
+            groupLoad.failed(error.localizedDescription)
         }
     }
 
     private func loadFirstPage(using client: TRPCClient) async {
+        expensesLoad.begin()
         do {
             let response = try await client.call(
                 Spliit.expenses(groupId: groupID, cursor: 0, limit: Self.pageSize)
@@ -102,9 +139,9 @@ final class GroupDetailModel {
             expenses = response.expenses
             hasMoreExpenses = response.hasMore
             nextCursor = response.nextCursor
-            loadFailure = nil
+            expensesLoad.succeeded()
         } catch {
-            loadFailure = error.localizedDescription
+            expensesLoad.failed(error.localizedDescription)
         }
     }
 
@@ -129,12 +166,14 @@ final class GroupDetailModel {
     }
 
     private func loadBalances(using client: TRPCClient) async {
+        balancesLoad.begin()
         do {
             let response = try await client.call(Spliit.balances(groupId: groupID))
             balances = response.balances
             reimbursements = response.reimbursements
+            balancesLoad.succeeded()
         } catch {
-            loadFailure = error.localizedDescription
+            balancesLoad.failed(error.localizedDescription)
         }
     }
 
@@ -155,7 +194,7 @@ final class GroupDetailModel {
             await reloadAfterExpenseChange(using: client)
         } catch {
             expenses = removed
-            loadFailure = error.localizedDescription
+            expensesLoad.failed(error.localizedDescription)
         }
     }
 

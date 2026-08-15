@@ -16,11 +16,13 @@ struct BalancesView: View {
 
     @ViewBuilder
     private var content: some View {
-        if model.isLoadingGroup, model.group == nil {
+        // Balances arrive separately from the group, and a participant list drawn before them
+        // is a row of zeroes that reads as "everyone is settled up".
+        if model.isLoadingGroup || model.isLoadingBalances {
             ProgressView().controlSize(.large)
-        } else if model.didFailToLoad {
+        } else if model.didFailToLoad || model.didFailToLoadBalances {
             ContentUnavailableView {
-                Label("Couldn’t load this group", systemImage: "wifi.exclamationmark")
+                Label(errorTitle, systemImage: "wifi.exclamationmark")
             } description: {
                 Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
             } actions: {
@@ -75,6 +77,11 @@ struct BalancesView: View {
             }
             .refreshable { await model.reloadAfterExpenseChange(using: app.client) }
         }
+    }
+
+    /// The group can arrive and its balances still fail, so name whichever one is missing.
+    private var errorTitle: LocalizedStringKey {
+        model.didFailToLoad ? "Couldn’t load this group" : "Couldn’t load the balances"
     }
 
     /// The scale for the bars: the biggest absolute balance in the group.

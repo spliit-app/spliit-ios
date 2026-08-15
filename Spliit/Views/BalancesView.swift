@@ -90,14 +90,18 @@ private struct BalanceRow: View {
     let largest: Int
     let formatter: MoneyFormatter
 
+    @ScaledMetric private var barHeight: CGFloat = 8
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            AdaptiveHStack {
                 Text(participant.name)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier(
                         AccessibilityID.Balances.participantName(participant.id)
                     )
-                Spacer()
+                    .accessibilityValue(direction)
+
                 Text(formatter.string(minorUnits: balance.total))
                     .monospacedDigit()
                     .foregroundStyle(tint)
@@ -123,10 +127,23 @@ private struct BalanceRow: View {
                         .offset(x: balance.total < 0 ? half - width : half)
                 }
             }
-            .frame(height: 8)
+            .frame(height: barHeight)
             .accessibilityHidden(true)
         }
         .padding(.vertical, 2)
+    }
+
+    /// Which side of zero this is. On screen the tint and the minus sign carry it, and the bar
+    /// says it a third time — but the bar is decorative to VoiceOver and a colour cannot be
+    /// read aloud, which leaves a lone minus sign doing all the work.
+    ///
+    /// This is the amount's meaning, so it belongs on the amount — except that the UI tests
+    /// assert the amount's label is exactly the formatted money. Hanging it on the name as a
+    /// value keeps both: "Ana, is owed" then "$20.00".
+    private var direction: Text {
+        if balance.total > 0 { Text("is owed") }
+        else if balance.total < 0 { Text("owes") }
+        else { Text("settled up") }
     }
 
     private var tint: Color {
@@ -146,10 +163,11 @@ private struct ReimbursementRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            AdaptiveHStack {
                 Text("\(from?.name ?? "—") owes \(to?.name ?? "—")")
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier(AccessibilityID.Balances.reimbursement(index))
-                Spacer()
+
                 Text(formatter.string(minorUnits: reimbursement.amount))
                     .fontWeight(.semibold)
                     .monospacedDigit()
@@ -159,7 +177,16 @@ private struct ReimbursementRow: View {
                 .font(.subheadline)
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier(AccessibilityID.Balances.markAsPaid(index))
+                .accessibilityLabel(settleLabel)
         }
         .padding(.vertical, 2)
+    }
+
+    /// Every suggested payment carries a button reading "Mark as paid". Read out of the visual
+    /// context of its row they are indistinguishable, so each one names the payment it settles.
+    private var settleLabel: Text {
+        Text(
+            "Mark \(from?.name ?? "—")’s payment of \(formatter.string(minorUnits: reimbursement.amount)) to \(to?.name ?? "—") as paid"
+        )
     }
 }

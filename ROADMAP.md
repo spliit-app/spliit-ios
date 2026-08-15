@@ -318,7 +318,14 @@ simulator. Still open before this can ship:
   both destructive and pointless
 - App Store Connect: screenshots, release notes, and a check of how much of the
   installed base is below iOS 26
-- A pass over Dynamic Type and VoiceOver
+- ~~A pass over Dynamic Type and VoiceOver~~ — **done**. Rows that pair a name
+  with an amount now stack once the text reaches the accessibility sizes, and
+  three things that were only ever said visually are said out loud: whether a
+  balance is owed or owing (it was colour and a minus sign), which payment a
+  "Mark as paid" button settles, and whether a participant is in the split — the
+  paid-for checkboxes are a custom `ToggleStyle` built from a `Button`, so they
+  announced as buttons with no state at all. Covered by `AccessibilityTests`,
+  which launches at AX5 through a launch argument
 - Empty and error states for an instance that can't be reached mid-flow
 
 ### M2 — Make it feel native · size M
@@ -331,7 +338,7 @@ to a user opening it for the first time.
 - Pull-to-refresh, `.searchable` on the expense list (the API already accepts a
   `filter` argument — free server-side search)
 - Swipe-to-delete with undo instead of a menu item
-- Haptics, Dynamic Type audit, VoiceOver audit
+- Haptics (the Dynamic Type and VoiceOver audits were done in M1)
 - Universal Links for `spliit.app/groups/…` (needs an
   `apple-app-site-association` file on the web side)
 - Share extension / share sheet target: paste a group URL from anywhere

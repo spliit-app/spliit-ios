@@ -122,6 +122,11 @@ struct GroupsListView: View {
                         Button("Remove", systemImage: "trash", role: .destructive) {
                             app.recentGroups.forget(groupId: group.groupId)
                         }
+                        // Read on its own, "Remove" sounds like it deletes the group. It only
+                        // forgets it here, and there is no way back but the link.
+                        .accessibilityLabel(
+                            Text("Remove \(group.groupName) from this list")
+                        )
                     }
                 }
             }
@@ -144,7 +149,7 @@ private struct GroupRow: View {
                 .font(.headline)
                 .accessibilityIdentifier(AccessibilityID.GroupsList.rowTitle(group.groupId))
 
-            HStack(spacing: 12) {
+            AdaptiveHStack(spacing: 12) {
                 Label(participantText, systemImage: "person.2")
                     .accessibilityIdentifier(
                         AccessibilityID.GroupsList.rowParticipants(group.groupId)
@@ -152,6 +157,9 @@ private struct GroupRow: View {
                 if let createdAt = summary?.createdAt {
                     Label(createdAt.formatted(date: .abbreviated, time: .omitted),
                           systemImage: "calendar")
+                        .accessibilityLabel(
+                            Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+                        )
                 }
             }
             .font(.caption)

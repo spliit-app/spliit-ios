@@ -305,9 +305,10 @@ Everything the RN app does today, and nothing more.
 **Exit:** TestFlight build, the nine E2E flows green, migration verified on a
 device upgrading from 1.1.0.
 
-**Status.** Everything above is built and covered by tests: 106 unit tests, 8
-write round-trips against a real server, and 18 UI flows driving the app in a
-simulator. Still open before this can ship:
+**Status.** Everything above is built and covered by tests: 136 unit tests, 8
+write round-trips against a real server, and 40 UI flows driving the app in a
+simulator. The only thing left before this can ship is not code — see the App
+Store Connect line below.
 
 - ~~Verify the migration on a physical device~~ — **done**. A signed build
   installed *over* App Store 1.2.0 on an iPhone 16 Pro (iOS 26.6.1) without
@@ -326,15 +327,25 @@ simulator. Still open before this can ship:
   paid-for checkboxes are a custom `ToggleStyle` built from a `Button`, so they
   announced as buttons with no state at all. Covered by `AccessibilityTests`,
   which launches at AX5 through a launch argument
-- Empty and error states for an instance that can't be reached mid-flow
+- ~~Empty and error states for an instance that can't be reached mid-flow~~ —
+  **done**. `LoadState` tells "nothing yet" apart from "nothing there" apart from
+  "it failed", every screen that loads has an error state with a way to retry,
+  all three forms report a save that could not be sent, and
+  `testUnreachableServerOffersRetryInsteadOfSpinning` covers it end to end
 
-### M2 — Make it feel native · size M
+### M2 — Make it feel native · size M · ✅ done
 
 Things the RN app could not reasonably do. This is what justifies the rewrite
 to a user opening it for the first time.
 
-- Liquid Glass treatment: glass toolbars, `GlassEffectContainer` on the
-  balances and expense cards, zoom transitions between list and detail
+- ~~Liquid Glass treatment~~ — **done, and smaller than it looked.** Toolbars and
+  the tab bar are glass because iOS 26 draws them that way; there was nothing to
+  add. What was real: `GlassEffectContainer` around the search field and its cancel
+  button, and `tabBarMinimizeBehavior(.onScrollDown)`, which §4 asked for and
+  nothing had applied. The zoom transition landed with the motion pass.
+  Deliberately **not** done: glass on the balance and expense rows. Those are
+  content, the design pass made them solid cards on purpose, and glass belongs to
+  what floats above content rather than to the content itself
 - ~~Pull-to-refresh~~ — **done**, landed with the design pass
 - ~~Expense search~~ — **done**. A search tab in the group's tab bar, with the field
   docked at the bottom above the keyboard, and `groups.expenses.list`'s `filter`
@@ -342,16 +353,34 @@ to a user opening it for the first time.
   field in a navigation bar, and its iOS 26 bottom-docked form only when the `TabView`
   owning the search tab is the root of the scene. This one is pushed onto the groups
   list, so the field is the app's own — see the note in `ExpenseSearchView`
-- Swipe-to-delete with undo instead of a menu item
-- Haptics (the Dynamic Type and VoiceOver audits were done in M1)
+- ~~Swipe-to-delete with undo~~ — **done**. The row leaves at once and the request
+  waits five seconds. The window closes on whichever comes first: the timer, another
+  delete, or leaving the group — that last one detached, because the model dies with
+  the screen and a delete already asked for must not die with it
+- ~~Haptics~~ — **done**, four of them, all tied to outcomes rather than gestures:
+  saved, refused, deleted, undone. Named in `Haptics` so the next one has to argue
+  its way into that list. (The Dynamic Type and VoiceOver audits were done in M1)
 - Universal Links for `spliit.app/groups/…` — **app side done**, and inert until
   spliit.app serves an `apple-app-site-association` file naming the app. The exact
   file, and the App ID capability it needs, are in
   [Docs/universal-links.md](Docs/universal-links.md). Incoming group links already
   work over the custom scheme and against the configured instance
-- Share extension / share sheet target: paste a group URL from anywhere
-- Widget: balances at a glance for a starred group
-- App Intents + Spotlight: "Add expense to <group>"
+- ~~Share extension / share sheet target~~ — **dropped, not deferred.** It was a
+  second road to a place there are already two roads to: a shared group link now
+  opens the app and joins the group on its own, and "Add by link" takes a pasted URL
+  for everything else. An extension target to reach the same screen is a build
+  target, a review surface and a second parser to keep in step, for a journey that
+  is already one tap
+- ~~App Intents + Spotlight~~ — **done**. *Open Group* and *Add Expense*, both
+  surfaced by Siri, Spotlight and Shortcuts. Add Expense opens the form rather than
+  posting the expense: an expense needs a payer and the app has no idea who its user
+  is in a group, so guessing would put someone else's name against a payment in a
+  shared ledger. Revisit when M3.1 lands the active user — that is what makes a
+  headless "add £12 for coffee to Lisbon" safe
+- **Widget** — moved to M3.1. It was specced as "balances at a glance for a starred
+  group", and starring is itself an M3.1 feature. Building it against the
+  most-recent group instead would ship it twice: once now with the wrong subject,
+  once again when starring arrives. It waits for the thing it is about
 
 ### M3 — Toward web parity · size L, delivered in waves
 
@@ -364,6 +393,8 @@ Ordered by value to a phone user, not by web-app order.
 - Active user ("who are you in this group?") and the personal balance summary
 - Select all / none in the paid-for list, and saved default splitting options
 - Starred and archived groups on the home screen
+- The balances widget, which M2 left here because it is about a starred group and
+  there was nothing to star
 
 **Wave 2 — the missing tabs**
 - Information tab
@@ -414,8 +445,9 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Dark mode | ➖ | ✅ | M1 |
 | Group notes field | ✅ | ✅ | M1 (edit only; shown in M3.2) |
 | Expense search | ➖ | ✅ | ✅ M2 |
-| Universal Links | ➖ | n/a | M2 |
-| Widgets / App Intents | ➖ | ➖ | M2 |
+| Universal Links | ➖ | n/a | ✅ M2 (needs the web-side file) |
+| App Intents / Spotlight | ➖ | ➖ | ✅ M2 |
+| Widget | ➖ | ➖ | M3.1, with starring |
 | Currency code + picker | ➖ | ✅ | M3.1 |
 | Multi-currency expenses | ➖ | ✅ | M3.1 |
 | Active user / personal balance | ➖ | ✅ | M3.1 |

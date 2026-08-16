@@ -26,13 +26,7 @@ struct UndoBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        // Glass behind rather than around: applied to the row itself it sits over the button and
-        // eats the tap — the same trap the search field ran into.
-        .background {
-            Color.clear
-                .glassEffect(.regular, in: .capsule)
-                .allowsHitTesting(false)
-        }
+        .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, 16)
     }
 }

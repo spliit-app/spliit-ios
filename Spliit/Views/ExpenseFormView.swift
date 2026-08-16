@@ -32,6 +32,11 @@ struct ExpenseFormView: View {
     @State private var isSaving = false
     @State private var failure: String?
 
+    /// Counters rather than flags: the same outcome twice in a row is still two outcomes, and a
+    /// flag that is already true does not trigger anything.
+    @State private var savedCount = 0
+    @State private var refusedCount = 0
+
     var body: some View {
         NavigationStack {
             Group {
@@ -72,6 +77,8 @@ struct ExpenseFormView: View {
         }
         .task { await load() }
         .interactiveDismissDisabled(isSaving)
+        .sensoryFeedback(Haptics.saved, trigger: savedCount)
+        .sensoryFeedback(Haptics.refused, trigger: refusedCount)
     }
 
     // MARK: - Form
@@ -293,7 +300,12 @@ struct ExpenseFormView: View {
 
     private func save() {
         hasAttemptedSave = true
-        guard let form, let values = form.formValues else { return }
+        guard let form, let values = form.formValues else {
+            // Refused before anything was sent. The problems appear beside the fields that have
+            // them, which may be off the bottom of a long form.
+            refusedCount += 1
+            return
+        }
 
         isSaving = true
         Task {
@@ -310,6 +322,9 @@ struct ExpenseFormView: View {
                         Spliit.updateExpense(groupId: group.id, expenseId: expenseID, values)
                     )
                 }
+                // Before the reload, so it lands with the save rather than after the list has
+                // caught up — and while this view is still on screen to play it.
+                savedCount += 1
                 await onFinished()
                 dismiss()
             } catch {

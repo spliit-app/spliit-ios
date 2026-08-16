@@ -52,6 +52,11 @@ jobs:
       - name: Build for simulator
         run: make build
 
+      # Reads the `.stringsdata` the build just wrote, so it goes here rather than in a job of
+      # its own that would pay for a second build. `make strings` is the same check locally.
+      - name: Check string catalogues
+        run: python3 Scripts/check-strings.py build
+
   # The real thing: the app driving a real Spliit instance in the simulator.
   #
   # Only on pull requests that are ready for review. It takes 10-20 minutes, which is too slow

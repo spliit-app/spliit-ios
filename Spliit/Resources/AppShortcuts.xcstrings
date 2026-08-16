@@ -1,0 +1,46 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Add an expense to ${group} in ${applicationName}": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une dépense à ${group} dans ${applicationName}"
+          }
+        }
+      }
+    },
+    "New ${applicationName} expense in ${group}": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle dépense ${applicationName} dans ${group}"
+          }
+        }
+      }
+    },
+    "Open ${group} in ${applicationName}": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir ${group} dans ${applicationName}"
+          }
+        }
+      }
+    },
+    "Show ${group} in ${applicationName}": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher ${group} dans ${applicationName}"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

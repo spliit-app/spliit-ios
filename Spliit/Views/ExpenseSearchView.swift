@@ -122,6 +122,11 @@ struct ExpenseSearchView: View {
             searchBarContent
         }
         .padding(.horizontal, 16)
+        // The keyboard arrives right under the bar, and without this the field and the top row
+        // of keys share an edge — the glass capsule reads as part of the keyboard rather than
+        // as the thing being typed into. Matches the gap between the field and its cancel
+        // button, so the bar keeps one rhythm.
+        .padding(.bottom, 10)
         .animation(Motion.base, value: query.isEmpty)
     }
 

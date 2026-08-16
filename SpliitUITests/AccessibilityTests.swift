@@ -80,6 +80,28 @@ final class AccessibilityTests: SpliitUITestCase {
         )
     }
 
+    /// The welcome screen is the first thing a new install shows, and at this text size its
+    /// description on its own is taller than the phone. The empty state scrolls for that reason —
+    /// what has to hold is that neither action ends up stranded below the fold with no way down.
+    @MainActor
+    func testWelcomeActionsAreReachableAtTheLargestTextSize() {
+        let app = launchApp(textSize: largestSize)
+
+        assertExists(
+            app.buttons[AccessibilityID.GroupsList.createGroupButton],
+            "A fresh install should show the welcome screen at any text size."
+        )
+        capture(app, "welcome-ax5")
+
+        // The second action sits below the first, so it is the one that falls off the bottom.
+        let addByLink = app.buttons[AccessibilityID.GroupsList.addByURLButton]
+        for _ in 0..<10 where !addByLink.isHittable { app.swipeUp() }
+        XCTAssertTrue(
+            addByLink.isHittable,
+            "Both welcome actions have to be reachable by scrolling at the largest text size."
+        )
+    }
+
     /// The paid-for checkboxes are a custom `ToggleStyle` drawn out of a `Button`. Without an
     /// accessibility representation they announce as buttons and never say whether the
     /// participant is in the split — the checkmark is the only cue, and it is purely visual.

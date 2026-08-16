@@ -22,7 +22,6 @@ struct GroupsListView: View {
     var body: some View {
         NavigationStack(path: $path) {
             content
-                .navigationTitle("Groups")
                 .navigationDestination(for: String.self) { groupID in
                     GroupDetailView(groupID: groupID)
                 }
@@ -79,18 +78,23 @@ struct GroupsListView: View {
     @ViewBuilder
     private var content: some View {
         if app.recentGroups.groups.isEmpty {
+            // No title: the welcome screen already names the app twice, in the mark and in its
+            // own heading, and "Groups" over an empty screen labels a list that isn't there.
+            // Verbatim rather than a localised empty string, so the catalogue stays clean.
             emptyState
+                .navigationTitle(Text(verbatim: ""))
         } else {
             groupList
+                .navigationTitle("Groups")
         }
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Welcome to Spliit", systemImage: "person.2")
-        } description: {
-            Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
-        } actions: {
+        EmptyState(
+            art: .logo,
+            title: Text("Welcome to Spliit"),
+            description: Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
+        ) {
             VStack(spacing: 12) {
                 Button("Create group") { sheet = .createGroup }
                     .buttonStyle(.borderedProminent)

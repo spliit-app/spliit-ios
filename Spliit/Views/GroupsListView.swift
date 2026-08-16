@@ -13,6 +13,7 @@ struct GroupsListView: View {
     @State private var model = GroupsListModel()
     @State private var path: [String] = []
     @State private var sheet: Sheet?
+    @State private var linkFailure: String?
     private var router: Router { Router.shared }
 
     private enum Sheet: String, Identifiable {
@@ -40,8 +41,61 @@ struct GroupsListView: View {
         // An intent can land before this view exists — a cold launch from Spotlight — or while
         // it is already on screen, so the destination is read on appearance and on every change
         // rather than only once.
-        .onAppear { openRoutedGroup() }
+        .onAppear {
+            openRoutedGroup()
+            if let url = router.takePendingURL() { open(url) }
+        }
         .onChange(of: router.destination) { openRoutedGroup() }
+        .onOpenURL { open($0) }
+        .alert(
+            "Couldn’t open that link",
+            isPresented: .constant(linkFailure != nil)
+        ) {
+            Button("OK", role: .cancel) { linkFailure = nil }
+        } message: {
+            Text(linkFailure ?? "")
+        }
+    }
+
+    /// A group link that arrived from somewhere else — a message, Safari, the old app's URL
+    /// scheme.
+    ///
+    /// A link to a group this device already knows just opens it. A link to one it does not is
+    /// how people are let into a group in the first place, so it is checked against the server
+    /// and remembered before opening — the same thing "Add by link" does, without the typing.
+    private func open(_ url: URL) {
+        guard case .group(let id)? = IncomingLink.parse(
+            url,
+            knownOrigins: IncomingLink.knownOrigins(baseURL: app.settings.baseURL)
+        ) else {
+            return
+        }
+
+        if app.recentGroups.groups.contains(where: { $0.groupId == id }) {
+            router.go(to: .group(id: id))
+            openRoutedGroup()
+            return
+        }
+
+        Task { await join(id) }
+    }
+
+    private func join(_ groupID: String) async {
+        do {
+            guard let group = try await app.client.call(Spliit.group(id: groupID)).group else {
+                linkFailure = String(
+                    localized: "That group isn’t on \(app.settings.baseURL.host() ?? "this instance")."
+                )
+                return
+            }
+            app.recentGroups.remember(
+                RecentGroup(groupId: group.id, groupName: group.name)
+            )
+            router.go(to: .group(id: group.id))
+            openRoutedGroup()
+        } catch {
+            linkFailure = error.localizedDescription
+        }
     }
 
     /// Pushes the group an intent asked for, leaving the rest of the destination for the group

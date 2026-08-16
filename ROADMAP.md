@@ -344,8 +344,11 @@ to a user opening it for the first time.
   list, so the field is the app's own — see the note in `ExpenseSearchView`
 - Swipe-to-delete with undo instead of a menu item
 - Haptics (the Dynamic Type and VoiceOver audits were done in M1)
-- Universal Links for `spliit.app/groups/…` (needs an
-  `apple-app-site-association` file on the web side)
+- Universal Links for `spliit.app/groups/…` — **app side done**, and inert until
+  spliit.app serves an `apple-app-site-association` file naming the app. The exact
+  file, and the App ID capability it needs, are in
+  [Docs/universal-links.md](Docs/universal-links.md). Incoming group links already
+  work over the custom scheme and against the configured instance
 - Share extension / share sheet target: paste a group URL from anywhere
 - Widget: balances at a glance for a starred group
 - App Intents + Spotlight: "Add expense to <group>"

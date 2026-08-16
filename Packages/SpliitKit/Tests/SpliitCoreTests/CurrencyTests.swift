@@ -23,11 +23,15 @@ struct CurrencyTests {
         #expect(names == names.sorted { $0.localizedStandardCompare($1) == .orderedAscending })
     }
 
+    /// Names are matched loosely on purpose: they are CLDR's, and its wording and casing are
+    /// free to change under us. What matters is that a currency arrives named, not that it is
+    /// spelled the way this machine's ICU spells it today.
     @Test("A currency knows its name and its symbol")
     func describesOneCurrency() throws {
         let swiss = try #require(Currency.named("CHF", in: english))
 
-        #expect(swiss.name == "Swiss Franc")
+        #expect(swiss.name.localizedCaseInsensitiveContains("swiss"))
+        #expect(swiss.name.localizedCaseInsensitiveContains("franc"))
         #expect(swiss.symbol == "CHF")
         #expect(swiss.minorUnitDigits == 2)
     }
@@ -38,7 +42,7 @@ struct CurrencyTests {
     func localisesToTheUser() throws {
         let french = try #require(Currency.named("USD", in: Locale(identifier: "fr_FR")))
 
-        #expect(french.name == "dollar des États-Unis")
+        #expect(french.name.localizedCaseInsensitiveContains("dollar des États-Unis"))
         #expect(french.symbol == "$US")
     }
 
@@ -87,7 +91,7 @@ struct CurrencyTests {
     func searchesWithoutDiacritics() throws {
         let icelandic = try #require(Currency.named("ISK", in: english))
 
-        #expect(icelandic.name == "Icelandic Króna")
+        #expect(icelandic.name.contains("ó"), "The name to search past has an accent in it.")
         #expect(icelandic.matches("krona"))
     }
 

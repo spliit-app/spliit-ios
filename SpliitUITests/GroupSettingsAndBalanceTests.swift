@@ -82,6 +82,47 @@ final class GroupSettingsAndBalanceTests: SpliitUITestCase {
         )
     }
 
+    /// Every currency the app can name is in the picker, and the ones it can't are what the
+    /// custom symbol is for. Moving a group onto one has to clear the ISO code it had: a group
+    /// showing "kr" while still claiming to be in dollars would be a lie the server told.
+    @MainActor
+    func testSwitchingToACustomSymbolClearsTheCurrencyCode() async throws {
+        let group = try await api.createGroup(name: "Off-list", participants: ["Ana", "Bruno"])
+        let app = launchApp(recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Off-list")]))
+
+        app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
+        app.buttons[AccessibilityID.GroupDetail.menuButton].tap()
+        app.buttons[AccessibilityID.GroupDetail.editGroupButton].tap()
+
+        let currency = app.buttons[AccessibilityID.GroupForm.currencyButton]
+        assertExists(currency, "Group settings should open.")
+        XCTAssertTrue(
+            currency.label.contains("US Dollar"),
+            "The seeded group is in dollars, and the form should say so."
+        )
+
+        currency.tap()
+        let custom = app.buttons[AccessibilityID.CurrencyPicker.customOption]
+        assertExists(custom, "The picker should open, with the custom symbol in reach of it.")
+        custom.tap()
+
+        let symbol = app.textFields[AccessibilityID.GroupForm.currencyField]
+        assertExists(symbol, "Choosing a custom symbol should offer the field to type it in.")
+        replaceText(in: symbol, with: "kr")
+        app.buttons[AccessibilityID.GroupForm.saveButton].tap()
+
+        app.buttons[AccessibilityID.GroupDetail.menuButton].tap()
+        app.buttons[AccessibilityID.GroupDetail.editGroupButton].tap()
+
+        let saved = app.buttons[AccessibilityID.GroupForm.currencyButton]
+        assertExists(saved, "Group settings should open again.")
+        XCTAssertTrue(saved.label.contains("kr"), "The symbol should have been saved.")
+        XCTAssertFalse(
+            saved.label.contains("Dollar"),
+            "And the code should be gone, not left behind by a request that omitted it."
+        )
+    }
+
     /// A server that never answers used to leave a spinner on screen with no way out. It
     /// should give up in seconds and offer a retry.
     @MainActor

@@ -40,6 +40,9 @@ enum AccessibilityID {
 
     enum GroupForm {
         static let nameField = "groupForm.name"
+        /// The row that opens the picker. The free-text symbol field below it only exists once
+        /// "Custom symbol" has been chosen.
+        static let currencyButton = "groupForm.currencyButton"
         static let currencyField = "groupForm.currency"
         static let informationField = "groupForm.information"
         static let addParticipantButton = "groupForm.addParticipant"
@@ -48,6 +51,14 @@ enum AccessibilityID {
         static let error = "groupForm.error"
 
         static func participantField(_ index: Int) -> String { "groupForm.participant.\(index)" }
+    }
+
+    enum CurrencyPicker {
+        /// Carried by the row in the list and by the button the no-results state offers. The two
+        /// are never on screen together — one needs an empty search field, the other a full one.
+        static let customOption = "currencyPicker.custom"
+
+        static func row(_ code: String) -> String { "currencyPicker.row.\(code)" }
     }
 
     enum GroupDetail {

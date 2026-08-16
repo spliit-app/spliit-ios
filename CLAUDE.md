@@ -85,9 +85,22 @@ device: the Makefile targets `$(SIM_NAME)`, this worktree's own.
 database lives in tmpfs, so stopping it discards the data of every run in flight. `make e2e`
 deliberately leaves it up.
 
-**Money is always integer minor units.** `amount == 1234` means 12.34. And `paidFor[].shares`
-changes meaning with the split mode: the share value ×100 for `EVENLY`, `BY_SHARES` and
-`BY_PERCENTAGE`, but a **raw minor-unit amount** for `BY_AMOUNT`.
+**Money is integer minor units — and minor units are not always hundredths.** `amount == 1234`
+is 12.34 in a two-decimal currency and ¥1,234 in a group denominated in yen. The group's ISO
+code is what decides, and 34 of the 159 currencies in the picker have no minor unit at all
+while 6 have three. Never divide by 100: ask `MoneyFormatter.minorUnitDigits(forCurrencyCode:)`,
+or use the formatter, which already has. A group with only a symbol and no code is hundredths,
+because that is what it was stored as.
+
+`paidFor[].shares` changes meaning with the split mode: the share value ×100 for `EVENLY`,
+`BY_SHARES` and `BY_PERCENTAGE` — whatever the currency — but a **raw minor-unit amount** for
+`BY_AMOUNT`, which does scale with it.
+
+**A nil optional is omitted from the request, and the server then leaves that column alone.**
+Swift's synthesised encoding uses `encodeIfPresent`, so nil never reaches the wire; tRPC reads
+it as `undefined` and Prisma skips the field. Clearing something therefore means sending an
+empty value, not nil — `GroupFormDraft.formValues` sends `""` for a currency code the user
+dropped, which is what the web app writes too.
 
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`

@@ -27,13 +27,35 @@ struct GroupFormView: View {
                     .accessibilityIdentifier(AccessibilityID.GroupForm.nameField)
                 problemLabel(for: [.nameTooShort, .nameTooLong])
 
-                TextField("Currency symbol", text: $draft.currency)
-                    .accessibilityIdentifier(AccessibilityID.GroupForm.currencyField)
-                problemLabel(for: [.currencyMissing, .currencyTooLong])
+                NavigationLink {
+                    CurrencyPickerView(selectedCode: draft.currencyCode) { currency in
+                        if let currency {
+                            draft.use(currency)
+                        } else {
+                            draft.useCustomSymbol()
+                        }
+                    }
+                } label: {
+                    LabeledContent("Currency", value: currencySummary)
+                }
+                .accessibilityIdentifier(AccessibilityID.GroupForm.currencyButton)
+
+                // Only when there is no currency to derive it from. A symbol that disagreed
+                // with the group's ISO code would be a lie told beside every amount.
+                if draft.usesCustomSymbol {
+                    TextField("Currency symbol", text: $draft.currency)
+                        .accessibilityIdentifier(AccessibilityID.GroupForm.currencyField)
+                    problemLabel(for: [.currencyMissing, .currencyTooLong])
+                }
+                problemLabel(for: [.currencyCodeInvalid])
             } header: {
                 Text("Group information")
             } footer: {
-                Text("The currency symbol is shown next to every amount, for example $ or CHF.")
+                if draft.usesCustomSymbol {
+                    Text("The currency symbol is shown next to every amount, for example $ or CHF.")
+                } else {
+                    Text("Amounts in this group are shown with this currency’s symbol.")
+                }
             }
 
             Section("Notes") {
@@ -128,6 +150,20 @@ struct GroupFormView: View {
         draft.participants.removeAll { $0.id == participant.id }
     }
 
+    /// What the picker row shows on the right: the currency and the symbol it will put beside
+    /// every amount, or just the symbol when that is all the group has.
+    private var currencySummary: String {
+        if let currency = draft.selectedCurrency() {
+            "\(currency.name) (\(currency.symbol))"
+        } else if let code = draft.currencyCode, !code.isEmpty {
+            // Stored by something else and not a currency this system knows. Showing it is more
+            // use than pretending the group has none.
+            code
+        } else {
+            draft.currency
+        }
+    }
+
     @ViewBuilder
     private func problemLabel(for candidates: [GroupFormDraft.Problem]) -> some View {
         if hasAttemptedSave, let problem = draft.problems.first(where: candidates.contains) {
@@ -145,7 +181,7 @@ struct CreateGroupView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
 
-    @State private var draft = GroupFormDraft()
+    @State private var draft = GroupFormDraft(newGroupIn: .autoupdatingCurrent)
     @State private var isSaving = false
     @State private var failure: String?
 

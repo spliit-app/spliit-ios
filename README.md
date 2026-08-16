@@ -123,9 +123,11 @@ break exactly one endpoint.
 Encoding does emit annotations, because the server rebuilds real `Date` instances before its
 own validation runs. `make test-live` is what proves the envelopes we send are accepted.
 
-**Money is always integer minor units.** `amount == 1234` means 12.34. One sharp edge:
-`paidFor[].shares` is the share value ×100 for `EVENLY`, `BY_SHARES` and `BY_PERCENTAGE`, but
-a raw minor-unit amount for `BY_AMOUNT`.
+**Money is integer minor units, and minor units are not always hundredths.** `amount == 1234`
+is 12.34 in a two-decimal currency and ¥1,234 in a group counted in yen — the group's ISO
+currency code decides, which is what `MoneyFormatter` reads it for. One more sharp edge:
+`paidFor[].shares` is the share value ×100 for `EVENLY`, `BY_SHARES` and `BY_PERCENTAGE`
+whatever the currency, but a raw minor-unit amount for `BY_AMOUNT`.
 
 ## Migrating from the React Native app
 

@@ -25,8 +25,9 @@ public struct GroupFormDraft: Equatable, Sendable {
     public var name: String
     /// A free-text symbol like "$" or "CHF"; this is what amounts are displayed with.
     public var currency: String
-    /// ISO-4217, when known. Not editable in Milestone 1, but preserved across an edit so
-    /// saving a group from the app doesn't silently drop what the web app set.
+    /// ISO-4217, when the group has one. Picking a currency sets this and `currency` together;
+    /// nil is what "custom symbol" means, and it is how groups made before codes existed stay
+    /// legal. The web app writes an empty string for the same state.
     public var currencyCode: String?
     public var information: String
     public var participants: [ParticipantDraft]
@@ -49,6 +50,14 @@ public struct GroupFormDraft: Equatable, Sendable {
         self.participants = participants
     }
 
+    /// A new group, denominated in the currency the device is set to — the answer for most
+    /// groups, and one the picker is there to change for the rest. Falls back to the dollar,
+    /// which is what the web app defaults to when nothing else says otherwise.
+    public init(newGroupIn locale: Locale) {
+        let currency = Currency.device(in: locale)
+        self.init(currency: currency?.symbol ?? "$", currencyCode: currency?.code)
+    }
+
     /// Builds a draft for editing an existing group.
     public init(editing group: Group) {
         self.init(
@@ -62,6 +71,31 @@ public struct GroupFormDraft: Equatable, Sendable {
         )
     }
 
+    // MARK: - Currency
+
+    /// True when the group carries only a symbol: either it predates ISO codes, or the user
+    /// chose to type their own. The symbol is theirs to edit in that state and nobody else's.
+    public var usesCustomSymbol: Bool {
+        currencyCode?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+    }
+
+    /// The currency the group is set to, or nil when it has none the system recognises.
+    public func selectedCurrency(in locale: Locale = .autoupdatingCurrent) -> Currency? {
+        currencyCode.flatMap { Currency.named($0, in: locale) }
+    }
+
+    /// Picking a currency sets the symbol too — the code is what the amounts are in, and a code
+    /// that disagreed with the symbol beside every amount would be worse than no code at all.
+    public mutating func use(_ currency: Currency) {
+        currencyCode = currency.code
+        self.currency = currency.symbol
+    }
+
+    /// Drops the ISO code and keeps the symbol, which is now the user's to edit.
+    public mutating func useCustomSymbol() {
+        currencyCode = nil
+    }
+
     // MARK: - Validation
 
     public enum Problem: Equatable, Sendable {
@@ -69,6 +103,7 @@ public struct GroupFormDraft: Equatable, Sendable {
         case nameTooLong
         case currencyMissing
         case currencyTooLong
+        case currencyCodeInvalid
         case noParticipants
         case participantNameTooShort(ParticipantDraft.ID)
         case participantNameTooLong(ParticipantDraft.ID)
@@ -85,6 +120,10 @@ public struct GroupFormDraft: Equatable, Sendable {
         let trimmedCurrency = currency.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedCurrency.isEmpty { problems.append(.currencyMissing) }
         if trimmedCurrency.count > 5 { problems.append(.currencyTooLong) }
+
+        // The picker cannot produce anything else, but an instance could have stored one — and
+        // the server would reject the save with a message about a field the form doesn't show.
+        if !usesCustomSymbol, currencyCode?.count != 3 { problems.append(.currencyCodeInvalid) }
 
         if participants.isEmpty { problems.append(.noParticipants) }
 
@@ -128,7 +167,11 @@ public struct GroupFormDraft: Equatable, Sendable {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             information: trimmedInformation.isEmpty ? nil : trimmedInformation,
             currency: currency.trimmingCharacters(in: .whitespacesAndNewlines),
-            currencyCode: currencyCode,
+            // Empty rather than nil, and this is load-bearing: a nil optional is left out of
+            // the JSON entirely, which reaches the server as `undefined` and tells Prisma to
+            // leave the column alone. A group being moved off its ISO code would keep it. The
+            // web app writes an empty string here for the same state.
+            currencyCode: usesCustomSymbol ? "" : currencyCode,
             participants: participants.map {
                 .init(id: $0.serverID, name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines))
             }
@@ -148,6 +191,11 @@ extension GroupFormDraft.Problem {
             String(localized: "Enter at least one character.", bundle: Bundle.module)
         case .currencyTooLong:
             String(localized: "Enter at most five characters.", bundle: Bundle.module)
+        case .currencyCodeInvalid:
+            String(
+                localized: "This group’s currency code isn’t valid. Pick a currency, or choose a custom symbol.",
+                bundle: Bundle.module
+            )
         case .noParticipants:
             String(localized: "A group needs at least one participant.", bundle: Bundle.module)
         case .participantNameTooShort:

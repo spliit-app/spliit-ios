@@ -37,6 +37,10 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     public var notes: String
     /// Used to parse typed numbers; a comma is the decimal separator in much of the world.
     public var locale: Locale
+    /// How many digits the group's currency keeps behind the decimal point, so "1234" typed in
+    /// a yen group is ¥1,234 rather than a hundredth of that. Only the total and the by-amount
+    /// shares scale with it; share counts and percentages are ×100 whatever the currency.
+    public var minorUnitDigits: Int
 
     /// Preserved across an edit so saving from the app doesn't drop what the web app set.
     public var recurrenceRule: RecurrenceRule
@@ -53,6 +57,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         isReimbursement: Bool = false,
         notes: String = "",
         locale: Locale = .autoupdatingCurrent,
+        minorUnitDigits: Int = 2,
         recurrenceRule: RecurrenceRule = .never,
         documents: [ExpenseDocument] = []
     ) {
@@ -66,6 +71,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         self.isReimbursement = isReimbursement
         self.notes = notes
         self.locale = locale
+        self.minorUnitDigits = minorUnitDigits
         self.recurrenceRule = recurrenceRule
         self.documents = documents
     }
@@ -77,7 +83,8 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             participants: group.participants.map {
                 ParticipantShareDraft(id: $0.id, name: $0.name, isIncluded: true)
             },
-            locale: locale
+            locale: locale,
+            minorUnitDigits: Self.minorUnitDigits(for: group, locale: locale)
         )
     }
 
@@ -91,11 +98,14 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             expense.paidFor.map { ($0.participantId, $0.shares) },
             uniquingKeysWith: { first, _ in first }
         )
+        let digits = Self.minorUnitDigits(for: group, locale: locale)
 
         self.init(
             title: expense.title,
             expenseDate: expense.expenseDate,
-            amountText: Self.text(forMinorUnits: expense.amount, locale: locale),
+            amountText: Self.text(
+                forMinorUnits: expense.amount, locale: locale, minorUnitDigits: digits
+            ),
             categoryID: expense.categoryId,
             paidByID: expense.paidById,
             splitMode: expense.splitMode,
@@ -108,13 +118,15 @@ public struct ExpenseFormDraft: Equatable, Sendable {
                     valueText: Self.text(
                         forShares: shares ?? 100,
                         splitMode: expense.splitMode,
-                        locale: locale
+                        locale: locale,
+                        minorUnitDigits: digits
                     )
                 )
             },
             isReimbursement: expense.isReimbursement,
             notes: expense.notes ?? "",
             locale: locale,
+            minorUnitDigits: digits,
             recurrenceRule: expense.recurrenceRule ?? .never,
             documents: expense.documents
         )
@@ -127,9 +139,13 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         title: String,
         locale: Locale = .autoupdatingCurrent
     ) {
+        let digits = Self.minorUnitDigits(for: group, locale: locale)
+
         self.init(
             title: title,
-            amountText: Self.text(forMinorUnits: reimbursement.amount, locale: locale),
+            amountText: Self.text(
+                forMinorUnits: reimbursement.amount, locale: locale, minorUnitDigits: digits
+            ),
             categoryID: 1,  // "Payment"
             paidByID: reimbursement.from,
             splitMode: .evenly,
@@ -139,7 +155,8 @@ public struct ExpenseFormDraft: Equatable, Sendable {
                 )
             },
             isReimbursement: true,
-            locale: locale
+            locale: locale,
+            minorUnitDigits: digits
         )
     }
 
@@ -147,7 +164,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
 
     /// The total in minor units, or nil if what was typed isn't a number.
     public var amountMinorUnits: Int? {
-        MoneyFormatter.minorUnits(from: amountText, locale: locale)
+        MoneyFormatter.minorUnits(from: amountText, locale: locale, minorUnitDigits: minorUnitDigits)
     }
 
     public var includedParticipants: [ParticipantShareDraft] {
@@ -162,8 +179,14 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         switch splitMode {
         case .evenly:
             100
-        case .byShares, .byPercentage, .byAmount:
+        case .byShares, .byPercentage:
+            // Scaled by 100 by the protocol, not by the currency: two shares are 200 even in a
+            // group that counts in whole yen.
             MoneyFormatter.minorUnits(from: participant.valueText, locale: locale)
+        case .byAmount:
+            MoneyFormatter.minorUnits(
+                from: participant.valueText, locale: locale, minorUnitDigits: minorUnitDigits
+            )
         }
     }
 
@@ -299,18 +322,29 @@ public struct ExpenseFormDraft: Equatable, Sendable {
 
     // MARK: - Text conversion
 
-    static func text(forMinorUnits value: Int, locale: Locale) -> String {
-        MoneyFormatter(currencySymbol: "", locale: locale).plainString(minorUnits: value)
+    /// How many digits the group's currency keeps, for a draft being built from one.
+    static func minorUnitDigits(for group: Group, locale: Locale) -> Int {
+        MoneyFormatter.minorUnitDigits(forCurrencyCode: group.currencyCode, locale: locale)
+    }
+
+    static func text(forMinorUnits value: Int, locale: Locale, minorUnitDigits: Int = 2) -> String {
+        MoneyFormatter(minorUnitDigits: minorUnitDigits, locale: locale)
+            .plainString(minorUnits: value)
     }
 
     /// Turns a stored `shares` value back into something to show in the field it came from.
-    static func text(forShares shares: Int, splitMode: SplitMode, locale: Locale) -> String {
+    static func text(
+        forShares shares: Int,
+        splitMode: SplitMode,
+        locale: Locale,
+        minorUnitDigits: Int = 2
+    ) -> String {
         switch splitMode {
         case .byAmount:
-            // Already a minor-unit amount.
-            text(forMinorUnits: shares, locale: locale)
+            // Already a minor-unit amount, in the group's own currency.
+            text(forMinorUnits: shares, locale: locale, minorUnitDigits: minorUnitDigits)
         case .evenly, .byShares, .byPercentage:
-            // Scaled by 100; show whole numbers without a pointless ".00".
+            // Scaled by 100 whatever the currency; show whole numbers without a pointless ".00".
             shares % 100 == 0
                 ? String(shares / 100)
                 : text(forMinorUnits: shares, locale: locale)

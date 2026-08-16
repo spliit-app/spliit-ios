@@ -21,6 +21,12 @@ struct GroupEntity: AppEntity {
     }
 }
 
+extension GroupEntity {
+    init(_ group: RecentGroup) {
+        self.init(id: group.groupId, name: group.groupName)
+    }
+}
+
 struct GroupEntityQuery: EntityQuery {
 
     @MainActor
@@ -29,20 +35,29 @@ struct GroupEntityQuery: EntityQuery {
         return Self.remembered().filter { wanted.contains($0.id) }
     }
 
-    /// What the Shortcuts app offers before anything has been typed, newest first — the same
-    /// order the home screen uses, so the first suggestion is the group most recently opened.
+    /// What the Shortcuts app offers before anything has been typed: starred first, then the
+    /// rest newest first — the home screen's order, so the first suggestion is the group the
+    /// home screen also leads with.
+    ///
+    /// Archived groups are left out. Archiving is a request to stop being offered, and an
+    /// unprompted suggestion is exactly the thing being declined; asking for one by name still
+    /// finds it.
     @MainActor
     func suggestedEntities() async throws -> [GroupEntity] {
-        Self.remembered()
+        let store = RecentGroupsStore(fileURL: RecentGroupsStore.defaultFileURL())
+        return (store.starred + store.recent).map(GroupEntity.init)
     }
 
     /// `RecentGroupsStore` is main-actor isolated, like the rest of `SpliitCore`. Reading it is
     /// a small synchronous file decode, so hopping for it costs nothing an intent would notice.
+    ///
+    /// Archived groups are included here: a shortcut somebody already built, or a name they said
+    /// out loud, is a request for that group and not a browse of what is on offer.
     @MainActor
     static func remembered() -> [GroupEntity] {
         RecentGroupsStore(fileURL: RecentGroupsStore.defaultFileURL())
             .groups
-            .map { GroupEntity(id: $0.groupId, name: $0.groupName) }
+            .map(GroupEntity.init)
     }
 }
 

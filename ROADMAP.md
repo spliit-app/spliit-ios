@@ -382,7 +382,7 @@ to a user opening it for the first time.
   most-recent group instead would ship it twice: once now with the wrong subject,
   once again when starring arrives. It waits for the thing it is about
 
-### M3 — Toward web parity · size L, delivered in waves
+### M3 — Toward web parity · size L, delivered in waves · 🟡 in progress
 
 Ordered by value to a phone user, not by web-app order.
 
@@ -392,9 +392,20 @@ Ordered by value to a phone user, not by web-app order.
 - Multi-currency expenses: original amount, original currency, conversion rate
 - Active user ("who are you in this group?") and the personal balance summary
 - Select all / none in the paid-for list, and saved default splitting options
-- Starred and archived groups on the home screen
+- ~~Starred and archived groups on the home screen~~ — **done**. Both flags live on
+  the group in `recent-groups.json` rather than in two lists of IDs the way the web
+  app keeps them: one file, one write, and no way to end up starring a group the
+  list has forgotten. Starring and archiving each undo the other, and `remember`
+  carries both across a rename — the path that would otherwise unstar a group the
+  moment it was renamed. On screen they are three sections and nothing else: no
+  badge on the row, because the header already said it. Star is a leading swipe,
+  archive and remove are trailing, and archive is the outermost of those, so a full
+  swipe archives rather than removes — removing a group has no way back but the
+  original link. All three are in a long-press menu too, since a swipe action nobody
+  swipes for is a feature nobody has. Archived groups also stop being offered by
+  Siri and Spotlight; asking for one by name still finds it
 - The balances widget, which M2 left here because it is about a starred group and
-  there was nothing to star
+  there was nothing to star. There is now
 
 **Wave 2 — the missing tabs**
 - Information tab
@@ -453,7 +464,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Active user / personal balance | ➖ | ✅ | M3.1 |
 | Select all-or-none participants | ➖ | ✅ | M3.1 |
 | Default splitting options | ➖ | ✅ | M3.1 |
-| Starred / archived groups | ➖ | ✅ | M3.1 |
+| Starred / archived groups | ➖ | ✅ | ✅ M3.1 |
 | Group information tab | ➖ | ✅ | M3.2 |
 | Stats | ➖ | ✅ | M3.2 |
 | Activity log | ➖ | ✅ | M3.2 |

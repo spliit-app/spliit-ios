@@ -37,6 +37,12 @@ struct ExpenseSearchView: View {
         // which dropped keyboard focus and the keyboard with it, one character in. The stack
         // gives the modifiers below something whose identity never changes.
         ZStack {
+            // The same ground the lists stand on. A `List` brings the grouped background with
+            // it; the prompt, the spinner and the empty states bring nothing, so the screen went
+            // white between searches and grey once results arrived — one flicker per keystroke.
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
             content
         }
         // Inside the search field's bar, so a deleted result's way back sits above the field
@@ -65,9 +71,14 @@ struct ExpenseSearchView: View {
         }
     }
 
+    /// Driven by what is in the field, not by what the model has searched for.
+    ///
+    /// The two disagree for the length of the debounce, and deciding on the model alone put the
+    /// "Search this group" prompt back on screen between characters — the field said one thing
+    /// and the screen behind it said another.
     @ViewBuilder
     private var content: some View {
-        if model.hasNoQuery {
+        if trimmedQuery.isEmpty {
             EmptyState(
                 art: .icon("magnifyingglass"),
                 title: Text("Search this group"),
@@ -89,9 +100,18 @@ struct ExpenseSearchView: View {
                 // promising a search of "expenses" would promise more than it does.
                 description: Text("No expense here has “\(model.filter ?? "")” in its title.")
             )
+        } else if model.searchResults.isEmpty {
+            // Typed, but nothing has come back yet — the debounce is still running or the
+            // request is in flight. Narrowing an existing search skips this: the previous
+            // results stay up until the new ones replace them.
+            ProgressView().controlSize(.large)
         } else {
             results
         }
+    }
+
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var searchBar: some View {

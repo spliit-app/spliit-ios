@@ -57,6 +57,19 @@ struct TransportFailureTests {
         }
     }
 
+    /// Search cancels the request in flight on every keystroke. Reporting that as a network
+    /// failure told people their server was unreachable when all they had done was type another
+    /// character — "Couldn't search" flashing between letters, on a server that was answering
+    /// perfectly well.
+    @Test("A cancelled request is cancelled, not a network failure")
+    func cancellationIsNotAFailure() async {
+        StubURLProtocol.outcome = .failure(URLError(.cancelled))
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await client().call(Spliit.group(id: "abc"))
+        }
+    }
+
     @Test("An unreachable server surfaces as a network failure")
     func reportsUnreachableHost() async throws {
         StubURLProtocol.outcome = .failure(URLError(.cannotConnectToHost))

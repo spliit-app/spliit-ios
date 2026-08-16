@@ -31,14 +31,18 @@ Run `make` on its own to list every task.
 ```sh
 make e2e-up       # a throwaway Spliit instance on :3009
 make e2e-seed     # some groups and expenses to look at
-make run          # build, install and launch on a simulator
-make shot         # screenshot whatever is on screen
+make run          # build, install and launch on this worktree's simulator
+make shot         # screenshot it
 ```
 
-To point the app at a specific instance, pass `-baseURL`:
+Every worktree gets a simulator of its own, named after its directory — `Spliit my-branch` —
+so that runs in different worktrees stay out of each other's way. `make sim-clean` removes it
+when you are done with the worktree.
+
+To point the app somewhere else, override the address:
 
 ```sh
-xcrun simctl launch booted app.spliit.spliitmobile -baseURL https://spliit.app/
+make run E2E_URL=https://spliit.app/
 ```
 
 ## Testing
@@ -51,8 +55,29 @@ Three layers, all runnable from the command line.
 | `make test-live` | the API client against a real server, including writes | `make e2e-up` |
 | `make e2e` | the app itself, in a simulator, against a real server | Docker |
 
-`make e2e` starts the server, runs the UI suite and tears the server down again, so it is
-also what CI does.
+`make e2e` brings the server up if it isn't already, then runs the UI suite. It leaves the
+server running — see below.
+
+### Running several worktrees at once
+
+```sh
+make e2e-up            # once, from any worktree
+make e2e WORKERS=2     # in each worktree, at the same time
+```
+
+Two things make that work. Each worktree drives **its own simulator**: two runs sharing one
+device would install over each other, and XCUITest names its parallel clones after the device
+they came from, so even the clones would collide.
+
+And the **server is shared and long-lived**. One is enough — every group is addressed by the ID
+the server assigned, and `groups.list` takes those IDs as input, so no run can see another's
+data. What a run must not do is tear it down on its way out: the database lives in tmpfs, so
+that would take every other run's data with it. `make e2e-down` stops it, deliberately, when
+nothing is using it.
+
+Nothing else is shared: build output goes to each worktree's own `build/`. Do watch `WORKERS`,
+though — each run boots that many simulator clones, so the sum across runs is what has to fit
+on the machine.
 
 ### Two things worth knowing
 

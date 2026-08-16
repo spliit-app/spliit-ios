@@ -23,6 +23,10 @@ struct GroupsListView: View {
         NavigationStack(path: $path) {
             content
                 .navigationDestination(for: String.self) { groupID in
+                    // The standard push, deliberately. A zoom from the row into the group was
+                    // tried here and read as showy next to it: the push is the movement iOS uses
+                    // to say "deeper in", and the group screen is exactly that rather than an
+                    // expansion of the row.
                     GroupDetailView(groupID: groupID)
                 }
                 .toolbar { toolbarContent }

@@ -84,6 +84,21 @@ struct Money: View {
             .tracking(-0.2)
             .italic(isReimbursement)
             .foregroundStyle(sign.tint)
+            // Tabular figures are what make this possible: the digits already sit in fixed
+            // columns, so a balance that moves rolls to its new value instead of flickering to
+            // it. Only shows when whatever changed the amount did so inside an animation.
+            .contentTransition(.numericText())
+    }
+}
+
+extension View {
+    /// The money treatment for a field someone is typing into.
+    ///
+    /// Rounded and tabular like every amount the app displays, so the number does not change
+    /// shape at the moment it stops being an input and becomes a total. Deliberately not
+    /// coloured or emphasised: this is a value being entered, not a balance being reported.
+    func moneyInput() -> some View {
+        font(.system(.body, design: .rounded).monospacedDigit())
     }
 }
 

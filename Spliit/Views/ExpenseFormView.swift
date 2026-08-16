@@ -91,6 +91,7 @@ struct ExpenseFormView: View {
                     )
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
+                    .moneyInput()
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.amountField)
                 }
                 problem(for: [.amountMissing, .amountNotANumber, .amountZero, .amountTooLarge])
@@ -174,6 +175,7 @@ struct ExpenseFormView: View {
                             TextField("0", text: $participant.valueText)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
+                                .moneyInput()
                                 .frame(maxWidth: shareFieldWidth)
                                 .accessibilityIdentifier(
                                     AccessibilityID.ExpenseForm.participantValue(participant.id)

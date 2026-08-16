@@ -335,8 +335,13 @@ to a user opening it for the first time.
 
 - Liquid Glass treatment: glass toolbars, `GlassEffectContainer` on the
   balances and expense cards, zoom transitions between list and detail
-- Pull-to-refresh, `.searchable` on the expense list (the API already accepts a
-  `filter` argument — free server-side search)
+- ~~Pull-to-refresh~~ — **done**, landed with the design pass
+- ~~Expense search~~ — **done**. A search tab in the group's tab bar, with the field
+  docked at the bottom above the keyboard, and `groups.expenses.list`'s `filter`
+  argument doing the matching server-side. Not `.searchable`: that modifier hosts its
+  field in a navigation bar, and its iOS 26 bottom-docked form only when the `TabView`
+  owning the search tab is the root of the scene. This one is pushed onto the groups
+  list, so the field is the app's own — see the note in `ExpenseSearchView`
 - Swipe-to-delete with undo instead of a menu item
 - Haptics (the Dynamic Type and VoiceOver audits were done in M1)
 - Universal Links for `spliit.app/groups/…` (needs an
@@ -405,7 +410,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Analytics | ✅ | ✅ | M1 |
 | Dark mode | ➖ | ✅ | M1 |
 | Group notes field | ✅ | ✅ | M1 (edit only; shown in M3.2) |
-| Expense search | ➖ | ✅ | M2 |
+| Expense search | ➖ | ✅ | ✅ M2 |
 | Universal Links | ➖ | n/a | M2 |
 | Widgets / App Intents | ➖ | ➖ | M2 |
 | Currency code + picker | ➖ | ✅ | M3.1 |

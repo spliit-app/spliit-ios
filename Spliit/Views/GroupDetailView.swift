@@ -9,6 +9,7 @@ struct GroupDetailView: View {
     @State private var model: GroupDetailModel
     @State private var tab: GroupTab = .expenses
     @State private var sheet: Sheet?
+    @State private var query = ""
 
     init(groupID: String) {
         _model = State(initialValue: GroupDetailModel(groupID: groupID))
@@ -16,7 +17,7 @@ struct GroupDetailView: View {
 
     /// Named to stay clear of SwiftUI's own `Tab`, which `TabView` needs below.
     private enum GroupTab: Hashable {
-        case expenses, balances
+        case expenses, balances, search
     }
 
     private enum Sheet: Identifiable {
@@ -50,9 +51,28 @@ struct GroupDetailView: View {
                 BalancesView(model: model, onSettle: { sheet = .settle($0) })
                     .trackScreen(.groupBalances, properties: ["groupId": model.groupID])
             }
+
+            // The search role is what puts the magnifying glass in its own capsule beside the
+            // tab bar, and what docks the field at the bottom of the screen — above the
+            // keyboard, where the thumb already is — instead of in the navigation bar.
+            Tab(value: GroupTab.search, role: .search) {
+                ExpenseSearchView(
+                    model: model,
+                    query: $query,
+                    isActive: tab == .search,
+                    onEdit: { sheet = .editExpense($0) },
+                    onCancel: {
+                        query = ""
+                        tab = .expenses
+                    }
+                )
+            }
         }
         .navigationTitle(model.group?.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
+        // Restarting on every keystroke cancels the run before it, which is what makes the wait
+        // inside `search` a debounce rather than a delay.
+        .task(id: query) { await model.search(query, using: app.client) }
         .toolbar { toolbarContent }
         .sheet(item: $sheet, content: sheetContent)
         .task { await model.loadIfNeeded(using: app.client) }

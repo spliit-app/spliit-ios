@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<!-- Export the .ipa to disk rather than uploading from here, so a rejected upload can be
+	     retried without rebuilding the archive. `make testflight` uploads it separately. -->
+	<key>destination</key>
+	<string>export</string>
+	<key>teamID</key>
+	<string>VKY5EKKU47</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<!-- project.yml is the source of truth for the version and build number. Left true, Xcode
+	     bumps the build number inside the .ipa on its own and the two drift apart silently. -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>

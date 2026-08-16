@@ -37,7 +37,29 @@ make device       # build signed, install and launch on a connected iPhone
 make shot         # screenshot this worktree's simulator
 make sim-clean    # delete this worktree's simulator, and any leftover clones
 make fixtures     # re-record the API fixtures the unit tests decode
+make testflight   # archive, export and upload a build to TestFlight
 ```
+
+## Releasing
+
+`make testflight` archives in Release, exports an App Store `.ipa` to `build/export/` and
+uploads it. The two halves are separate targets — `make archive` and `make ipa` — so a
+rejected upload retries in seconds instead of rebuilding.
+
+The upload authenticates with the App Store Connect API key in
+`~/.appstoreconnect/private_keys/`. `altool` finds the `.p8` itself from `ASC_KEY_ID`, but the
+issuer ID pairs with it and lives only in App Store Connect, so it comes from the environment:
+
+```sh
+export ASC_ISSUER_ID=<uuid>   # appstoreconnect.apple.com/access/integrations/api
+make testflight
+```
+
+**Bump `CURRENT_PROJECT_VERSION` in `project.yml` before every upload.** App Store Connect
+rejects a build number it has already seen, and it rejects it *after* the upload finishes
+rather than before it starts. `ExportOptions.plist` sets `manageAppVersionAndBuildNumber` to
+false on purpose: left true, Xcode bumps the number inside the `.ipa` and `project.yml` — the
+source of truth — silently stops matching what shipped.
 
 `Spliit.xcodeproj` is **generated from `project.yml`** and is not in version control. Run
 `make generate` after changing a target, a build setting or a resource. Adding a source file

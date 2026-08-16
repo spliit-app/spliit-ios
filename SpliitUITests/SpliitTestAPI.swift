@@ -57,7 +57,11 @@ struct SpliitTestAPI {
         amount: Int,
         paidBy: String,
         paidFor: [String]? = nil,
-        daysAgo: Int = 0
+        daysAgo: Int = 0,
+        /// Server category ID. 0 is Uncategorized/General, which is what most tests want; pass one
+        /// of the other 43 to exercise the category glyph on the expense row.
+        category: Int = 0,
+        isReimbursement: Bool = false
     ) async throws {
         let payer = try require(group.participants[paidBy], "unknown participant \(paidBy)")
         let beneficiaries = (paidFor ?? Array(group.participants.keys)).compactMap {
@@ -75,12 +79,12 @@ struct SpliitTestAPI {
                     "title": title,
                     "expenseDate": ISO8601DateFormatter().string(from: date),
                     "amount": amount,
-                    "category": 0,
+                    "category": category,
                     "paidBy": payer,
                     "paidFor": beneficiaries.map { ["participant": $0, "shares": 100] },
                     "splitMode": "EVENLY",
                     "saveDefaultSplittingOptions": false,
-                    "isReimbursement": false,
+                    "isReimbursement": isReimbursement,
                     "documents": [],
                     "recurrenceRule": "NONE",
                 ],

@@ -63,7 +63,7 @@ struct ExpenseListView: View {
             }
 
             ForEach(model.sections, id: \.group) { section in
-                Section(section.group.title) {
+                Section {
                     ForEach(section.expenses) { expense in
                         Button {
                             onEdit(expense.id)
@@ -81,6 +81,8 @@ struct ExpenseListView: View {
                             }
                         }
                     }
+                } header: {
+                    DateBucketHeader(title: section.group.title)
                 }
             }
 
@@ -106,11 +108,18 @@ private struct ExpenseRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        AdaptiveHStack(verticalAlignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
+            CategoryIcon(category: expense.category)
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(expense.title)
+                    .font(.callout)
                     .italic(expense.isReimbursement)
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.rowTitle(expense.id))
+                    // The glyph beside the title is the only place the category appears, and a
+                    // picture cannot be read out. Hanging it here rather than on the icon keeps
+                    // it to one element per row, and leaves the title's own label alone.
+                    .accessibilityValue(categoryDescription)
                     .accessibilityHint(Text("Opens this expense for editing"))
 
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
@@ -119,26 +128,37 @@ private struct ExpenseRow: View {
                     ParticipantDot(position: payerPosition, size: 7)
 
                     Text(paidByDescription)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        // One line, so a run of expenses stays a list you can scan rather than a
+                        // stack of paragraphs — the full split is one tap away. Accessibility
+                        // sizes get more room, where a single line would be three words.
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
                         .accessibilityIdentifier(AccessibilityID.ExpenseList.rowPaidBy(expense.id))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: detailAlignment, spacing: 4) {
-                Text(formatter.string(minorUnits: expense.amount))
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-                    .accessibilityIdentifier(AccessibilityID.ExpenseList.rowAmount(expense.id))
+            VStack(alignment: detailAlignment, spacing: 2) {
+                Money(
+                    value: formatter.string(minorUnits: expense.amount),
+                    isReimbursement: expense.isReimbursement
+                )
+                .accessibilityIdentifier(AccessibilityID.ExpenseList.rowAmount(expense.id))
 
                 Text(expense.expenseDate.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
             }
         }
         .contentShape(.rect)
+    }
+
+    /// Empty rather than "Uncategorized" when the server sends no category: an accessibility
+    /// value that says nothing is quieter than one that says nothing useful.
+    private var categoryDescription: Text {
+        guard let category = expense.category else { return Text(verbatim: "") }
+        return Text(category.name)
     }
 
     /// Right-aligned against the amount column, until the row stacks and there is no column to
@@ -155,15 +175,18 @@ private struct ExpenseRow: View {
 
 extension ExpenseDateGroup {
     /// Section headings, matching the wording of the React Native app.
-    var title: LocalizedStringKey {
+    ///
+    /// A `String` rather than a `LocalizedStringKey` so `DateBucketHeader` can hand the words
+    /// themselves to VoiceOver while the capitals stay on screen — see the note there.
+    var title: String {
         switch self {
-        case .upcoming: "Upcoming"
-        case .thisWeek: "This week"
-        case .earlierThisMonth: "Earlier this month"
-        case .lastMonth: "Last month"
-        case .earlierThisYear: "Earlier this year"
-        case .lastYear: "Last year"
-        case .older: "Older"
+        case .upcoming: String(localized: "Upcoming")
+        case .thisWeek: String(localized: "This week")
+        case .earlierThisMonth: String(localized: "Earlier this month")
+        case .lastMonth: String(localized: "Last month")
+        case .earlierThisYear: String(localized: "Earlier this year")
+        case .lastYear: String(localized: "Last year")
+        case .older: String(localized: "Older")
         }
     }
 }

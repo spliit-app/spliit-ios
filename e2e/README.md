@@ -3,16 +3,24 @@
 A disposable Spliit instance for the UI tests, and the script that fills it with known data.
 
 ```sh
-make e2e-up      # start it on :3009
+make e2e-up      # start it on :3009, if it isn't already up
 make e2e-seed    # add fixture groups and expenses
 make e2e-down    # stop it and discard everything
 ```
 
+One instance serves every worktree, and test runs do not own its lifecycle: `make e2e` brings
+it up if it is down and leaves it running, because tearing it down would discard the data of
+any run happening at the same time. `make e2e-down` is the deliberate way to stop it.
+
+Sharing it is safe because a group is only ever reached by the ID the server assigned —
+`groups.list` takes those IDs as input rather than returning everything — so one run cannot
+see, or disturb, another's data.
+
 ## What's here
 
 **`compose.yaml`** runs the published `ghcr.io/spliit-app/spliit` image against Postgres. The
-database lives in tmpfs, so every `up` starts from an empty schema and no test can inherit
-state from a previous run. Port 3009 keeps it clear of a Spliit dev server on the usual 3000.
+database lives in tmpfs, so every `up` starts from an empty schema and nothing survives a
+`down`. Port 3009 keeps it clear of a Spliit dev server on the usual 3000.
 
 **`seed.mjs`** creates groups, participants and expenses through the public tRPC API rather
 than through SQL. That keeps the harness decoupled from Prisma migrations, and means it works
@@ -58,11 +66,13 @@ final class TreeDumpTests: SpliitUITestCase {
 ```
 
 ```sh
-make generate
+make generate sim
 xcodebuild test -project Spliit.xcodeproj -scheme Spliit \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -destination "platform=iOS Simulator,name=Spliit $(basename "$PWD")" \
   -only-testing:SpliitUITests/TreeDumpTests 2>&1 | grep -A 60 'Element subtree'
 ```
+
+The destination is this worktree's own simulator, the one `make e2e` uses — see the Makefile.
 
 This is how the container-versus-leaf identifier problem described in the main README was
 found: the identifiers were there, just stamped onto every descendant instead of one element.

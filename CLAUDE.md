@@ -15,7 +15,11 @@ git worktree add .claude/worktrees/<short-name> -b <short-name> origin/main
 
 Work there, push the branch, open a PR with `gh pr create`. Open it as a **draft** while it's
 in progress; mark it ready for review when it's actually ready, because that is what triggers
-the end-to-end suite (see below). Remove the worktree when the PR merges.
+the end-to-end suite (see below). When the PR merges, run `make sim-clean` and remove the
+worktree.
+
+Several worktrees can build and test at the same time. Each drives a simulator of its own,
+named after its directory, and they share one Spliit server — see *Testing* below.
 
 ## Commands
 
@@ -24,12 +28,14 @@ Xcode is never required — everything runs from the Makefile. Run `make` for th
 ```sh
 make test         # unit suites on the host, ~2s, no simulator
 make build        # build for the simulator
-make e2e-up       # throwaway Spliit server on :3009 (Docker)
+make e2e-up       # the shared Spliit server on :3009 (Docker), if it isn't already up
 make test-live    # API client against that server, including writes
-make e2e          # server up → UI tests → server down
-make run          # install and launch on a booted simulator
+make e2e          # UI tests against it; leaves the server running
+make e2e-down     # stop the server — only when nothing else is testing
+make run          # install and launch on this worktree's simulator
 make device       # build signed, install and launch on a connected iPhone
-make shot         # screenshot the booted simulator
+make shot         # screenshot this worktree's simulator
+make sim-clean    # delete this worktree's simulator, and any leftover clones
 make fixtures     # re-record the API fixtures the unit tests decode
 ```
 
@@ -69,6 +75,15 @@ must not create their own stack.
 **Never write an unbounded loop in a UI test.** `while !element.isHittable { app.swipeUp() }`
 turned a missing element into a CI job that swiped for 40 minutes. Bound the loop and assert.
 Test runs pass `-maximum-test-execution-time-allowance 180` as a backstop.
+
+**`simctl … booted` is a coin toss.** A test run has clones of its own booted, and another
+worktree may have a simulator up as well, so `booted` can resolve to any of them — you get a
+screenshot of the wrong device, or install into a clone that is about to be deleted. Name the
+device: the Makefile targets `$(SIM_NAME)`, this worktree's own.
+
+**Do not `make e2e-down` while another worktree is testing.** The server is shared and its
+database lives in tmpfs, so stopping it discards the data of every run in flight. `make e2e`
+deliberately leaves it up.
 
 **Money is always integer minor units.** `amount == 1234` means 12.34. And `paidFor[].shares`
 changes meaning with the split mode: the share value ×100 for `EVENLY`, `BY_SHARES` and
@@ -111,6 +126,13 @@ simulator per worker, so a single large class is a long pole no worker count can
 new flow in the suite it belongs to, and split a suite once it grows past five or six tests.
 Override the worker count with `make e2e WORKERS=n`; more workers than cores is slower, not
 faster.
+
+**Several worktrees can test at once.** Each drives a simulator named after its directory, so
+runs never share a device — or the clones XCUITest makes from it. They do share the server, and
+that is fine: every group is addressed by the ID the server assigned, and `groups.list` takes
+those IDs as input, so no run can see another's data. Bring it up once with `make e2e-up`;
+`make e2e` leaves it running. Lower `WORKERS` when several runs are in flight, because the sum
+of their clones is what has to fit on the machine.
 
 ## CI
 

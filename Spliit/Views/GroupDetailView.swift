@@ -70,6 +70,9 @@ struct GroupDetailView: View {
         }
         .navigationTitle(model.group?.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
+        // Leaving the screen closes the undo window rather than dropping the delete: this model
+        // goes away with the view, and with it the request that was still waiting.
+        .onDisappear { model.flushPendingDeletion(using: app.client) }
         // Restarting on every keystroke cancels the run before it, which is what makes the wait
         // inside `search` a debounce rather than a delay.
         .task(id: query) { await model.search(query, using: app.client) }

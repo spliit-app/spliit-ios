@@ -1,0 +1,64 @@
+import SwiftUI
+
+/// What a delete leaves behind for a few seconds.
+///
+/// A confirmation dialog asks a question the answer to which is almost always yes; this asks
+/// nothing, and is there for the times the answer was no. It sits above the tab bar so it reads
+/// as belonging to the screen rather than to the row that has gone.
+struct UndoBar: View {
+
+    let message: Text
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            message
+                .font(.subheadline)
+                .lineLimit(2)
+
+            Spacer(minLength: 0)
+
+            Button("Undo", action: action)
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                .accessibilityIdentifier(AccessibilityID.ExpenseList.undoButton)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        // Glass behind rather than around: applied to the row itself it sits over the button and
+        // eats the tap — the same trap the search field ran into.
+        .background {
+            Color.clear
+                .glassEffect(.regular, in: .capsule)
+                .allowsHitTesting(false)
+        }
+        .padding(.horizontal, 16)
+    }
+}
+
+extension View {
+    /// Hangs the undo bar under a screen that can delete an expense.
+    ///
+    /// Applied to a tab's content rather than to the `TabView`: on the `TabView` it lands in the
+    /// tab bar's own strip and the two draw on top of each other. Inside a tab it stacks above
+    /// whatever bar that tab already has — the tab bar here, the search field in the search tab.
+    func expenseUndoBar(_ model: GroupDetailModel) -> some View {
+        safeAreaBar(edge: .bottom) {
+            if let pending = model.pendingDeletion {
+                UndoBar(message: Text("Deleted “\(pending.expense.title)”")) {
+                    model.undoDelete()
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(Motion.base, value: model.pendingDeletion)
+    }
+}
+
+#Preview {
+    Color(.systemGroupedBackground)
+        .safeAreaBar(edge: .bottom) {
+            UndoBar(message: Text("Deleted “Pizza night”")) {}
+        }
+}

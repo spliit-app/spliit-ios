@@ -195,7 +195,7 @@ final class GroupDetailModel {
             let response = try await client.call(
                 Spliit.expenses(groupId: groupID, cursor: 0, limit: Self.pageSize)
             )
-            expenses = response.expenses
+            expenses = withoutPendingDeletion(response.expenses)
             hasMoreExpenses = response.hasMore
             nextCursor = response.nextCursor
             expensesLoad.succeeded()
@@ -215,7 +215,7 @@ final class GroupDetailModel {
             )
             // Guard against a duplicate page if an expense was added while paging.
             let known = Set(expenses.map(\.id))
-            expenses += response.expenses.filter { !known.contains($0.id) }
+            expenses += withoutPendingDeletion(response.expenses).filter { !known.contains($0.id) }
             hasMoreExpenses = response.hasMore
             nextCursor = response.nextCursor
         } catch {
@@ -284,7 +284,7 @@ final class GroupDetailModel {
             // The field may have moved on while this was in flight; a stale page must not
             // become the answer to a question nobody asked.
             guard filter == query else { return }
-            searchResults = response.expenses
+            searchResults = withoutPendingDeletion(response.expenses)
             hasMoreSearchResults = response.hasMore
             nextSearchCursor = response.nextCursor
             searchLoad.succeeded()
@@ -310,7 +310,8 @@ final class GroupDetailModel {
             )
             guard self.filter == filter else { return }
             let known = Set(searchResults.map(\.id))
-            searchResults += response.expenses.filter { !known.contains($0.id) }
+            searchResults += withoutPendingDeletion(response.expenses)
+                .filter { !known.contains($0.id) }
             hasMoreSearchResults = response.hasMore
             nextSearchCursor = response.nextCursor
         } catch {
@@ -324,23 +325,116 @@ final class GroupDetailModel {
         await loadFirstSearchPage(matching: filter, using: client)
     }
 
-    // MARK: - Mutations
+    // MARK: - Deleting, with a way back
 
-    func delete(expenseID: String, using client: TRPCClient) async {
-        let removed = expenses
-        let removedResults = searchResults
-        expenses.removeAll { $0.id == expenseID }
-        searchResults.removeAll { $0.id == expenseID }
+    /// An expense that has left the screen but not yet the server.
+    ///
+    /// The row goes immediately, because a delete that waits five seconds to look deleted is a
+    /// delete that gets tapped twice. The request is what waits — until the window closes, the
+    /// screen is left, or another expense is deleted behind it.
+    struct PendingDeletion: Equatable {
+        let expense: ExpenseListItem
+        /// Where the row was, so undo puts it back where it was rather than at the top.
+        let listIndex: Int?
+        let searchIndex: Int?
+    }
+
+    private(set) var pendingDeletion: PendingDeletion?
+    private var deletionTask: Task<Void, Never>?
+
+    /// Long enough to notice the row has gone and reach the button, short enough that leaving the
+    /// screen is not the usual way the delete happens.
+    private static let undoWindow = Duration.seconds(5)
+
+    /// Takes the expense off the screen and starts the undo window.
+    func requestDelete(_ expense: ExpenseListItem, using client: TRPCClient) async {
+        // One at a time: deleting a second expense settles the first rather than queueing it,
+        // which keeps "Undo" meaning the thing that just disappeared.
+        await commitPendingDeletion(using: client)
+
+        pendingDeletion = PendingDeletion(
+            expense: expense,
+            listIndex: expenses.firstIndex { $0.id == expense.id },
+            searchIndex: searchResults.firstIndex { $0.id == expense.id }
+        )
+        expenses.removeAll { $0.id == expense.id }
+        searchResults.removeAll { $0.id == expense.id }
+
+        deletionTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.undoWindow)
+            guard !Task.isCancelled else { return }
+            // Forget the handle before committing. `commitPendingDeletion` cancels whatever is
+            // in `deletionTask`, which at this point is *this* task — and a cancelled task
+            // carries the cancellation into the delete request, so the expense came back.
+            self?.deletionTask = nil
+            await self?.commitPendingDeletion(using: client)
+        }
+    }
+
+    /// Puts the row back where it was. Nothing was ever sent, so there is nothing to undo on the
+    /// server.
+    func undoDelete() {
+        deletionTask?.cancel()
+        deletionTask = nil
+        guard let pending = pendingDeletion else { return }
+        pendingDeletion = nil
+
+        if let index = pending.listIndex, index <= expenses.count {
+            expenses.insert(pending.expense, at: index)
+        }
+        if let index = pending.searchIndex, index <= searchResults.count {
+            searchResults.insert(pending.expense, at: index)
+        }
+    }
+
+    /// Sends the delete the undo window was holding back.
+    func commitPendingDeletion(using client: TRPCClient) async {
+        guard let pending = pendingDeletion else { return }
+        deletionTask?.cancel()
+        deletionTask = nil
+        pendingDeletion = nil
+
         do {
             _ = try await client.call(
-                Spliit.deleteExpense(groupId: groupID, expenseId: expenseID)
+                Spliit.deleteExpense(groupId: groupID, expenseId: pending.expense.id)
             )
             await reloadAfterExpenseChange(using: client)
         } catch {
-            expenses = removed
-            searchResults = removedResults
+            // The server still has it, so the screen should too.
+            if let index = pending.listIndex, index <= expenses.count {
+                expenses.insert(pending.expense, at: index)
+            }
+            if let index = pending.searchIndex, index <= searchResults.count {
+                searchResults.insert(pending.expense, at: index)
+            }
             expensesLoad.failed(error.localizedDescription)
         }
+    }
+
+    /// Closes the window on the way out of the screen.
+    ///
+    /// Detached, because this model is about to be torn down with the view and a delete the user
+    /// has already asked for must not be lost to that. Nothing is left to report to, so a failure
+    /// here leaves the expense in place — which is the safe direction to fail in.
+    func flushPendingDeletion(using client: TRPCClient) {
+        guard let pending = pendingDeletion else { return }
+        deletionTask?.cancel()
+        deletionTask = nil
+        pendingDeletion = nil
+
+        let groupID = groupID
+        Task.detached {
+            _ = try? await client.call(
+                Spliit.deleteExpense(groupId: groupID, expenseId: pending.expense.id)
+            )
+        }
+    }
+
+    /// Drops anything waiting to be deleted out of a freshly loaded page: the server still has it,
+    /// and a reload for some other reason must not put it back on screen.
+    private func withoutPendingDeletion(_ items: [ExpenseListItem]) -> [ExpenseListItem] {
+        guard let id = pendingDeletion?.expense.id else { return items }
+        return items.filter { $0.id != id }
     }
 
     func rename(to name: String) {

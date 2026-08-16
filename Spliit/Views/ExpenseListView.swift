@@ -13,6 +13,7 @@ struct ExpenseListView: View {
 
     var body: some View {
         content
+            .expenseUndoBar(model)
     }
 
     @ViewBuilder
@@ -77,7 +78,7 @@ struct ExpenseListView: View {
                         .buttonStyle(.plain)
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
-                                Task { await model.delete(expenseID: expense.id, using: app.client) }
+                                Task { await model.requestDelete(expense, using: app.client) }
                             }
                         }
                     }

@@ -32,6 +32,9 @@ struct ExpenseSearchView: View {
 
     var body: some View {
         content
+            // Inside the search field's bar, so a deleted result's way back sits above the field
+            // rather than under it.
+            .expenseUndoBar(model)
             // `safeAreaBar`, not `safeAreaInset`: the iOS 26 bar variant is the one that stays
             // interactive. Under `safeAreaInset` the field and both buttons render correctly,
             // report themselves hittable, and silently swallow every tap.
@@ -155,7 +158,7 @@ struct ExpenseSearchView: View {
                         .buttonStyle(.plain)
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
-                                Task { await model.delete(expenseID: expense.id, using: app.client) }
+                                Task { await model.requestDelete(expense, using: app.client) }
                             }
                         }
                     }

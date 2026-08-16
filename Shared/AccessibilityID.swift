@@ -63,6 +63,7 @@ enum AccessibilityID {
         static let emptyAddButton = "expenses.emptyAdd"
         static let loadFailed = "expenses.loadFailed"
         static let retryButton = "expenses.retry"
+        static let undoButton = "expenses.undoDelete"
 
         static func rowTitle(_ expenseID: String) -> String { "expenses.row.\(expenseID).title" }
         static func rowAmount(_ expenseID: String) -> String { "expenses.row.\(expenseID).amount" }

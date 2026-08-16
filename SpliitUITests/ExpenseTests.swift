@@ -127,7 +127,11 @@ final class ExpenseTests: SpliitUITestCase {
     @MainActor
     func testExpensesAreGroupedByDate() async throws {
         let group = try await api.createGroup(name: "History", participants: ["Ana", "Bruno"])
-        try await api.createExpense(in: group, title: "Recent one", amount: 100, paidBy: "Ana", daysAgo: 1)
+        // Today, not yesterday. "This week" is the same *calendar* week, not the last seven days,
+        // so yesterday belongs to the previous week whenever this runs on the first day of one —
+        // which is how this passed for months and then failed at 00:08 UTC on a Sunday, with
+        // yesterday's expense filed under "Earlier this month". Today is always in its own week.
+        try await api.createExpense(in: group, title: "Recent one", amount: 100, paidBy: "Ana", daysAgo: 0)
         try await api.createExpense(in: group, title: "Ancient one", amount: 100, paidBy: "Ana", daysAgo: 800)
         let app = launchApp(recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "History")]))
 

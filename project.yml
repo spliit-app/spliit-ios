@@ -47,12 +47,10 @@ targets:
         # the ../spliit-mobile checkout says 1.1.0, so the source of truth is App Store
         # Connect, not that repo.
         CURRENT_PROJECT_VERSION: 21
-        INFOPLIST_KEY_CFBundleDisplayName: Spliit
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: >-
-          UIInterfaceOrientationPortrait
-          UIInterfaceOrientationLandscapeLeft
-          UIInterfaceOrientationLandscapeRight
+        # Orientations are declared under `info:` below, not here. INFOPLIST_KEY_* settings are
+        # only merged when Xcode generates the Info.plist itself; this project writes its own,
+        # so anything set that way is silently dropped — which is how the app reached App Store
+        # Connect declaring no orientations at all, and was rejected for it (error 90474).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
@@ -75,6 +73,20 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         UIUserInterfaceStyle: Automatic
+        # The app builds universal (UIDeviceFamily 1,2) and iPad layouts are a non-goal rather
+        # than unsupported, so it has to satisfy the iPad multitasking rule: an iPad-capable app
+        # that doesn't set UIRequiresFullScreen must accept all four orientations. Upside-down
+        # stays off the iPhone list, where it was deliberately excluded — and where iOS ignores
+        # it on any Face ID device regardless.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         # Without this the app is letterboxed into a legacy screen size. An empty dictionary
         # asks for the standard generated launch screen.
         UILaunchScreen: {}

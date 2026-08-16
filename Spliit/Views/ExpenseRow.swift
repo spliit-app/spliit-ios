@@ -64,7 +64,7 @@ struct ExpenseRow: View {
     /// value that says nothing is quieter than one that says nothing useful.
     private var categoryDescription: Text {
         guard let category = expense.category else { return Text(verbatim: "") }
-        return Text(category.name)
+        return Text(category.displayName)
     }
 
     /// Right-aligned against the amount column, until the row stacks and there is no column to

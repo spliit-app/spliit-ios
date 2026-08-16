@@ -186,4 +186,11 @@ order and plural categories are both the translation's business, not the call si
 the whole thing (`String(localized: "\(count) participants")`) and let the catalogue vary it.
 
 Leave to Foundation anything a locale already decides — currency names and symbols, money,
-dates, and lists (`.formatted(.list(type: .and))`). None of it belongs in a catalogue.
+dates, and lists (`.formatted(.list(type: .and))`). None of it belongs in a catalogue. Sort
+anything a person reads with `localizedStandardCompare`, not `<`.
+
+**Expense categories are server data, and the server does not translate them.** They are
+translated on the client from `Categories.xcstrings`, with the French taken from the web app's
+`messages/fr-FR.json` so both products say the same thing. `ExpenseCategoryName` is keyed the
+way `ExpenseCategoryIcon` is and `CategoryIconTests` keeps the two maps level; an unknown
+category falls back to the server's own English rather than to nothing.

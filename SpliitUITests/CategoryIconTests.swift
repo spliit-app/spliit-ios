@@ -55,4 +55,35 @@ final class CategoryIconTests: XCTestCase {
             ExpenseCategoryIcon.symbol(grouping: nil, name: nil), ExpenseCategoryIcon.fallback
         )
     }
+
+    /// A category needs a glyph *and* a word, and the two maps are written out by hand from the
+    /// same upstream list. Either one can be forgotten on its own without anything failing —
+    /// the glyph falls back to a banknote and the word falls back to the server's English — so
+    /// this is what says they are still the same set.
+    ///
+    /// This asserts the map has an arm, not that the arm is translated: these run in the test
+    /// bundle, which carries no catalogue, so every lookup here comes back English. Whether the
+    /// French is actually present is `make strings`' job.
+    func testEveryCategoryWithAGlyphAlsoHasAName() {
+        for key in ExpenseCategoryIcon.symbols.keys {
+            // "Bus/Train" and friends put a slash in the name, so only the first component is
+            // the grouping.
+            let parts = key.split(separator: "/", maxSplits: 1).map(String.init)
+            let (grouping, name) = (parts[0], parts[1])
+
+            XCTAssertNotNil(
+                ExpenseCategoryName.name(grouping: grouping, name: name),
+                "\(key) has a glyph but no name, so it would show the server's English."
+            )
+            XCTAssertNotNil(
+                ExpenseCategoryName.heading(grouping),
+                "\(grouping) heads a section of the picker with no translated heading."
+            )
+        }
+    }
+
+    func testAnUnknownCategoryHasNoNameRatherThanAWrongOne() {
+        XCTAssertNil(ExpenseCategoryName.name(grouping: "Something", name: "New"))
+        XCTAssertNil(ExpenseCategoryName.heading("Something"))
+    }
 }

@@ -125,7 +125,7 @@ struct ExpenseFormView: View {
                         ForEach(groupedCategories, id: \.name) { grouping in
                             Section(grouping.name) {
                                 ForEach(grouping.categories) { category in
-                                    Text(category.name).tag(category.id)
+                                    Text(category.displayName).tag(category.id)
                                 }
                             }
                         }
@@ -270,10 +270,20 @@ struct ExpenseFormView: View {
         }
     }
 
+    /// Sorted on the translated names, not the English the server sent, and with the locale's own
+    /// collation — otherwise a French picker runs in English alphabetical order and "Épicerie"
+    /// sorts after "Vêtements" on the strength of its accent.
     private var groupedCategories: [(name: String, categories: [ExpenseCategory])] {
         Dictionary(grouping: categories, by: \.grouping)
-            .sorted { $0.key < $1.key }
-            .map { (name: $0.key, categories: $0.value.sorted { $0.name < $1.name }) }
+            .map { grouping, categories in
+                (
+                    name: ExpenseCategory.displayHeading(grouping),
+                    categories: categories.sorted {
+                        $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
+                    }
+                )
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private var decimalSeparator: String {

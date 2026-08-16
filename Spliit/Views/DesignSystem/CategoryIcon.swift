@@ -34,6 +34,19 @@ struct CategoryIcon: View {
     }
 }
 
+extension ExpenseCategory {
+    /// What to put on screen: the translated name where this build knows the category, and
+    /// whatever the server sent where it does not — see `ExpenseCategoryName`.
+    var displayName: String {
+        ExpenseCategoryName.name(grouping: grouping, name: name) ?? name
+    }
+
+    /// The translated heading for a grouping, falling back the same way.
+    static func displayHeading(_ grouping: String) -> String {
+        ExpenseCategoryName.heading(grouping) ?? grouping
+    }
+}
+
 #Preview {
     let samples = [
         ("Food and Drink", "Groceries"),

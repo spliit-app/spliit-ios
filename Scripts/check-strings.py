@@ -34,14 +34,18 @@ CATALOGS = {
     "app": REPO / "Spliit/Resources/Localizable.xcstrings",
     "core": REPO / "Packages/SpliitKit/Sources/SpliitCore/Resources/Localizable.xcstrings",
     "shortcuts": REPO / "Spliit/Resources/AppShortcuts.xcstrings",
+    "categories": REPO / "Spliit/Resources/Categories.xcstrings",
 }
 
 CORE_SOURCES = REPO / "Packages/SpliitKit/Sources/SpliitCore"
 
+# Table name in the source -> catalogue, for the tables that are not `Localizable`.
+BY_TABLE = {"AppShortcuts": "shortcuts", "Categories": "categories"}
+
 
 def catalog_for(source: str, table: str) -> str | None:
-    if table == "AppShortcuts":
-        return "shortcuts"
+    if table in BY_TABLE:
+        return BY_TABLE[table]
     if table != "Localizable":
         return None
     try:

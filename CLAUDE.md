@@ -1,8 +1,8 @@
 # Working on Spliit for iOS
 
 A SwiftUI rewrite of the Spliit iOS app, shipping as an in-place update to the existing App
-Store listing under the same bundle ID. See [ROADMAP.md](ROADMAP.md) for what's planned and
-[README.md](README.md) for the full picture.
+Store listing under the same bundle ID. See [ROADMAP.md](ROADMAP.md) for what's planned,
+[DESIGN.md](DESIGN.md) before touching a view, and [README.md](README.md) for the full picture.
 
 ## How work happens here
 

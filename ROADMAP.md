@@ -153,7 +153,9 @@ fast, CI simple, and the App Store review surface small.
   `.tabBarMinimizeBehavior(.onScrollDown)`; it grows naturally into the web's
   six tabs later
 - Sheets for create/edit expense, group settings, about
-- `.navigationTransition(.zoom(sourceID:in:))` from a group row into the group
+- ~~`.navigationTransition(.zoom(sourceID:in:))` from a group row into the
+  group~~ — built, then taken back out: it read as showy next to a push, which
+  is the movement iOS uses to say "deeper in". See [DESIGN.md](DESIGN.md) §6
 
 **Persistence:**
 
@@ -163,8 +165,11 @@ fast, CI simple, and the App Store review surface small.
   via a launch argument
 
 **Design language:** brand `#059669` as the accent (secondary `#be185d`),
-system materials everywhere else, `ContentUnavailableView` for empty states,
-`Charts` for the balances view instead of the hand-rolled bars.
+system materials everywhere else. Three of the specifics guessed at here did not
+survive contact: empty states are the app's own `EmptyState` rather than
+`ContentUnavailableView`, the balances view keeps its hand-rolled bars rather
+than adopting `Charts`, and `.green`/`.red` gave way to a branded money axis.
+What shipped is described in [DESIGN.md](DESIGN.md).
 
 ---
 

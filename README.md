@@ -5,7 +5,8 @@ update to the existing App Store listing.
 
 It replaces the Expo / React Native app (v1.1.0) under the same bundle ID,
 `app.spliit.spliitmobile`, and migrates the data that app left on disk. See
-[ROADMAP.md](ROADMAP.md) for what's planned and why.
+[ROADMAP.md](ROADMAP.md) for what's planned and why, and [DESIGN.md](DESIGN.md) for what the
+app looks like and which of those choices are load-bearing.
 
 **Requirements:** Xcode 26, iOS 26 deployment target, Docker for the end-to-end suite.
 

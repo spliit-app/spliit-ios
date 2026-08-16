@@ -1,22 +1,17 @@
 import SwiftUI
 
-/// The three speeds the app moves at.
+/// The speed at which content changes in place.
 ///
-/// Most of the motion in an iOS app is the platform's: a push, a tab switch and a button's press
-/// highlight are all animated before anyone writes a line. These are for the handful of places
-/// where state changes on its own — a deleted row, a balance that has just moved — and they exist
-/// so those places agree with each other and with the system rather than each inventing a speed.
+/// The design system names three durations — 120ms for a press, 220ms for a fade, 350ms for a
+/// push. Two of them are already the platform's: a button's press highlight and a navigation push
+/// are animated by iOS before anyone writes a line, and restating their timings here would only
+/// invite someone to override them. What is left is the case iOS has no opinion about, because it
+/// belongs to the app rather than the navigation: a row leaving a list, a balance moving.
 ///
-/// Nothing here bounces. A spring on a row that is disappearing reads as a toy, and this is an app
-/// people open at a restaurant table to find out who owes what.
+/// Nothing bounces. A spring on a row that is disappearing reads as a toy, and this is an app
+/// people open at a restaurant table.
 enum Motion {
 
-    /// Press and highlight.
-    static let fast = Animation.easeOut(duration: 0.12)
-
-    /// Fades, and content arriving or leaving a list.
+    /// Content arriving, leaving, or changing value in place.
     static let base = Animation.easeInOut(duration: 0.22)
-
-    /// A push, or the zoom into a group.
-    static let slow = Animation.easeInOut(duration: 0.35)
 }

@@ -14,6 +14,9 @@ struct GroupsListView: View {
     @State private var path: [String] = []
     @State private var sheet: Sheet?
 
+    /// Ties a group's row to the screen it opens, for the zoom below.
+    @Namespace private var groupTransition
+
     private enum Sheet: String, Identifiable {
         case settings, createGroup, addByURL
         var id: String { rawValue }
@@ -23,7 +26,10 @@ struct GroupsListView: View {
         NavigationStack(path: $path) {
             content
                 .navigationDestination(for: String.self) { groupID in
+                    // The app's one signature movement: the row a group lives on grows into the
+                    // group. One such moment is a voice; five would be a costume.
                     GroupDetailView(groupID: groupID)
+                        .navigationTransition(.zoom(sourceID: groupID, in: groupTransition))
                 }
                 .toolbar { toolbarContent }
                 .sheet(item: $sheet, content: sheetContent)
@@ -122,6 +128,7 @@ struct GroupsListView: View {
                     NavigationLink(value: group.groupId) {
                         GroupRow(group: group, summary: model.summaries[group.groupId])
                     }
+                    .matchedTransitionSource(id: group.groupId, in: groupTransition)
                     .swipeActions(edge: .trailing) {
                         Button("Remove", systemImage: "trash", role: .destructive) {
                             app.recentGroups.forget(groupId: group.groupId)

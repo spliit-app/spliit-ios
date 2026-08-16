@@ -97,6 +97,9 @@ struct ExpenseListView: View {
             }
         }
         .refreshable { await model.reloadAfterExpenseChange(using: app.client) }
+        // A deleted expense should leave rather than vanish. Bound to the count, so editing an
+        // expense in place does not animate the whole list along with it.
+        .animation(Motion.base, value: model.expenses.count)
     }
 }
 

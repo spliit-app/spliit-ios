@@ -78,6 +78,10 @@ struct BalancesView: View {
                 }
             }
             .refreshable { await model.reloadAfterExpenseChange(using: app.client) }
+            // Settling a payment moves every balance at once. This is what lets the amounts roll
+            // to their new values and the bars slide, rather than the screen simply being
+            // different the next time you look at it.
+            .animation(Motion.base, value: model.balances)
         }
     }
 

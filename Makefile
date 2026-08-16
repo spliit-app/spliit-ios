@@ -3,6 +3,7 @@
 #   make setup        install the tooling
 #   make test         fast unit tests (a couple of seconds, no simulator)
 #   make build        build the app for the simulator
+#   make strings      check the string catalogues against the source
 #   make e2e          run the end-to-end suite against the shared server
 #   make run          install and launch the app on this worktree's simulator
 #   make shot         screenshot that simulator
@@ -35,7 +36,7 @@ BUNDLE_ID := app.spliit.spliitmobile
 DERIVED   := build
 
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build build-device device test test-live e2e e2e-up e2e-down e2e-seed fixtures run shot sim sim-clean clean lint
+.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures run shot sim sim-clean clean lint
 
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -74,6 +75,10 @@ build: $(PROJECT) sim ## Build the app for the simulator
 		-derivedDataPath $(DERIVED) \
 		$(UNSIGNED) \
 		-quiet
+
+# Reads what the last build extracted, so it needs one to have happened.
+strings: build ## Check the string catalogues against the strings in the source
+	@python3 Scripts/check-strings.py $(DERIVED)
 
 test: ## Run the unit suites on the host (no simulator)
 	@cd Packages/SpliitKit && swift test

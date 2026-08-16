@@ -52,6 +52,7 @@ Three layers, all runnable from the command line.
 | Command | What it covers | Needs |
 |---|---|---|
 | `make test` | superjson coding, response decoding, request building, the storage migration, money formatting, date bucketing | nothing |
+| `make strings` | every string in the source is in a catalogue, and translated | nothing |
 | `make test-live` | the API client against a real server, including writes | `make e2e-up` |
 | `make e2e` | the app itself, in a simulator, against a real server | Docker |
 
@@ -96,12 +97,13 @@ bundle, and are added in the same commit as the view they belong to.
 ## Layout
 
 ```
-Spliit/              the app: SwiftUI views, assets, the string catalog
+Spliit/              the app: SwiftUI views, assets, the string catalogues
 Shared/              code shared with the UI test bundle (accessibility identifiers)
 Packages/SpliitKit/
   SpliitAPI/         tRPC client, superjson coding, models, endpoints
   SpliitCore/        stores, the React Native migration, formatting
 SpliitUITests/       XCUITest end-to-end suites
+Scripts/             what the Makefile reaches for that isn't one line of shell
 e2e/                 the disposable server: compose file and seed script
 ```
 
@@ -128,6 +130,25 @@ is 12.34 in a two-decimal currency and ¥1,234 in a group counted in yen — the
 currency code decides, which is what `MoneyFormatter` reads it for. One more sharp edge:
 `paidFor[].shares` is the share value ×100 for `EVENLY`, `BY_SHARES` and `BY_PERCENTAGE`
 whatever the currency, but a raw minor-unit amount for `BY_AMOUNT`.
+
+## Languages
+
+English and French. Both come from String Catalogs — `Spliit/Resources/Localizable.xcstrings`
+for the app, `AppShortcuts.xcstrings` for the phrases Siri listens for, and one inside
+`SpliitCore` for the form validation messages, which needs to be its own because
+`String(localized:)` there resolves against `Bundle.module`.
+
+Everything a locale decides is left to the system rather than translated: currency names and
+symbols come from Foundation, so the 159-entry picker is in the user's language with no table
+in this repo; amounts, dates and lists ("Ana et Bruno") are formatted by it too. Counted
+strings are pluralised by the catalogue, not by a ternary in Swift — French counts zero as
+singular, and English does not.
+
+`make strings` is what keeps this honest. `xcodebuild` will not add a new string to a catalogue
+the way the Xcode UI does, so a `Text("…")` added today would otherwise ship in English in
+every language, silently. The check diffs the catalogues against the strings the compiler
+actually extracted and fails on anything missing, stale or untranslated; CI runs it on every
+push.
 
 ## Migrating from the React Native app
 

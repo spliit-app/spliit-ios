@@ -1,76 +1,1686 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "%@ appears on at least one expense, so they can’t be removed. Delete or reassign those expenses first." : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "%@": {
+      "comment": "The entity's own name, shown as-is.",
+      "shouldTranslate": false
     },
-    "%@ owes %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ owes %2$@"
+    "%@ / %@": {
+      "comment": "A preview label pairing two names that are already localised.",
+      "shouldTranslate": false
+    },
+    "%@ appears on at least one expense, so they can’t be removed. Delete or reassign those expenses first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ figure sur au moins une dépense et ne peut donc pas être retiré. Supprimez ou réattribuez ces dépenses d’abord."
           }
         }
       }
     },
-    "About" : {
-
+    "%@ over the total.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ de trop par rapport au total."
+          }
+        }
+      }
     },
-    "Add the first expense and Spliit will work out who owes what." : {
-
+    "%@ owes %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ owes %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ doit à %2$@"
+          }
+        }
+      }
     },
-    "Balances" : {
-
+    "%@ still to allocate.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ encore à répartir."
+          }
+        }
+      }
     },
-    "Create a group to start splitting expenses with friends, or add one that was shared with you." : {
-
+    "%@%% over 100%%.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %% de plus que 100 %%."
+          }
+        }
+      }
     },
-    "Everyone is settled up." : {
-
+    "%@%% still to allocate.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %% encore à répartir."
+          }
+        }
+      }
     },
-    "Group information" : {
-
+    "%@groups/…": {
+      "comment": "An example group URL, built from the instance's own address.",
+      "shouldTranslate": false
     },
-    "Group link" : {
-
+    "%@’s share": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Part de %@"
+          }
+        }
+      }
     },
-    "Paid for" : {
-
+    "%lld participants": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld participant"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld participants"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld participant"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld participants"
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    "Participants" : {
-
+    "0": {
+      "comment": "A numeric placeholder in the share field.",
+      "shouldTranslate": false
     },
-    "Paste the link to a group that was shared with you, and it will appear in your list." : {
-
+    "0%@00": {
+      "comment": "An amount placeholder; the locale's decimal separator is interpolated.",
+      "shouldTranslate": false
     },
-    "Point the app at your own Spliit instance. Leave this alone if you use the official one." : {
-
+    "A custom symbol sits beside amounts the same way, but records no ISO code — so nothing else can tell what the amounts are in.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un symbole personnalisé s’affiche à côté des montants de la même façon, mais n’enregistre aucun code ISO : rien d’autre ne peut alors savoir dans quelle devise sont les montants."
+          }
+        }
+      }
     },
-    "Server" : {
-
+    "About": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos"
+          }
+        }
+      }
     },
-    "Spliit is an open source project by Sebastien Castiel, with help from many contributors." : {
-
+    "Add": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter"
+          }
+        }
+      }
     },
-    "Suggested payments" : {
-
+    "Add Expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une dépense"
+          }
+        }
+      }
     },
-    "Swipe a participant to remove them. Anyone who already appears on an expense can’t be removed." : {
-
+    "Add by link": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter par lien"
+          }
+        }
+      }
     },
-    "That doesn’t look like a web address. Try something like spliit.example.com." : {
-
+    "Add expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une dépense"
+          }
+        }
+      }
     },
-    "The currency symbol is shown next to every amount, for example $ or CHF." : {
-
+    "Add group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter un groupe"
+          }
+        }
+      }
     },
-    "The fewest payments that settle the group." : {
-
+    "Add group by link": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter un groupe par lien"
+          }
+        }
+      }
     },
-    "What each participant paid, against what was spent on them." : {
-
+    "Add information": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter des informations"
+          }
+        }
+      }
+    },
+    "Add or remove participants in the group settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez ou retirez des participants dans les réglages du groupe."
+          }
+        }
+      }
+    },
+    "Add participant": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter un participant"
+          }
+        }
+      }
+    },
+    "Add the first expense and Spliit will work out who owes what.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez une première dépense et Spliit calculera qui doit quoi."
+          }
+        }
+      }
+    },
+    "Adding…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajout…"
+          }
+        }
+      }
+    },
+    "All currencies": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les devises"
+          }
+        }
+      }
+    },
+    "Amount": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montant"
+          }
+        }
+      }
+    },
+    "Amounts in this group are shown with this currency’s symbol.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les montants de ce groupe sont affichés avec le symbole de cette devise."
+          }
+        }
+      }
+    },
+    "Amounts must add up to the expense total.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La somme des montants doit être égale au total de la dépense."
+          }
+        }
+      }
+    },
+    "Anything the group should know — where you are staying, how the split works, a link. Everyone who opens the group sees it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout ce que le groupe doit savoir : où vous logez, comment fonctionne la répartition, un lien. Toute personne qui ouvre le groupe le voit."
+          }
+        }
+      }
+    },
+    "Anything worth remembering?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelque chose à retenir ?"
+          }
+        }
+      }
+    },
+    "Archive": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiver"
+          }
+        }
+      }
+    },
+    "Archive %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiver %@"
+          }
+        }
+      }
+    },
+    "Archived": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivés"
+          }
+        }
+      }
+    },
+    "Balances": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soldes"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler"
+          }
+        }
+      }
+    },
+    "Cancel search": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la recherche"
+          }
+        }
+      }
+    },
+    "Category": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catégorie"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer la recherche"
+          }
+        }
+      }
+    },
+    "Couldn’t create the group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de créer le groupe"
+          }
+        }
+      }
+    },
+    "Couldn’t load the balances": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les soldes"
+          }
+        }
+      }
+    },
+    "Couldn’t load the expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger la dépense"
+          }
+        }
+      }
+    },
+    "Couldn’t load the expenses": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les dépenses"
+          }
+        }
+      }
+    },
+    "Couldn’t load the group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger le groupe"
+          }
+        }
+      }
+    },
+    "Couldn’t load this group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger ce groupe"
+          }
+        }
+      }
+    },
+    "Couldn’t open that link": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ouvrir ce lien"
+          }
+        }
+      }
+    },
+    "Couldn’t reach the server, so group details may be out of date.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serveur injoignable : les détails des groupes ne sont peut-être plus à jour."
+          }
+        }
+      }
+    },
+    "Couldn’t save the expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’enregistrer la dépense"
+          }
+        }
+      }
+    },
+    "Couldn’t search": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’effectuer la recherche"
+          }
+        }
+      }
+    },
+    "Create": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer"
+          }
+        }
+      }
+    },
+    "Create a group to start splitting expenses with friends, or add one that was shared with you.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créez un groupe pour commencer à partager des dépenses entre amis, ou ajoutez-en un qu’on a partagé avec vous."
+          }
+        }
+      }
+    },
+    "Create a group to start splitting expenses with friends.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créez un groupe pour commencer à partager des dépenses entre amis."
+          }
+        }
+      }
+    },
+    "Create group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer un groupe"
+          }
+        }
+      }
+    },
+    "Created": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créé le"
+          }
+        }
+      }
+    },
+    "Created %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créé le %@"
+          }
+        }
+      }
+    },
+    "Currency": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devise"
+          }
+        }
+      }
+    },
+    "Currency symbol": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbole de la devise"
+          }
+        }
+      }
+    },
+    "Custom symbol": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbole personnalisé"
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer"
+          }
+        }
+      }
+    },
+    "Delete expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la dépense"
+          }
+        }
+      }
+    },
+    "Deleted “%@”": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » supprimée"
+          }
+        }
+      }
+    },
+    "Deleted “Pizza night”": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« Pizza night » supprimée"
+          }
+        }
+      }
+    },
+    "Details": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détails"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminé"
+          }
+        }
+      }
+    },
+    "Earlier this month": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tôt ce mois-ci"
+          }
+        }
+      }
+    },
+    "Earlier this year": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tôt cette année"
+          }
+        }
+      }
+    },
+    "Edit expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier la dépense"
+          }
+        }
+      }
+    },
+    "Edit group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le groupe"
+          }
+        }
+      }
+    },
+    "Edit information": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier les informations"
+          }
+        }
+      }
+    },
+    "Evenly": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Également"
+          }
+        }
+      }
+    },
+    "Everyone is settled up.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout le monde est à jour."
+          }
+        }
+      }
+    },
+    "Everyone selected pays an equal part.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque personne sélectionnée paie une part égale."
+          }
+        }
+      }
+    },
+    "Expenses": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dépenses"
+          }
+        }
+      }
+    },
+    "Find an expense by its title.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trouvez une dépense par son intitulé."
+          }
+        }
+      }
+    },
+    "Give anyone paying a larger part more shares.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Donnez plus de parts à qui paie une part plus importante."
+          }
+        }
+      }
+    },
+    "Group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groupe"
+          }
+        }
+      }
+    },
+    "Group actions": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions du groupe"
+          }
+        }
+      }
+    },
+    "Group information": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations du groupe"
+          }
+        }
+      }
+    },
+    "Group link": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lien du groupe"
+          }
+        }
+      }
+    },
+    "Group name": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom du groupe"
+          }
+        }
+      }
+    },
+    "Group settings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages du groupe"
+          }
+        }
+      }
+    },
+    "Groups": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groupes"
+          }
+        }
+      }
+    },
+    "Information": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations"
+          }
+        }
+      }
+    },
+    "Last month": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le mois dernier"
+          }
+        }
+      }
+    },
+    "Last year": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’an dernier"
+          }
+        }
+      }
+    },
+    "Loading more expenses": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement d’autres dépenses"
+          }
+        }
+      }
+    },
+    "Loading more results": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement d’autres résultats"
+          }
+        }
+      }
+    },
+    "Mark %@’s payment of %@ to %@ as paid": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marquer comme payé : %1$@ verse %2$@ à %3$@"
+          }
+        }
+      }
+    },
+    "Mark as paid": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marquer comme payé"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom"
+          }
+        }
+      }
+    },
+    "Name or code": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom ou code"
+          }
+        }
+      }
+    },
+    "New expense": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle dépense"
+          }
+        }
+      }
+    },
+    "No expense here has “%@” in its title.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune dépense de ce groupe n’a « %@ » dans son intitulé."
+          }
+        }
+      }
+    },
+    "No expenses yet": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune dépense"
+          }
+        }
+      }
+    },
+    "No group with that link exists on this server.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun groupe ne correspond à ce lien sur ce serveur."
+          }
+        }
+      }
+    },
+    "No information yet.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune information pour le moment."
+          }
+        }
+      }
+    },
+    "No matching currency": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune devise correspondante"
+          }
+        }
+      }
+    },
+    "No matching expenses": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune dépense correspondante"
+          }
+        }
+      }
+    },
+    "Notes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        }
+      }
+    },
+    "Nothing here matches “%@”.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien ici ne correspond à « %@ »."
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Older": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus ancien"
+          }
+        }
+      }
+    },
+    "Open Group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir un groupe"
+          }
+        }
+      }
+    },
+    "Opens one of your groups in Spliit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre l’un de vos groupes dans Spliit."
+          }
+        }
+      }
+    },
+    "Opens this expense for editing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre cette dépense pour la modifier"
+          }
+        }
+      }
+    },
+    "Paid by": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par"
+          }
+        }
+      }
+    },
+    "Paid by %@ for %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %1$@ pour %2$@"
+          }
+        }
+      }
+    },
+    "Paid for": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé pour"
+          }
+        }
+      }
+    },
+    "Participants": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Participants"
+          }
+        }
+      }
+    },
+    "Paste the link to a group that was shared with you, and it will appear in your list.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collez le lien d’un groupe qu’on a partagé avec vous : il apparaîtra dans votre liste."
+          }
+        }
+      }
+    },
+    "Percent": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pourcent"
+          }
+        }
+      }
+    },
+    "Percentages must add up to 100.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La somme des pourcentages doit être égale à 100."
+          }
+        }
+      }
+    },
+    "Point the app at your own Spliit instance. Leave this alone if you use the official one.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pointez l’app vers votre propre instance Spliit. Laissez ce champ tel quel si vous utilisez l’instance officielle."
+          }
+        }
+      }
+    },
+    "Recent groups": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groupes récents"
+          }
+        }
+      }
+    },
+    "Reimbursement": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remboursement"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer"
+          }
+        }
+      }
+    },
+    "Remove %@ from this list": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer %@ de cette liste"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer"
+          }
+        }
+      }
+    },
+    "Saving…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrement…"
+          }
+        }
+      }
+    },
+    "Search expenses": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher des dépenses"
+          }
+        }
+      }
+    },
+    "Search this group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher dans ce groupe"
+          }
+        }
+      }
+    },
+    "Server": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serveur"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages"
+          }
+        }
+      }
+    },
+    "Share group": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partager le groupe"
+          }
+        }
+      }
+    },
+    "Shares": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parts"
+          }
+        }
+      }
+    },
+    "Spliit is an open source project by Sebastien Castiel, with help from many contributors.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spliit est un projet open source de Sebastien Castiel, avec l’aide de nombreux contributeurs."
+          }
+        }
+      }
+    },
+    "Split": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartition"
+          }
+        }
+      }
+    },
+    "Star": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favori"
+          }
+        }
+      }
+    },
+    "Star %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter %@ aux favoris"
+          }
+        }
+      }
+    },
+    "Starred": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favoris"
+          }
+        }
+      }
+    },
+    "Starts a new expense in one of your groups, ready to check and save.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commence une nouvelle dépense dans l’un de vos groupes, prête à être vérifiée et enregistrée."
+          }
+        }
+      }
+    },
+    "Suggested": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestions"
+          }
+        }
+      }
+    },
+    "Suggested payments": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paiements suggérés"
+          }
+        }
+      }
+    },
+    "Swipe a participant to remove them. Anyone who already appears on an expense can’t be removed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balayez un participant pour le retirer. Une personne qui figure déjà sur une dépense ne peut pas être retirée."
+          }
+        }
+      }
+    },
+    "That doesn’t look like a Spliit group link.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce lien ne ressemble pas à un lien de groupe Spliit."
+          }
+        }
+      }
+    },
+    "That doesn’t look like a web address. Try something like spliit.example.com.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela ne ressemble pas à une adresse web. Essayez plutôt quelque chose comme spliit.example.com."
+          }
+        }
+      }
+    },
+    "That group isn’t on %@.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce groupe n’est pas sur %@."
+          }
+        }
+      }
+    },
+    "The currency symbol is shown next to every amount, for example $ or CHF.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le symbole de la devise est affiché à côté de chaque montant, par exemple $ ou CHF."
+          }
+        }
+      }
+    },
+    "The fewest payments that settle the group.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le plus petit nombre de paiements pour solder le groupe."
+          }
+        }
+      }
+    },
+    "The server didn’t respond.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur n’a pas répondu."
+          }
+        }
+      }
+    },
+    "This group no longer exists on this server.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce groupe n’existe plus sur ce serveur."
+          }
+        }
+      }
+    },
+    "This is a reimbursement": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est un remboursement"
+          }
+        }
+      }
+    },
+    "This participant has expenses": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce participant a des dépenses"
+          }
+        }
+      }
+    },
+    "This week": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette semaine"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réessayer"
+          }
+        }
+      }
+    },
+    "Type your own, for anything not listed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez le vôtre, pour tout ce qui n’est pas dans la liste"
+          }
+        }
+      }
+    },
+    "Unarchive": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désarchiver"
+          }
+        }
+      }
+    },
+    "Unarchive %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désarchiver %@"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler"
+          }
+        }
+      }
+    },
+    "Unstar": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer des favoris"
+          }
+        }
+      }
+    },
+    "Unstar %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer %@ des favoris"
+          }
+        }
+      }
+    },
+    "Upcoming": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À venir"
+          }
+        }
+      }
+    },
+    "Use a custom symbol": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser un symbole personnalisé"
+          }
+        }
+      }
+    },
+    "Use spliit.app": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser spliit.app"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "View on GitHub": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir sur GitHub"
+          }
+        }
+      }
+    },
+    "Visit spliit.app": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visiter spliit.app"
+          }
+        }
+      }
+    },
+    "Welcome to Spliit": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenue dans Spliit"
+          }
+        }
+      }
+    },
+    "What each participant paid, against what was spent on them.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce que chaque participant a payé, face à ce qui a été dépensé pour lui."
+          }
+        }
+      }
+    },
+    "What should participants know?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Que doivent savoir les participants ?"
+          }
+        }
+      }
+    },
+    "What was it for?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’était pour quoi ?"
+          }
+        }
+      }
+    },
+    "https://spliit.app/": {
+      "comment": "The official instance's address, shown as a placeholder.",
+      "shouldTranslate": false
+    },
+    "is owed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "on lui doit"
+          }
+        }
+      }
+    },
+    "owes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "doit"
+          }
+        }
+      }
+    },
+    "settled up": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "à jour"
+          }
+        }
+      }
+    },
+    "shares": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "parts"
+          }
+        }
+      }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

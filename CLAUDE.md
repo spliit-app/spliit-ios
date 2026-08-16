@@ -28,6 +28,7 @@ Xcode is never required — everything runs from the Makefile. Run `make` for th
 ```sh
 make test         # unit suites on the host, ~2s, no simulator
 make build        # build for the simulator
+make strings      # check the string catalogues against the strings in the source
 make e2e-up       # the shared Spliit server on :3009 (Docker), if it isn't already up
 make test-live    # API client against that server, including writes
 make e2e          # UI tests against it; leaves the server running
@@ -46,12 +47,13 @@ needs nothing — the whole `Spliit/` folder is picked up. Never hand-edit the `
 ## Layout
 
 ```
-Spliit/              app target: SwiftUI views, assets, string catalog, analytics
+Spliit/              app target: SwiftUI views, assets, string catalogues, analytics
 Shared/              code shared with the UI test bundle (accessibility identifiers)
 Packages/SpliitKit/
   SpliitAPI/         tRPC client, superjson coding, models, endpoints
   SpliitCore/        stores, the React Native migration, form drafts, formatting
 SpliitUITests/       XCUITest end-to-end suites
+Scripts/             what the Makefile reaches for that isn't one line of shell
 e2e/                 the disposable server: compose file and seed script
 ```
 
@@ -120,6 +122,14 @@ group is only reachable by its ID — a user who loses their list cannot get it 
 must never delete the legacy files. `LegacyDataMigration` returns problems rather than
 throwing; keep it that way.
 
+**Nothing adds a new string to the catalogue for you.** Xcode does it on its own builds; this
+project is built by `xcodebuild`, which does not write back to the source `.xcstrings`. So a
+`Text("…")` you add today compiles, ships and displays — in English, in every language, with no
+warning anywhere. The catalogue had 21 of its 166 keys by the time anyone looked. **Run `make
+strings`**: it diffs the catalogues against what the compiler actually extracted and names
+every string that is missing, stale or untranslated. It is in CI on every push, so a new string
+without French fails the build rather than shipping silently.
+
 ## Testing
 
 Three layers. Add to whichever is cheapest for what you're covering.
@@ -168,4 +178,12 @@ review surface small.
 
 All user-facing strings are `LocalizedStringKey` or `String(localized:)`. In `SpliitCore` they
 need `bundle: Bundle.module`, or they resolve against the app bundle and can never be
-translated.
+translated. The app ships English and French, so **a new string needs its French in the same
+commit** — `make strings` is what tells you which ones are outstanding.
+
+Never build a sentence by concatenation, and never pick a plural form with a ternary: word
+order and plural categories are both the translation's business, not the call site's. Interpolate
+the whole thing (`String(localized: "\(count) participants")`) and let the catalogue vary it.
+
+Leave to Foundation anything a locale already decides — currency names and symbols, money,
+dates, and lists (`.formatted(.list(type: .and))`). None of it belongs in a catalogue.

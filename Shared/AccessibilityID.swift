@@ -22,6 +22,15 @@ enum AccessibilityID {
         static func rowParticipants(_ groupID: String) -> String {
             "groups.row.\(groupID).participants"
         }
+
+        // The row's three actions. Each appears twice — in a swipe and in the long-press menu —
+        // but never at the same time, and the group ID keeps one row's buttons apart from the
+        // next one's.
+        static func rowStarButton(_ groupID: String) -> String { "groups.row.\(groupID).star" }
+        static func rowArchiveButton(_ groupID: String) -> String {
+            "groups.row.\(groupID).archive"
+        }
+        static func rowRemoveButton(_ groupID: String) -> String { "groups.row.\(groupID).remove" }
     }
 
     enum Settings {

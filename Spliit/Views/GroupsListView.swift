@@ -199,21 +199,25 @@ struct GroupsListView: View {
                 }
             }
 
-            Section("Recent groups") {
-                ForEach(app.recentGroups.groups) { group in
-                    NavigationLink(value: group.groupId) {
-                        GroupRow(group: group, summary: model.summaries[group.groupId])
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button("Remove", systemImage: "trash", role: .destructive) {
-                            app.recentGroups.forget(groupId: group.groupId)
-                        }
-                        // Read on its own, "Remove" sounds like it deletes the group. It only
-                        // forgets it here, and there is no way back but the link.
-                        .accessibilityLabel(
-                            Text("Remove \(group.groupName) from this list")
-                        )
-                    }
+            // Three sections, each one absent until it has something in it — so a list with
+            // nothing starred or archived looks exactly as it did before any of this existed.
+            // The headers are the only thing that says a group is starred or archived: a badge
+            // on the row as well would say it twice, and iOS doesn't mark a pinned note either.
+            if !app.recentGroups.starred.isEmpty {
+                Section("Starred") {
+                    ForEach(app.recentGroups.starred) { row(for: $0) }
+                }
+            }
+
+            if !app.recentGroups.recent.isEmpty {
+                Section("Recent groups") {
+                    ForEach(app.recentGroups.recent) { row(for: $0) }
+                }
+            }
+
+            if !app.recentGroups.archived.isEmpty {
+                Section("Archived") {
+                    ForEach(app.recentGroups.archived) { row(for: $0) }
                 }
             }
         }
@@ -222,6 +226,74 @@ struct GroupsListView: View {
                 ids: app.recentGroups.groups.map(\.groupId), using: app.client
             )
         }
+    }
+
+    /// A group, and the three things that can be done to it.
+    ///
+    /// Star and archive sit on opposite edges because they are opposite acts, and the same three
+    /// actions are in a long-press menu because a swipe action nobody swipes for is a feature
+    /// nobody has. Archive is the outermost trailing action, so a full swipe archives rather than
+    /// removes: removing is the one thing here with no way back but the original link.
+    private func row(for group: RecentGroup) -> some View {
+        NavigationLink(value: group.groupId) {
+            GroupRow(group: group, summary: model.summaries[group.groupId])
+        }
+        .swipeActions(edge: .leading) {
+            starButton(group)
+        }
+        .swipeActions(edge: .trailing) {
+            archiveButton(group)
+            removeButton(group)
+        }
+        .contextMenu {
+            starButton(group)
+            archiveButton(group)
+            removeButton(group)
+        }
+    }
+
+    private func starButton(_ group: RecentGroup) -> some View {
+        Button(
+            group.isStarred ? "Unstar" : "Star",
+            systemImage: group.isStarred ? "star.slash" : "star"
+        ) {
+            app.recentGroups.setStarred(!group.isStarred, groupId: group.groupId)
+        }
+        .tint(.yellow)
+        .accessibilityIdentifier(AccessibilityID.GroupsList.rowStarButton(group.groupId))
+        .accessibilityLabel(
+            group.isStarred
+                ? Text("Unstar \(group.groupName)")
+                : Text("Star \(group.groupName)")
+        )
+    }
+
+    private func archiveButton(_ group: RecentGroup) -> some View {
+        Button(
+            group.isArchived ? "Unarchive" : "Archive",
+            systemImage: group.isArchived ? "tray.and.arrow.up" : "archivebox"
+        ) {
+            app.recentGroups.setArchived(!group.isArchived, groupId: group.groupId)
+        }
+        // Grey rather than a colour of its own: archiving is how a group is asked to stop
+        // asking for attention.
+        .tint(.gray)
+        .accessibilityIdentifier(AccessibilityID.GroupsList.rowArchiveButton(group.groupId))
+        .accessibilityLabel(
+            group.isArchived
+                ? Text("Unarchive \(group.groupName)")
+                : Text("Archive \(group.groupName)")
+        )
+    }
+
+    private func removeButton(_ group: RecentGroup) -> some View {
+        Button("Remove", systemImage: "trash", role: .destructive) {
+            app.recentGroups.forget(groupId: group.groupId)
+        }
+        .accessibilityIdentifier(AccessibilityID.GroupsList.rowRemoveButton(group.groupId))
+        // Read on its own, "Remove" sounds like it deletes the group. It only forgets it here,
+        // and there is no way back but the link.
+        .accessibilityLabel(Text("Remove \(group.groupName) from this list"))
     }
 }
 

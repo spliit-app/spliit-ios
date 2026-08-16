@@ -1,7 +1,9 @@
 # Design handoff — give Spliit a face
 
 **For:** whoever picks up the visual design pass.
-**Status:** brief. Nothing here is built yet.
+**Status:** answered. A design system was built from this brief and lives in Claude Design as
+*Spliit Design System*; §8's four decisions came back decided and are recorded there. The
+implementation is landing in the four stages of §5.
 **Read first:** [CLAUDE.md](CLAUDE.md) for how work lands, [ROADMAP.md](ROADMAP.md) §4 for the
 navigation shape this has to live inside.
 
@@ -255,16 +257,25 @@ only when you want the end-to-end suite to run.
 
 ---
 
-## 8. Decisions to make and write down
+## 8. Decisions — answered
 
-Answer these in the stage-1 PR rather than blocking on them:
+These four were open when this brief was written. The design system decided them:
 
-1. **The second colour.** `#be185d` (roadmap) or `#ed5167` (logo)? See §3.
-2. **How far do owed/owing colours drift from `.green`/`.red`?** System red and green are
-   instantly legible and instantly generic. A branded pair is more distinctive and needs a
-   contrast check in both themes.
-3. **Does the logo appear in the app at all?** It ships today and is never drawn.
-4. **Swift Charts or the hand-rolled bar?** Decide, then either use `Charts` or drop the import.
+1. **The second colour is `#be185d`** (pink-700, per ROADMAP), not the logo's coral `#ed5167`.
+   Coral stays in the logo palette and in the derivation of the money-negative tone.
+2. **Owed/owing leave `.green`/`.red`.** They are a branded pair derived from the emerald accent
+   and the logo coral, tuned per theme to clear WCAG AA: light `#047857` / `#c2334a`, dark
+   `#34d399` / `#ff8a9b`.
+3. **The logo appears on the welcome and empty states only** — never in a navigation bar.
+4. **The hand-rolled bar wins over Swift Charts.** Charts is a dependency-sized concept for a
+   shape that is twenty lines of layout; drop the unused `import Charts`.
 
-When the work lands, this file should be replaced by a `DESIGN.md` describing what was actually
-built — a handoff is worth keeping only until it is answered.
+One decision was added in implementation, because the API forced it: **the groups list gets a
+group monogram rather than the design system's stack of participant monograms.**
+`Spliit.groups(ids:)` returns `participantCount` and `createdAt` and no participant names, so a
+stack would cost one extra request per group on every launch. Seeding a single monogram on the
+group ID gives the row its weight for nothing. Revisit if the home screen ever needs balances
+too — that is the same extra request.
+
+When the last stage lands, this file should be replaced by a `DESIGN.md` describing what was
+actually built — a handoff is worth keeping only until it is answered.

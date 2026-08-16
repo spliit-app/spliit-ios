@@ -69,6 +69,44 @@ struct MoneyFormatterTests {
 
         #expect(formatter.plainString(minorUnits: 123_456) == "1234.56")
     }
+
+    /// The stored integer is not always hundredths. The web app scales by the currency's own
+    /// minor unit, so a yen group storing `1234` means ¥1,234 — showing ¥12.34 for the same
+    /// record would be wrong by a factor of a hundred, and wrong differently on each client.
+    @Test("A currency with no minor unit is not divided by a hundred")
+    func respectsZeroDecimalCurrencies() {
+        let yen = MoneyFormatter(
+            currencySymbol: "¥", currencyCode: "JPY", locale: Locale(identifier: "en_US")
+        )
+
+        #expect(yen.minorUnitDigits == 0)
+        #expect(yen.string(minorUnits: 1234) == "¥1,234")
+        #expect(yen.plainString(minorUnits: 1234) == "1234")
+    }
+
+    @Test("A currency with three decimal places keeps all three")
+    func respectsThreeDecimalCurrencies() {
+        let dinar = MoneyFormatter(
+            currencySymbol: "KD", currencyCode: "KWD", locale: Locale(identifier: "en_US")
+        )
+
+        #expect(dinar.minorUnitDigits == 3)
+        // Not compared whole: the code brings the locale's spacing rule for this currency with
+        // it, and that separator is a non-breaking space.
+        #expect(dinar.string(minorUnits: 1234).hasPrefix("KD"))
+        #expect(dinar.string(minorUnits: 1234).hasSuffix("1.234"))
+    }
+
+    /// Older groups have no code to ask, and what they hold was written as hundredths.
+    @Test("A group with only a symbol is still counted in hundredths")
+    func assumesHundredthsWithoutACode() {
+        let formatter = MoneyFormatter(
+            currencySymbol: "kr", currencyCode: nil, locale: Locale(identifier: "en_US")
+        )
+
+        #expect(formatter.minorUnitDigits == 2)
+        #expect(formatter.plainString(minorUnits: 1234) == "12.34")
+    }
 }
 
 @Suite("Parsing typed amounts")
@@ -105,6 +143,18 @@ struct AmountParsingTests {
         #expect(MoneyFormatter.minorUnits(from: "", locale: Locale(identifier: "en_US")) == nil)
         #expect(MoneyFormatter.minorUnits(from: "   ", locale: Locale(identifier: "en_US")) == nil)
         #expect(MoneyFormatter.minorUnits(from: "abc", locale: Locale(identifier: "en_US")) == nil)
+    }
+
+    @Test("What is typed scales by the currency, not always by a hundred")
+    func parsesAgainstTheCurrencysMinorUnit() {
+        let american = Locale(identifier: "en_US")
+
+        #expect(MoneyFormatter.minorUnits(from: "1234", locale: american, minorUnitDigits: 0) == 1234)
+        #expect(MoneyFormatter.minorUnits(from: "1234", locale: american, minorUnitDigits: 2) == 123_400)
+        #expect(MoneyFormatter.minorUnits(from: "1.234", locale: american, minorUnitDigits: 3) == 1234)
+
+        // A yen group has nowhere to put a fraction, so one typed anyway is rounded away.
+        #expect(MoneyFormatter.minorUnits(from: "1234.6", locale: american, minorUnitDigits: 0) == 1235)
     }
 
     @Test("A currency symbol pasted along with the number is ignored")

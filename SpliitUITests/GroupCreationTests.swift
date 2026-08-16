@@ -29,6 +29,65 @@ final class GroupCreationTests: SpliitUITestCase {
         assertExists(app.staticTexts["Ski trip"], "The new group should be in the list.")
     }
 
+    /// The currency is the one thing on this form that outlives the form: every amount in the
+    /// group is shown with it, and the ISO code behind it is what the web app reads.
+    @MainActor
+    func testPickingACurrencyIsSavedWithTheGroup() {
+        let app = launchApp()
+
+        app.buttons[AccessibilityID.GroupsList.createGroupButton].tap()
+        replaceText(in: app.textFields[AccessibilityID.GroupForm.nameField], with: "Alpine trip")
+
+        app.buttons[AccessibilityID.GroupForm.currencyButton].tap()
+        assertExists(
+            app.buttons[AccessibilityID.CurrencyPicker.row("USD")],
+            "The picker should open on the suggestions."
+        )
+        capture(app, "currency-picker")
+
+        // A search with nothing behind it still has to offer a way forward.
+        replaceText(in: app.searchFields.firstMatch, with: "zzzz")
+        assertExists(
+            app.staticTexts["No matching currency"],
+            "A search that matches nothing should say so rather than show an empty list."
+        )
+        XCTAssertTrue(
+            app.buttons[AccessibilityID.CurrencyPicker.customOption].exists,
+            "And it should still offer the custom symbol."
+        )
+
+        replaceText(in: app.searchFields.firstMatch, with: "Swiss")
+        let swissFranc = app.buttons[AccessibilityID.CurrencyPicker.row("CHF")]
+        assertExists(swissFranc, "Searching for the currency by name should find it.")
+        swissFranc.tap()
+
+        let currency = app.buttons[AccessibilityID.GroupForm.currencyButton]
+        assertExists(currency, "Choosing a currency should come back to the form.")
+        capture(app, "group-form-currency")
+        XCTAssertTrue(
+            currency.label.contains("Swiss Franc"),
+            "The form should show what was picked, not what it started with."
+        )
+
+        app.buttons[AccessibilityID.GroupForm.saveButton].tap()
+        assertExists(
+            app.buttons[AccessibilityID.ExpenseList.emptyAddButton],
+            "Saving should open the new group."
+        )
+
+        // Reopened from the server rather than from the form's own state: this is what proves
+        // the ISO code was sent and stored, not just displayed.
+        app.buttons[AccessibilityID.GroupDetail.menuButton].tap()
+        app.buttons[AccessibilityID.GroupDetail.editGroupButton].tap()
+
+        let saved = app.buttons[AccessibilityID.GroupForm.currencyButton]
+        assertExists(saved, "Group settings should open.")
+        XCTAssertTrue(
+            saved.label.contains("Swiss Franc"),
+            "The group should still be in francs when it comes back from the server."
+        )
+    }
+
     @MainActor
     func testGroupNameIsValidatedBeforeSaving() {
         let app = launchApp()

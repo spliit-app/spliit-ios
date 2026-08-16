@@ -103,6 +103,66 @@ struct GroupFormDraftTests {
         #expect(values.participants.map(\.id) == ["p1", "p2", nil])
         #expect(values.information == "Rent and bills")
     }
+
+    // MARK: - Currency
+
+    @Test("A new group starts in the currency the device is set to")
+    func defaultsToTheDeviceCurrency() {
+        let swiss = GroupFormDraft(newGroupIn: Locale(identifier: "de_CH"))
+        #expect(swiss.currencyCode == "CHF")
+        #expect(swiss.currency == "CHF")
+
+        let american = GroupFormDraft(newGroupIn: Locale(identifier: "en_US"))
+        #expect(american.currencyCode == "USD")
+        #expect(american.currency == "$")
+    }
+
+    /// The symbol beside every amount and the code the amounts are in have to agree, so the
+    /// picker sets both. Nothing else in the app writes the symbol.
+    @Test("Picking a currency sets the symbol as well as the code")
+    func picksACurrency() throws {
+        var form = draft(currency: "$")
+        form.use(try #require(Currency.named("CHF", in: Locale(identifier: "en_US"))))
+
+        #expect(form.currencyCode == "CHF")
+        #expect(form.currency == "CHF")
+        #expect(form.formValues.currencyCode == "CHF")
+        #expect(!form.usesCustomSymbol)
+    }
+
+    @Test("A custom symbol keeps the symbol and drops the code")
+    func fallsBackToACustomSymbol() throws {
+        var form = draft()
+        form.use(try #require(Currency.named("EUR", in: Locale(identifier: "en_US"))))
+        form.useCustomSymbol()
+
+        #expect(form.usesCustomSymbol)
+        #expect(form.currency == "€", "The symbol that was there stays, as something to edit.")
+        #expect(
+            form.formValues.currencyCode == "",
+            "Empty, not nil: nil is omitted from the request and leaves the stored code alone."
+        )
+    }
+
+    /// The web app writes an empty string where we write nil. A group that arrives with one is
+    /// a group with no code, not a group with an invalid one.
+    @Test("An empty code from the web is treated as no code at all")
+    func treatsAnEmptyCodeAsNone() {
+        var form = draft()
+        form.currencyCode = ""
+
+        #expect(form.usesCustomSymbol)
+        #expect(form.isValid)
+        #expect(form.formValues.currencyCode == "")
+    }
+
+    @Test("A code that isn't three letters is reported rather than sent")
+    func rejectsAMalformedCode() {
+        var form = draft()
+        form.currencyCode = "DOLLARS"
+
+        #expect(form.problems.contains(.currencyCodeInvalid))
+    }
 }
 
 @Suite("Expense form")
@@ -372,5 +432,69 @@ struct ExpenseFormDraftTests {
 
         #expect(form.isValid)
         #expect(try #require(form.formValues).amount == 3000)
+    }
+
+    // MARK: - Currencies with no minor unit
+
+    private var yenGroup: Group {
+        Group(
+            id: "g2", name: "Tokyo", information: nil, currency: "¥", currencyCode: "JPY",
+            createdAt: .now,
+            participants: [.init(id: "ana", name: "Ana"), .init(id: "bruno", name: "Bruno")]
+        )
+    }
+
+    /// A group in yen stores whole yen, so "3000" typed there is ¥3,000 — not thirty of them.
+    /// The by-amount shares are amounts too, and scale the same way; share counts do not.
+    @Test("A group with no minor unit sends what was typed, unscaled")
+    func sendsWholeUnitsForZeroDecimalCurrencies() throws {
+        var form = ExpenseFormDraft(creatingIn: yenGroup, locale: Locale(identifier: "en_US"))
+        form.title = "Sushi"
+        form.amountText = "3000"
+        form.splitMode = .byAmount
+        form.participants[0].valueText = "1800"
+        form.participants[1].valueText = "1200"
+
+        #expect(form.minorUnitDigits == 0)
+        #expect(form.isValid)
+
+        let values = try #require(form.formValues)
+        #expect(values.amount == 3000)
+        #expect(values.paidFor.map(\.shares) == [1800, 1200])
+    }
+
+    @Test("Share counts stay scaled by 100 whatever the group counts in")
+    func keepsShareScalingIndependentOfTheCurrency() throws {
+        var form = ExpenseFormDraft(creatingIn: yenGroup, locale: Locale(identifier: "en_US"))
+        form.title = "Sushi"
+        form.amountText = "3000"
+        form.splitMode = .byShares
+        form.participants[0].valueText = "2"
+        form.participants[1].valueText = "1"
+
+        #expect(try #require(form.formValues).paidFor.map(\.shares) == [200, 100])
+    }
+
+    @Test("A yen expense loads back into the field as it was stored")
+    func loadsZeroDecimalExpense() {
+        let expense = ExpenseDetails(
+            id: "e2", groupId: "g2", title: "Sushi", amount: 3000, categoryId: 0,
+            category: nil, expenseDate: .now, createdAt: .now, paidById: "ana",
+            paidBy: .init(id: "ana", name: "Ana"),
+            paidFor: [
+                .init(participantId: "ana", shares: 1800),
+                .init(participantId: "bruno", shares: 1200),
+            ],
+            isReimbursement: false, splitMode: .byAmount, notes: nil, documents: [],
+            recurrenceRule: .never, originalAmount: nil, originalCurrency: nil,
+            conversionRate: nil
+        )
+
+        let form = ExpenseFormDraft(
+            editing: expense, group: yenGroup, locale: Locale(identifier: "en_US")
+        )
+
+        #expect(form.amountText == "3000")
+        #expect(form.participants.map(\.valueText) == ["1800", "1200"])
     }
 }

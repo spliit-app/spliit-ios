@@ -387,8 +387,21 @@ to a user opening it for the first time.
 Ordered by value to a phone user, not by web-app order.
 
 **Wave 1 — the gaps that hurt most**
-- Currency **code** (ISO-4217) alongside the free-text symbol, with a proper
-  currency picker
+- ~~Currency **code** (ISO-4217) alongside the free-text symbol, with a proper
+  currency picker~~ — **done**. A searchable list of every currency the system can
+  name, the device's own currency first, and "Custom symbol" for anything not in
+  it. The list is Foundation's — names, symbols and minor units all come from the
+  platform, so it is translated wherever iOS is and there is no generated table to
+  keep in step the way the web repo has to. Two things it turned up. **Money is not
+  always hundredths**: 34 of the 159 currencies have no minor unit and 6 have three,
+  and the web app has always scaled by the currency's own — so a yen group created
+  on the web was already being shown to our users at a hundredth of its value.
+  `MoneyFormatter` now takes the precision from the ISO code and the expense form
+  parses against it, which fixes those groups and makes the new ones right. And
+  **clearing a code has to be an empty string, not a missing one**: a nil optional
+  is left out of the JSON, reaches the server as `undefined` and tells Prisma to
+  leave the column alone, so a group moved to a custom symbol would have kept
+  claiming to be in dollars. The web writes `''` there for the same reason
 - Multi-currency expenses: original amount, original currency, conversion rate
 - Active user ("who are you in this group?") and the personal balance summary
 - Select all / none in the paid-for list, and saved default splitting options
@@ -464,7 +477,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Universal Links | ➖ | n/a | ✅ M2 (needs the web-side file) |
 | App Intents / Spotlight | ➖ | ➖ | ✅ M2 |
 | Widget | ➖ | ➖ | M3.1, with starring |
-| Currency code + picker | ➖ | ✅ | M3.1 |
+| Currency code + picker | ➖ | ✅ | ✅ M3.1 |
 | Multi-currency expenses | ➖ | ✅ | M3.1 |
 | Active user / personal balance | ➖ | ✅ | M3.1 |
 | Select all-or-none participants | ➖ | ✅ | M3.1 |

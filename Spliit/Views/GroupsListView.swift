@@ -144,27 +144,36 @@ private struct GroupRow: View {
     let summary: GroupSummary?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(group.groupName)
-                .font(.headline)
-                .accessibilityIdentifier(AccessibilityID.GroupsList.rowTitle(group.groupId))
+        AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
+            // A group is the app's top-level object and used to be the plainest thing on screen.
+            // Seeding on the ID rather than the name keeps a group's colour across a rename.
+            Monogram(name: group.groupName, seed: group.groupId, size: 40)
 
-            AdaptiveHStack(spacing: 12) {
-                Label(participantText, systemImage: "person.2")
-                    .accessibilityIdentifier(
-                        AccessibilityID.GroupsList.rowParticipants(group.groupId)
-                    )
-                if let createdAt = summary?.createdAt {
-                    Label(createdAt.formatted(date: .abbreviated, time: .omitted),
-                          systemImage: "calendar")
-                        .accessibilityLabel(
-                            Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(group.groupName)
+                    .font(.system(.headline, design: .rounded))
+                    .accessibilityIdentifier(AccessibilityID.GroupsList.rowTitle(group.groupId))
+
+                AdaptiveHStack(spacing: 12) {
+                    Label(participantText, systemImage: "person.2")
+                        .accessibilityIdentifier(
+                            AccessibilityID.GroupsList.rowParticipants(group.groupId)
                         )
+                    if let createdAt = summary?.createdAt {
+                        Label(createdAt.formatted(date: .abbreviated, time: .omitted),
+                              systemImage: "calendar")
+                            .accessibilityLabel(
+                                Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+                            )
+                    }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .labelStyle(.compact)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.vertical, 4)
     }
 
     private var participantText: String {

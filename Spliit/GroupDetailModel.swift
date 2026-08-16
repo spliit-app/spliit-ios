@@ -40,6 +40,14 @@ final class GroupDetailModel {
         group?.participants.first { $0.id == id }
     }
 
+    /// Where someone sits in the group's participant list, which is what their colour comes from.
+    ///
+    /// Zero for anyone the group doesn't know: a stale expense referencing a removed participant
+    /// should be drawn in some colour rather than crash the screen it appears on.
+    func participantPosition(_ id: String) -> Int {
+        group?.participants.firstIndex { $0.id == id } ?? 0
+    }
+
     /// Whatever went wrong most recently, preferring the failure that explains the most.
     var loadFailure: String? {
         groupLoad.failure ?? expensesLoad.failure ?? balancesLoad.failure

@@ -1,4 +1,3 @@
-import Charts
 import SpliitAPI
 import SpliitCore
 import SwiftUI
@@ -35,9 +34,10 @@ struct BalancesView: View {
         } else if let group = model.group {
             List {
                 Section {
-                    ForEach(group.participants) { participant in
+                    ForEach(Array(group.participants.enumerated()), id: \.element.id) { position, participant in
                         BalanceRow(
                             participant: participant,
+                            position: position,
                             balance: model.balances[participant.id]
                                 ?? Balance(paid: 0, paidFor: 0, total: 0),
                             largest: largestBalance,
@@ -61,7 +61,9 @@ struct BalancesView: View {
                                 index: index,
                                 reimbursement: reimbursement,
                                 from: model.participant(reimbursement.from),
+                                fromPosition: model.participantPosition(reimbursement.from),
                                 to: model.participant(reimbursement.to),
+                                toPosition: model.participantPosition(reimbursement.to),
                                 formatter: model.moneyFormatter,
                                 onSettle: { onSettle(reimbursement) }
                             )
@@ -93,6 +95,7 @@ struct BalancesView: View {
 /// A diverging bar: owed to the right of centre, owing to the left.
 private struct BalanceRow: View {
     let participant: Participant
+    let position: Int
     let balance: Balance
     let largest: Int
     let formatter: MoneyFormatter
@@ -100,44 +103,53 @@ private struct BalanceRow: View {
     @ScaledMetric private var barHeight: CGFloat = 8
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            AdaptiveHStack {
-                Text(participant.name)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier(
-                        AccessibilityID.Balances.participantName(participant.id)
-                    )
-                    .accessibilityValue(direction)
+        HStack(alignment: .top, spacing: 10) {
+            Monogram(name: participant.name, position: position, size: 26)
 
-                Text(formatter.string(minorUnits: balance.total))
-                    .monospacedDigit()
-                    .foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: 6) {
+                AdaptiveHStack {
+                    Text(participant.name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier(
+                            AccessibilityID.Balances.participantName(participant.id)
+                        )
+                        .accessibilityValue(direction)
+
+                    Money(
+                        value: formatter.string(minorUnits: balance.total),
+                        sign: Money.Sign(balance: balance.total)
+                    )
                     .accessibilityIdentifier(
                         AccessibilityID.Balances.participantAmount(participant.id)
                     )
-            }
-
-            GeometryReader { geometry in
-                let half = geometry.size.width / 2
-                let fraction = Double(abs(balance.total)) / Double(largest)
-                let width = max(half * fraction, balance.total == 0 ? 0 : 2)
-
-                ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(.quaternary)
-                        .frame(width: 1)
-                        .offset(x: half)
-
-                    Capsule()
-                        .fill(tint)
-                        .frame(width: width)
-                        .offset(x: balance.total < 0 ? half - width : half)
                 }
+
+                bar
             }
-            .frame(height: barHeight)
-            .accessibilityHidden(true)
         }
         .padding(.vertical, 2)
+    }
+
+    private var bar: some View {
+        GeometryReader { geometry in
+            let half = geometry.size.width / 2
+            let fraction = Double(abs(balance.total)) / Double(largest)
+            let width = max(half * fraction, balance.total == 0 ? 0 : 2)
+
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(.quaternary)
+                    .frame(width: 1)
+                    .offset(x: half)
+
+                Capsule()
+                    .fill(tint)
+                    .frame(width: width)
+                    .offset(x: balance.total < 0 ? half - width : half)
+            }
+        }
+        .frame(height: barHeight)
+        .accessibilityHidden(true)
     }
 
     /// Which side of zero this is. On screen the tint and the minus sign carry it, and the bar
@@ -153,10 +165,10 @@ private struct BalanceRow: View {
         else { Text("settled up") }
     }
 
+    /// The same tint the amount above it uses, so the bar and the number are obviously one
+    /// statement rather than two coincidentally coloured things.
     private var tint: Color {
-        if balance.total > 0 { .green }
-        else if balance.total < 0 { .red }
-        else { .secondary }
+        Money.Sign(balance: balance.total).tint
     }
 }
 
@@ -164,20 +176,34 @@ private struct ReimbursementRow: View {
     let index: Int
     let reimbursement: Reimbursement
     let from: Participant?
+    let fromPosition: Int
     let to: Participant?
+    let toPosition: Int
     let formatter: MoneyFormatter
     let onSettle: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            AdaptiveHStack {
+            AdaptiveHStack(spacing: 12) {
+                // Who pays whom, as a picture. The sentence beside it says the same thing, which
+                // is why this pair is invisible to VoiceOver rather than read out twice.
+                HStack(spacing: 6) {
+                    Monogram(name: from?.name ?? "", position: fromPosition, size: 24)
+                    Image(systemName: "arrow.forward")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Monogram(name: to?.name ?? "", position: toPosition, size: 24)
+                }
+                .accessibilityHidden(true)
+
                 Text("\(from?.name ?? "—") owes \(to?.name ?? "—")")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier(AccessibilityID.Balances.reimbursement(index))
 
-                Text(formatter.string(minorUnits: reimbursement.amount))
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
+                Money(
+                    value: formatter.string(minorUnits: reimbursement.amount),
+                    size: .lead
+                )
             }
 
             Button("Mark as paid", action: onSettle)

@@ -772,7 +772,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Donnez plus de parts à qui paie une part plus importante."
+            "value": "Donnez plus de parts à ceux qui paient une part plus importante."
           }
         }
       }
@@ -1042,7 +1042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plus ancien"
+            "value": "Plus anciennes"
           }
         }
       }

@@ -16,6 +16,8 @@ enum UITestSupport {
         /// Wipe local state so the run starts from a known-empty app.
         static let resetState = "-uiTestResetState"
         /// A JSON array of `{groupId, groupName}` to pre-populate recent groups with.
+        /// `isStarred` and `isArchived` are optional, so a test can start from a list that has
+        /// already been organised.
         static let seedRecentGroups = "-uiTestRecentGroups"
         /// A JSON object of AsyncStorage key/value pairs, written out in the legacy on-disk
         /// format so the real migration path runs against it.

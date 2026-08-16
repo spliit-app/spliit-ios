@@ -141,6 +141,124 @@ struct RecentGroupsStoreTests {
         #expect(groups == [RecentGroup(groupId: "abc", groupName: "Weekend in Lisbon")])
     }
 
+    @Test("Starred, recent and archived groups each land in one section")
+    @MainActor
+    func partitionsIntoSections() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+        store.remember(RecentGroup(groupId: "c", groupName: "Ski trip"))
+
+        store.setStarred(true, groupId: "b")
+        store.setArchived(true, groupId: "a")
+
+        #expect(store.starred.map(\.groupId) == ["b"])
+        #expect(store.recent.map(\.groupId) == ["c"])
+        #expect(store.archived.map(\.groupId) == ["a"])
+    }
+
+    /// Within a section the list keeps its own order, so the most recently opened starred group
+    /// is still the first one under Starred.
+    @Test("A section keeps the list's order")
+    @MainActor
+    func sectionsKeepRecencyOrder() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+
+        store.setStarred(true, groupId: "a")
+        store.setStarred(true, groupId: "b")
+
+        #expect(store.starred.map(\.groupId) == ["b", "a"])
+    }
+
+    @Test("Starring an archived group brings it back, and archiving a starred one puts it away")
+    @MainActor
+    func starringAndArchivingAreExclusive() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+
+        store.setArchived(true, groupId: "a")
+        store.setStarred(true, groupId: "a")
+
+        #expect(store.starred.map(\.groupId) == ["a"])
+        #expect(store.archived.isEmpty)
+
+        store.setArchived(true, groupId: "a")
+
+        #expect(store.archived.map(\.groupId) == ["a"])
+        #expect(store.starred.isEmpty)
+    }
+
+    /// Renaming a group rebuilds it from what the server just returned, which knows nothing
+    /// about stars — so this is the path that would silently drop one.
+    @Test("Reopening or renaming a group keeps its star")
+    @MainActor
+    func rememberPreservesFlags() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.setStarred(true, groupId: "a")
+
+        store.remember(RecentGroup(groupId: "a", groupName: "Weekend in Lisbon"))
+
+        #expect(store.starred.map(\.groupName) == ["Weekend in Lisbon"])
+    }
+
+    @Test("Opening an archived group doesn't un-archive it")
+    @MainActor
+    func openingKeepsAGroupArchived() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.setArchived(true, groupId: "a")
+
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+
+        #expect(store.archived.map(\.groupId) == ["a"])
+    }
+
+    @Test("Stars survive a restart")
+    @MainActor
+    func persistsFlagsAcrossLaunches() {
+        let url = URL.temporaryDirectory
+            .appending(path: "recent-\(UUID().uuidString)")
+            .appending(path: "recent-groups.json")
+
+        let store = RecentGroupsStore(fileURL: url)
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+        store.setStarred(true, groupId: "a")
+        store.setArchived(true, groupId: "b")
+
+        let reloaded = RecentGroupsStore(fileURL: url)
+        #expect(reloaded.starred.map(\.groupId) == ["a"])
+        #expect(reloaded.archived.map(\.groupId) == ["b"])
+    }
+
+    /// Every list written before this release, and everything the React Native app wrote, has
+    /// neither flag. Decoding has to treat that as "not starred", not as a corrupt file.
+    @Test("A list saved before starring existed still decodes")
+    @MainActor
+    func decodesGroupsWithoutFlags() throws {
+        let stored = Data(#"[{"groupId":"abc","groupName":"Weekend in Lisbon"}]"#.utf8)
+
+        let groups = try JSONDecoder().decode([RecentGroup].self, from: stored)
+
+        #expect(groups.first?.isStarred == false)
+        #expect(groups.first?.isArchived == false)
+    }
+
+    @Test("Setting a flag on a group that isn't listed does nothing")
+    @MainActor
+    func ignoresUnknownGroups() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+
+        store.setStarred(true, groupId: "not-in-the-list")
+
+        #expect(store.groups.count == 1)
+        #expect(store.starred.isEmpty)
+    }
+
     @Test("A migrated list replaces whatever was there")
     @MainActor
     func replacesAll() {

@@ -289,7 +289,13 @@ final class GroupDetailModel {
             nextSearchCursor = response.nextCursor
             searchLoad.succeeded()
         } catch {
-            guard filter == query else { return }
+            // A keystroke cancels the request the keystroke before it started, and a cancelled
+            // request is not a failed one. Reporting it put "Couldn't search" on screen between
+            // characters for anyone typing slower than the debounce.
+            // Belt and braces with the client, which now rethrows a cancelled request as
+            // `CancellationError` rather than dressing it up as a network failure: this task is
+            // the cancelled one, so it has nothing to report either way.
+            guard !Task.isCancelled, filter == query else { return }
             searchLoad.failed(error.localizedDescription)
         }
     }

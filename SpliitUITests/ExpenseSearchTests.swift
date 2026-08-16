@@ -33,6 +33,37 @@ final class ExpenseSearchTests: SpliitUITestCase {
         )
     }
 
+    /// Typing does not end after the first word.
+    ///
+    /// The other tests here type in one go, which lands every character before the debounce has
+    /// fired even once — so they never see what happens to the field when the results arrive
+    /// underneath it. On a phone the pause between words is longer than the debounce, and the
+    /// field was losing focus and dropping the keyboard the moment the first search came back.
+    @MainActor
+    func testTypingContinuesAfterTheFirstResultsArrive() async throws {
+        let group = try await api.createGroup(name: "Trip", participants: ["Ana", "Bruno"])
+        try await api.createExpense(in: group, title: "Pizza night", amount: 3000, paidBy: "Ana")
+        try await api.createExpense(in: group, title: "Pizza lunch", amount: 1500, paidBy: "Ana")
+        let app = launchApp(recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Trip")]))
+
+        openGroup(app, group)
+        search(app, for: "pizza")
+        assertExists(app.staticTexts["Pizza night"], "The first search should return both.")
+        XCTAssertTrue(app.staticTexts["Pizza lunch"].exists)
+
+        // Carry on typing, as anyone narrowing a search does.
+        let field = app.textFields[AccessibilityID.ExpenseSearch.field]
+        field.typeText(" lunch")
+
+        XCTAssertEqual(
+            field.value as? String,
+            "pizza lunch",
+            "The field should still have keyboard focus after results arrive."
+        )
+        assertExists(app.staticTexts["Pizza lunch"], "The narrowed search should return one.")
+        XCTAssertFalse(app.staticTexts["Pizza night"].exists, "…and drop the other.")
+    }
+
     /// A search matching nothing must not read as a group with no expenses — different sentence,
     /// different way out.
     @MainActor
@@ -67,6 +98,18 @@ final class ExpenseSearchTests: SpliitUITestCase {
         openGroup(app, group)
         search(app, for: "pizza")
         assertExists(app.staticTexts["Pizza night"], "The match should be listed.")
+
+        // The cancel button is the way out of search, not the point of it: it should not tower
+        // over the field it sits beside.
+        let cancel = app.buttons[AccessibilityID.ExpenseSearch.cancelButton]
+        XCTAssertLessThanOrEqual(
+            cancel.frame.height, 48,
+            "The cancel button should be about as tall as the field, not half again as tall."
+        )
+        XCTAssertLessThanOrEqual(
+            cancel.frame.width, cancel.frame.height + 2,
+            "…and round, rather than a stretched pill."
+        )
 
         app.buttons[AccessibilityID.ExpenseSearch.clearButton].tap()
         assertExists(app.staticTexts["Search this group"], "Clearing should return to the prompt.")

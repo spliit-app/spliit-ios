@@ -45,6 +45,13 @@ public struct TRPCClient: Sendable {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            // A cancelled request is not a failed one, and calling it a network error made the
+            // app tell people their server was unreachable when all they had done was type
+            // another character. `URLSession` reports cancellation as `URLError.cancelled`;
+            // rethrowing it as `CancellationError` says the same thing in the language callers
+            // already check.
+            if error is CancellationError { throw error }
+            if (error as? URLError)?.code == .cancelled { throw CancellationError() }
             throw TRPCClientError.network(error.localizedDescription)
         }
 

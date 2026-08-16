@@ -31,36 +31,54 @@ struct ExpenseSearchView: View {
     @FocusState private var isFieldFocused: Bool
 
     var body: some View {
-        content
-            // Inside the search field's bar, so a deleted result's way back sits above the field
-            // rather than under it.
-            .expenseUndoBar(model)
-            // `safeAreaBar`, not `safeAreaInset`: the iOS 26 bar variant is the one that stays
-            // interactive. Under `safeAreaInset` the field and both buttons render correctly,
-            // report themselves hittable, and silently swallow every tap — by element and by
-            // coordinate alike. It is the inset that eats them, not the glass.
-            .safeAreaBar(edge: .bottom) { searchBar }
-            // The tab bar and the field both want the bottom of the screen. Standing down while
-            // searching is what the system's own search tab does when it morphs the bar into a
-            // field; the cancel button beside the field is the way back to the tabs.
-            .toolbar(isActive ? .hidden : .automatic, for: .tabBar)
-            // Opening search should put the caret in the field, and every re-entry counts as an
-            // opening — the content is never torn down, so `onAppear` would only ever fire once.
-            //
-            // The screen view is reported from here for the same reason, rather than with
-            // `trackScreen`: a tab's content can be built before anyone has looked at it, and a
-            // search screen counted on every group opened would be a search nobody ran.
-            .task(id: isActive) {
-                isFieldFocused = isActive
-                if isActive {
-                    Analytics.shared.screen(.groupSearch, properties: ["groupId": model.groupID])
-                }
+        // The `ZStack` is load-bearing. `content` switches between the prompt, the results and
+        // the empty state as the search runs, and hanging the bar off a view whose shape changes
+        // takes the field's identity with it: the first results arriving rebuilt the field,
+        // which dropped keyboard focus and the keyboard with it, one character in. The stack
+        // gives the modifiers below something whose identity never changes.
+        ZStack {
+            // The same ground the lists stand on. A `List` brings the grouped background with
+            // it; the prompt, the spinner and the empty states bring nothing, so the screen went
+            // white between searches and grey once results arrived — one flicker per keystroke.
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
+            content
+        }
+        // Inside the search field's bar, so a deleted result's way back sits above the field
+        // rather than under it.
+        .expenseUndoBar(model)
+        // `safeAreaBar`, not `safeAreaInset`: the iOS 26 bar variant is the one that stays
+        // interactive. Under `safeAreaInset` the field and both buttons render correctly,
+        // report themselves hittable, and silently swallow every tap — by element and by
+        // coordinate alike. It is the inset that eats them, not the glass.
+        .safeAreaBar(edge: .bottom) { searchBar }
+        // The tab bar and the field both want the bottom of the screen. Standing down while
+        // searching is what the system's own search tab does when it morphs the bar into a
+        // field; the cancel button beside the field is the way back to the tabs.
+        .toolbar(isActive ? .hidden : .automatic, for: .tabBar)
+        // Opening search should put the caret in the field, and every re-entry counts as an
+        // opening — the content is never torn down, so `onAppear` would only ever fire once.
+        //
+        // The screen view is reported from here for the same reason, rather than with
+        // `trackScreen`: a tab's content can be built before anyone has looked at it, and a
+        // search screen counted on every group opened would be a search nobody ran.
+        .task(id: isActive) {
+            isFieldFocused = isActive
+            if isActive {
+                Analytics.shared.screen(.groupSearch, properties: ["groupId": model.groupID])
             }
+        }
     }
 
+    /// Driven by what is in the field, not by what the model has searched for.
+    ///
+    /// The two disagree for the length of the debounce, and deciding on the model alone put the
+    /// "Search this group" prompt back on screen between characters — the field said one thing
+    /// and the screen behind it said another.
     @ViewBuilder
     private var content: some View {
-        if model.hasNoQuery {
+        if trimmedQuery.isEmpty {
             EmptyState(
                 art: .icon("magnifyingglass"),
                 title: Text("Search this group"),
@@ -82,9 +100,18 @@ struct ExpenseSearchView: View {
                 // promising a search of "expenses" would promise more than it does.
                 description: Text("No expense here has “\(model.filter ?? "")” in its title.")
             )
+        } else if model.searchResults.isEmpty {
+            // Typed, but nothing has come back yet — the debounce is still running or the
+            // request is in flight. Narrowing an existing search skips this: the previous
+            // results stay up until the new ones replace them.
+            ProgressView().controlSize(.large)
         } else {
             results
         }
+    }
+
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var searchBar: some View {
@@ -95,8 +122,19 @@ struct ExpenseSearchView: View {
             searchBarContent
         }
         .padding(.horizontal, 16)
+        // The keyboard arrives right under the bar, and without this the field and the top row
+        // of keys share an edge — the glass capsule reads as part of the keyboard rather than
+        // as the thing being typed into. Matches the gap between the field and its cancel
+        // button, so the bar keeps one rhythm.
+        .padding(.bottom, 10)
         .animation(Motion.base, value: query.isEmpty)
     }
+
+    /// The height of the field, and so of the button beside it. The field is a line of body text
+    /// (22pt at the default size) plus its padding; the button is given the same, rather than the
+    /// larger size the glass style reaches on its own.
+    private var barHeight: CGFloat { 22 + fieldPadding * 2 }
+    private let fieldPadding: CGFloat = 11
 
     private var searchBarContent: some View {
         HStack(spacing: 10) {
@@ -127,17 +165,23 @@ struct ExpenseSearchView: View {
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+            .padding(.vertical, fieldPadding)
             .glassEffect(.regular, in: .capsule)
 
-            // The glass button style rather than a plain button under a `.glassEffect`: it is the
-            // one that knows what a button does when pressed.
+            // Sized to the field rather than left to its own devices. `.buttonStyle(.glass)` pads
+            // generously around whatever it is given — a 44pt glyph frame came out 68×58 beside a
+            // 44pt field, which made the way *out* of search the biggest thing in the bar.
+            //
+            // `.interactive()` is what the button style would have provided: the glass responds
+            // to a press rather than sitting there.
             Button(action: onCancel) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 44, height: 44)
+                    .frame(width: barHeight, height: barHeight)
+                    .contentShape(.circle)
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel(Text("Cancel search"))
             .accessibilityIdentifier(AccessibilityID.ExpenseSearch.cancelButton)
         }

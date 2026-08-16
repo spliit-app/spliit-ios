@@ -20,6 +20,11 @@ enum UITestSupport {
         /// A JSON object of AsyncStorage key/value pairs, written out in the legacy on-disk
         /// format so the real migration path runs against it.
         static let plantLegacyStore = "-uiTestLegacyStore"
+        /// A group ID to route to at launch, standing in for `OpenGroupIntent`.
+        static let openGroup = "-uiTestOpenGroup"
+        /// A group ID to open the expense form in, standing in for `AddExpenseIntent`. The
+        /// title and amount it would carry follow as two more arguments.
+        static let addExpense = "-uiTestAddExpense"
     }
 
     static func applyLaunchArguments() {
@@ -34,6 +39,30 @@ enum UITestSupport {
         }
         if let json = value(for: Argument.seedRecentGroups, in: arguments) {
             seedRecentGroups(json)
+        }
+        applyRoute(from: arguments)
+    }
+
+    /// Puts a destination in the router exactly as an App Intent would.
+    ///
+    /// The intents themselves cannot be driven from XCUITest — they are run by the system, from
+    /// Siri or Spotlight, outside any app the test controls. What *can* break silently is the
+    /// half on this side: whether a destination left in the router actually opens the group and
+    /// the form. That is what this exposes.
+    @MainActor
+    private static func applyRoute(from arguments: [String]) {
+        if let groupID = value(for: Argument.openGroup, in: arguments) {
+            Router.shared.go(to: .group(id: groupID))
+        }
+        if let groupID = value(for: Argument.addExpense, in: arguments) {
+            let index = arguments.firstIndex(of: Argument.addExpense)!
+            Router.shared.go(
+                to: .newExpense(
+                    groupID: groupID,
+                    title: arguments.indices.contains(index + 2) ? arguments[index + 2] : nil,
+                    amount: arguments.indices.contains(index + 3) ? arguments[index + 3] : nil
+                )
+            )
         }
     }
 

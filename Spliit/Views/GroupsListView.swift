@@ -13,6 +13,7 @@ struct GroupsListView: View {
     @State private var model = GroupsListModel()
     @State private var path: [String] = []
     @State private var sheet: Sheet?
+    private var router: Router { Router.shared }
 
     private enum Sheet: String, Identifiable {
         case settings, createGroup, addByURL
@@ -35,6 +36,29 @@ struct GroupsListView: View {
         }
         .task(id: reloadToken) {
             await model.load(ids: app.recentGroups.groups.map(\.groupId), using: app.client)
+        }
+        // An intent can land before this view exists — a cold launch from Spotlight — or while
+        // it is already on screen, so the destination is read on appearance and on every change
+        // rather than only once.
+        .onAppear { openRoutedGroup() }
+        .onChange(of: router.destination) { openRoutedGroup() }
+    }
+
+    /// Pushes the group an intent asked for, leaving the rest of the destination for the group
+    /// screen to collect once it is there.
+    ///
+    /// Only groups this device remembers. The entity query offers nothing else, so a stranger
+    /// here is a shortcut built against a group that has since been removed from the list —
+    /// and following it would strand someone on a group screen with nothing to show, which is
+    /// not what they asked for by saying a name the app no longer knows.
+    private func openRoutedGroup() {
+        guard let groupID = router.groupToOpen() else { return }
+        guard app.recentGroups.groups.contains(where: { $0.groupId == groupID }) else {
+            router.clear()
+            return
+        }
+        if path.last != groupID {
+            path = [groupID]
         }
     }
 

@@ -29,6 +29,8 @@ class SpliitUITestCase: XCTestCase {
     ///   - textSize: launch as if the user had chosen this size in Settings. UIKit reads the
     ///     preference from the argument domain, so this needs no host configuration and does
     ///     not leak into the next test.
+    ///   - openGroup: launch as if `OpenGroupIntent` had just run for this group.
+    ///   - addExpense: launch as if `AddExpenseIntent` had just run with these values.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
@@ -36,7 +38,9 @@ class SpliitUITestCase: XCTestCase {
         resetState: Bool = true,
         overrideBaseURL: Bool = true,
         serverURL: String? = nil,
-        textSize: UIContentSizeCategory? = nil
+        textSize: UIContentSizeCategory? = nil,
+        openGroup: String? = nil,
+        addExpense: (groupID: String, title: String, amount: String)? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
@@ -56,6 +60,14 @@ class SpliitUITestCase: XCTestCase {
         }
         if let recentGroups {
             app.launchArguments += ["-uiTestRecentGroups", recentGroups]
+        }
+        if let openGroup {
+            app.launchArguments += ["-uiTestOpenGroup", openGroup]
+        }
+        if let addExpense {
+            app.launchArguments += [
+                "-uiTestAddExpense", addExpense.groupID, addExpense.title, addExpense.amount,
+            ]
         }
 
         app.launch()

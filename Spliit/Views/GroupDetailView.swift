@@ -10,6 +10,9 @@ struct GroupDetailView: View {
     @State private var tab: GroupTab = .expenses
     @State private var sheet: Sheet?
     @State private var query = ""
+    /// What an intent knew about the expense before the form opened. Held apart from `Sheet` so
+    /// the sheet's identity stays a plain string and it does not reopen when this changes.
+    @State private var prefill: (title: String?, amount: String?)?
 
     init(groupID: String) {
         _model = State(initialValue: GroupDetailModel(groupID: groupID))
@@ -83,6 +86,10 @@ struct GroupDetailView: View {
         .toolbar { toolbarContent }
         .sheet(item: $sheet, content: sheetContent)
         .task { await model.loadIfNeeded(using: app.client) }
+        // The list pushed this screen because an intent asked for it; whatever else that intent
+        // wanted is still waiting to be collected.
+        .onAppear { collectRoutedIntent() }
+        .onChange(of: Router.shared.destination) { collectRoutedIntent() }
     }
 
     @ToolbarContentBuilder
@@ -111,6 +118,27 @@ struct GroupDetailView: View {
         }
     }
 
+    /// A blank expense, plus whatever an intent already knew.
+    ///
+    /// The amount arrives as text and stays text: `amountText` is parsed by the same code that
+    /// reads the field, in the user's locale, so "12,50" means the same thing spoken as typed.
+    private func prefilledDraft(for group: SpliitAPI.Group) -> ExpenseFormDraft {
+        var draft = ExpenseFormDraft(creatingIn: group)
+        if let title = prefill?.title, !title.isEmpty { draft.title = title }
+        if let amount = prefill?.amount, !amount.isEmpty { draft.amountText = amount }
+        return draft
+    }
+
+    private func collectRoutedIntent() {
+        switch Router.shared.takeDestination(for: model.groupID) {
+        case .newExpense(_, let title, let amount):
+            prefill = (title: title, amount: amount)
+            sheet = .createExpense
+        case .group, .none:
+            break
+        }
+    }
+
     /// The same link the web app shares, so it opens for anyone regardless of platform.
     private var shareURL: URL? {
         URL(string: "groups/\(model.groupID)", relativeTo: app.settings.baseURL)?.absoluteURL
@@ -125,7 +153,7 @@ struct GroupDetailView: View {
                     mode: .create,
                     group: group,
                     categories: model.categories,
-                    draft: ExpenseFormDraft(creatingIn: group),
+                    draft: prefilledDraft(for: group),
                     onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
                 )
             }

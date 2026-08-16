@@ -23,18 +23,23 @@ struct SpliitTestAPI {
         }
     }
 
-    func createGroup(name: String, participants: [String]) async throws -> Group {
-        let created = try await mutate(
-            "groups.create",
-            [
-                "groupFormValues": [
-                    "name": name,
-                    "currency": "$",
-                    "currencyCode": "USD",
-                    "participants": participants.map { ["name": $0] },
-                ]
-            ]
-        )
+    /// - Parameter information: the group's free-text note, which the information tab shows.
+    func createGroup(
+        name: String,
+        participants: [String],
+        information: String? = nil
+    ) async throws -> Group {
+        var values: [String: Any] = [
+            "name": name,
+            "currency": "$",
+            "currencyCode": "USD",
+            "participants": participants.map { ["name": $0] },
+        ]
+        // Omitted rather than sent as null: the field is optional on the server, and a group
+        // created without one is the case most tests are about.
+        if let information { values["information"] = information }
+
+        let created = try await mutate("groups.create", ["groupFormValues": values])
         let id = try require(created["groupId"] as? String, "groups.create returned no id")
 
         let fetched = try await query("groups.get", ["groupId": id])

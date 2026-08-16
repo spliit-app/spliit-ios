@@ -20,9 +20,11 @@ struct Analytics: Sendable {
         case addGroupByURL = "add-group-by-url"
         case groupExpenses = "group-expenses"
         case groupBalances = "group-balances"
-        // Not one of the React Native app's screens — it had no search — so this name is new
-        // rather than matched to an existing one.
+        // Neither of these was a React Native screen. Search is a name of our own; the
+        // information tab borrows the web app's route name, so the mobile site and the web one
+        // can be read side by side even though they are separate Plausible sites.
         case groupSearch = "group-search"
+        case groupInformation = "group-information"
         case groupSettings = "group-settings"
         case groupCreateExpense = "group-create-expense"
         case groupEditExpense = "group-edit-expense"

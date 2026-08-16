@@ -397,7 +397,12 @@ Ordered by value to a phone user, not by web-app order.
   there was nothing to star
 
 **Wave 2 — the missing tabs**
-- Information tab
+- ~~Information tab~~ — **done**, and deliberately wider than the web's. There the tab is the
+  group's note and nothing else; on a phone that is a whole tab-bar slot that stays empty for
+  every group whose note was never filled in — which is most of them. So it also lists the
+  participants, which is the only place outside the editor that names who is in the group, and
+  the currency and creation date. The note is still edited in the group form: it is a field on
+  the group, and a second editor for one field is a second thing to keep in step
 - Stats tab (total group spending, your spending, your share)
 - Activity log tab
 - Export to CSV / JSON via the share sheet
@@ -443,7 +448,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Self-hosted base URL | ✅ | n/a | M1 |
 | Analytics | ✅ | ✅ | M1 |
 | Dark mode | ➖ | ✅ | M1 |
-| Group notes field | ✅ | ✅ | M1 (edit only; shown in M3.2) |
+| Group notes field | ✅ | ✅ | M1 (edit), ✅ M3.2 (shown) |
 | Expense search | ➖ | ✅ | ✅ M2 |
 | Universal Links | ➖ | n/a | ✅ M2 (needs the web-side file) |
 | App Intents / Spotlight | ➖ | ➖ | ✅ M2 |
@@ -454,7 +459,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Select all-or-none participants | ➖ | ✅ | M3.1 |
 | Default splitting options | ➖ | ✅ | M3.1 |
 | Starred / archived groups | ➖ | ✅ | M3.1 |
-| Group information tab | ➖ | ✅ | M3.2 |
+| Group information tab | ➖ | ✅ | ✅ M3.2 |
 | Stats | ➖ | ✅ | M3.2 |
 | Activity log | ➖ | ✅ | M3.2 |
 | Export CSV / JSON | ➖ | ✅ | M3.2 |

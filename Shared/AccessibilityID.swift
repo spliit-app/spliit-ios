@@ -58,6 +58,16 @@ enum AccessibilityID {
         // be stamped over every element inside it. The tab bar buttons carry their labels.
     }
 
+    enum GroupInformation {
+        static let note = "information.note"
+        static let empty = "information.empty"
+        static let editButton = "information.edit"
+        static let retryButton = "information.retry"
+        static let currency = "information.currency"
+
+        static func participant(_ id: String) -> String { "information.participant.\(id)" }
+    }
+
     enum ExpenseList {
         static let addButton = "expenses.add"
         static let emptyAddButton = "expenses.emptyAdd"

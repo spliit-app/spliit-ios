@@ -44,15 +44,36 @@ extension View {
     /// tab bar's own strip and the two draw on top of each other. Inside a tab it stacks above
     /// whatever bar that tab already has — the tab bar here, the search field in the search tab.
     func expenseUndoBar(_ model: GroupDetailModel) -> some View {
-        safeAreaBar(edge: .bottom) {
-            if let pending = model.pendingDeletion {
-                UndoBar(message: Text("Deleted “\(pending.expense.title)”")) {
-                    model.undoDelete()
+        modifier(ExpenseUndoBar(model: model))
+    }
+}
+
+private struct ExpenseUndoBar: ViewModifier {
+
+    let model: GroupDetailModel
+
+    /// Undo and the window closing both end with nothing pending, so the pending value alone
+    /// cannot tell them apart. Counting the undos does.
+    @State private var undoCount = 0
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaBar(edge: .bottom) {
+                if let pending = model.pendingDeletion {
+                    UndoBar(message: Text("Deleted “\(pending.expense.title)”")) {
+                        undoCount += 1
+                        model.undoDelete()
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-        }
-        .animation(Motion.base, value: model.pendingDeletion)
+            .animation(Motion.base, value: model.pendingDeletion)
+            // Only on the way in. Going quiet again is the window closing, which is not an event
+            // anyone did — and a buzz five seconds after a swipe belongs to nothing on screen.
+            .sensoryFeedback(trigger: model.pendingDeletion) { previous, current in
+                previous == nil && current != nil ? Haptics.deleted : nil
+            }
+            .sensoryFeedback(Haptics.undone, trigger: undoCount)
     }
 }
 

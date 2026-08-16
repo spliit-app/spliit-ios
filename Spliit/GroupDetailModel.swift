@@ -25,8 +25,26 @@ final class GroupDetailModel {
     private(set) var isLoadingMore = false
     private(set) var hasMoreExpenses = false
 
+    /// Search keeps its own results rather than narrowing `expenses`, because the search tab and
+    /// the expense tab are both on screen in the same breath — filtering the shared array would
+    /// empty the list behind the search field.
+    private(set) var searchResults: [ExpenseListItem] = []
+    private(set) var searchLoad = LoadState()
+    private(set) var hasMoreSearchResults = false
+    private(set) var isLoadingMoreSearchResults = false
+
+    /// What the results currently answer to, or `nil` when nothing has been asked. The server
+    /// does the matching — `groups.expenses.list` takes a `filter`, matching titles
+    /// case-insensitively — so a search covers the whole group, not just the pages paged in.
+    private(set) var filter: String?
+
     private var nextCursor = 0
+    private var nextSearchCursor = 0
     private static let pageSize = 20
+
+    /// How long a pause in typing counts as "done typing". `.task(id:)` cancels the previous
+    /// search when the text changes again, so this sleep is what stops a request per keystroke.
+    private static let searchDebounce = Duration.milliseconds(250)
 
     init(groupID: String) {
         self.groupID = groupID
@@ -77,6 +95,25 @@ final class GroupDetailModel {
         expensesLoad.failedWithNothingToShow
     }
 
+    var isSearching: Bool {
+        filter != nil
+    }
+
+    /// Nothing has been typed yet, so there is no result to report either way.
+    var hasNoQuery: Bool {
+        filter == nil
+    }
+
+    /// The search came back empty, which is a different sentence from "this group has no
+    /// expenses" and has a different way out of it.
+    var hasNoMatches: Bool {
+        isSearching && searchResults.isEmpty && searchLoad.hasLoaded && !searchLoad.isLoading
+    }
+
+    var didFailToSearch: Bool {
+        searchLoad.failedWithNothingToShow
+    }
+
     /// Until the balances arrive, "everyone is settled up" would be a guess.
     var isLoadingBalances: Bool {
         balancesLoad.isAwaitingFirstResult
@@ -92,7 +129,19 @@ final class GroupDetailModel {
 
     /// Expenses grouped into the sections the list shows, newest bucket first.
     var sections: [(group: ExpenseDateGroup, expenses: [ExpenseListItem])] {
-        let buckets = Dictionary(grouping: expenses) {
+        Self.sections(of: expenses)
+    }
+
+    /// Search results in the same buckets, so a result sits under the heading it would have had
+    /// in the list it came from.
+    var searchSections: [(group: ExpenseDateGroup, expenses: [ExpenseListItem])] {
+        Self.sections(of: searchResults)
+    }
+
+    private static func sections(
+        of items: [ExpenseListItem]
+    ) -> [(group: ExpenseDateGroup, expenses: [ExpenseListItem])] {
+        let buckets = Dictionary(grouping: items) {
             ExpenseDateGroup.containing($0.expenseDate)
         }
         return buckets
@@ -115,11 +164,13 @@ final class GroupDetailModel {
         _ = await (groupResult, expensesResult, balancesResult, categoriesResult)
     }
 
-    /// Refreshes everything that an expense change can affect.
+    /// Refreshes everything that an expense change can affect — including an open search, whose
+    /// results are a view of the same expenses and would otherwise still show the old title.
     func reloadAfterExpenseChange(using client: TRPCClient) async {
         async let expensesResult: Void = loadFirstPage(using: client)
         async let balancesResult: Void = loadBalances(using: client)
-        _ = await (expensesResult, balancesResult)
+        async let searchResult: Void = reloadSearch(using: client)
+        _ = await (expensesResult, balancesResult, searchResult)
     }
 
     private func loadGroup(using client: TRPCClient) async {
@@ -190,11 +241,96 @@ final class GroupDetailModel {
         categories = (try? await client.call(Spliit.categories()).categories) ?? []
     }
 
+    // MARK: - Search
+
+    /// Answers `text`, after a pause long enough to mean the typing has stopped.
+    ///
+    /// Driven by `.task(id:)`, which cancels the previous call on every keystroke — so the sleep
+    /// below is only ever reached by the last one. Cancellation lands in `Task.sleep`, before any
+    /// request goes out and before `filter` moves, which keeps a half-typed word from ever being
+    /// the state the results are showing.
+    func search(_ text: String, using client: TRPCClient) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let newFilter = trimmed.isEmpty ? nil : trimmed
+        guard newFilter != filter else { return }
+
+        do {
+            try await Task.sleep(for: Self.searchDebounce)
+        } catch {
+            return
+        }
+
+        filter = newFilter
+        guard let newFilter else {
+            // An emptied field is not a search for nothing: drop the results and go back to
+            // the prompt rather than asking the server for the whole group again.
+            searchResults = []
+            hasMoreSearchResults = false
+            searchLoad = LoadState()
+            return
+        }
+        await loadFirstSearchPage(matching: newFilter, using: client)
+    }
+
+    private func loadFirstSearchPage(
+        matching query: String,
+        using client: TRPCClient
+    ) async {
+        searchLoad.begin()
+        do {
+            let response = try await client.call(
+                Spliit.expenses(groupId: groupID, cursor: 0, limit: Self.pageSize, filter: query)
+            )
+            // The field may have moved on while this was in flight; a stale page must not
+            // become the answer to a question nobody asked.
+            guard filter == query else { return }
+            searchResults = response.expenses
+            hasMoreSearchResults = response.hasMore
+            nextSearchCursor = response.nextCursor
+            searchLoad.succeeded()
+        } catch {
+            guard filter == query else { return }
+            searchLoad.failed(error.localizedDescription)
+        }
+    }
+
+    func loadNextSearchPage(using client: TRPCClient) async {
+        guard let filter, hasMoreSearchResults, !isLoadingMoreSearchResults else { return }
+        isLoadingMoreSearchResults = true
+        defer { isLoadingMoreSearchResults = false }
+
+        do {
+            let response = try await client.call(
+                Spliit.expenses(
+                    groupId: groupID,
+                    cursor: nextSearchCursor,
+                    limit: Self.pageSize,
+                    filter: filter
+                )
+            )
+            guard self.filter == filter else { return }
+            let known = Set(searchResults.map(\.id))
+            searchResults += response.expenses.filter { !known.contains($0.id) }
+            hasMoreSearchResults = response.hasMore
+            nextSearchCursor = response.nextCursor
+        } catch {
+            hasMoreSearchResults = false
+        }
+    }
+
+    /// Re-runs the current search, for when an expense has been edited or deleted underneath it.
+    private func reloadSearch(using client: TRPCClient) async {
+        guard let filter else { return }
+        await loadFirstSearchPage(matching: filter, using: client)
+    }
+
     // MARK: - Mutations
 
     func delete(expenseID: String, using client: TRPCClient) async {
         let removed = expenses
+        let removedResults = searchResults
         expenses.removeAll { $0.id == expenseID }
+        searchResults.removeAll { $0.id == expenseID }
         do {
             _ = try await client.call(
                 Spliit.deleteExpense(groupId: groupID, expenseId: expenseID)
@@ -202,6 +338,7 @@ final class GroupDetailModel {
             await reloadAfterExpenseChange(using: client)
         } catch {
             expenses = removed
+            searchResults = removedResults
             expensesLoad.failed(error.localizedDescription)
         }
     }

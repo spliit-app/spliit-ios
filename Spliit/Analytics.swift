@@ -20,6 +20,9 @@ struct Analytics: Sendable {
         case addGroupByURL = "add-group-by-url"
         case groupExpenses = "group-expenses"
         case groupBalances = "group-balances"
+        // Not one of the React Native app's screens — it had no search — so this name is new
+        // rather than matched to an existing one.
+        case groupSearch = "group-search"
         case groupSettings = "group-settings"
         case groupCreateExpense = "group-create-expense"
         case groupEditExpense = "group-edit-expense"

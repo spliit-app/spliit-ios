@@ -69,6 +69,12 @@ enum AccessibilityID {
         static func rowPaidBy(_ expenseID: String) -> String { "expenses.row.\(expenseID).paidBy" }
     }
 
+    enum ExpenseSearch {
+        static let field = "search.field"
+        static let clearButton = "search.clear"
+        static let cancelButton = "search.cancel"
+    }
+
     enum ExpenseForm {
         static let titleField = "expenseForm.title"
         static let amountField = "expenseForm.amount"

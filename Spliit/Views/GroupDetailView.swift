@@ -68,6 +68,10 @@ struct GroupDetailView: View {
                 )
             }
         }
+        // Reading a long list of expenses is the one thing this screen is for, and the tab bar is
+        // not needed while it happens. ROADMAP §4 asked for this at the start; nothing had
+        // applied it.
+        .tabBarMinimizeBehavior(.onScrollDown)
         .navigationTitle(model.group?.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         // Leaving the screen closes the undo window rather than dropping the delete: this model

@@ -37,7 +37,8 @@ struct ExpenseSearchView: View {
             .expenseUndoBar(model)
             // `safeAreaBar`, not `safeAreaInset`: the iOS 26 bar variant is the one that stays
             // interactive. Under `safeAreaInset` the field and both buttons render correctly,
-            // report themselves hittable, and silently swallow every tap.
+            // report themselves hittable, and silently swallow every tap — by element and by
+            // coordinate alike. It is the inset that eats them, not the glass.
             .safeAreaBar(edge: .bottom) { searchBar }
             // The tab bar and the field both want the bottom of the screen. Standing down while
             // searching is what the system's own search tab does when it morphs the bar into a
@@ -87,6 +88,17 @@ struct ExpenseSearchView: View {
     }
 
     private var searchBar: some View {
+        // Two glass surfaces a few points apart, which is the case the container exists for:
+        // inside one they sample the same backdrop and bend towards each other as the gap
+        // closes, instead of each refracting the screen on its own like two unrelated panes.
+        GlassEffectContainer(spacing: 10) {
+            searchBarContent
+        }
+        .padding(.horizontal, 16)
+        .animation(Motion.base, value: query.isEmpty)
+    }
+
+    private var searchBarContent: some View {
         HStack(spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -116,18 +128,10 @@ struct ExpenseSearchView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
-            // Glass as a backdrop rather than as a wrapper. Applied to the row itself,
-            // `.glassEffect` sits over its contents and eats their taps — the field keeps working
-            // only because it is focused on arrival, and the clear button never fires at all.
-            .background {
-                Color.clear
-                    .glassEffect(.regular, in: .capsule)
-                    .allowsHitTesting(false)
-            }
+            .glassEffect(.regular, in: .capsule)
 
-            // `.buttonStyle(.glass)` rather than a plain button under a `.glassEffect`: wrapping
-            // a button in the effect puts the glass *over* it and the taps land on the glass, so
-            // the button renders correctly and never fires.
+            // The glass button style rather than a plain button under a `.glassEffect`: it is the
+            // one that knows what a button does when pressed.
             Button(action: onCancel) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
@@ -137,8 +141,6 @@ struct ExpenseSearchView: View {
             .accessibilityLabel(Text("Cancel search"))
             .accessibilityIdentifier(AccessibilityID.ExpenseSearch.cancelButton)
         }
-        .padding(.horizontal, 16)
-        .animation(Motion.base, value: query.isEmpty)
     }
 
     private var results: some View {

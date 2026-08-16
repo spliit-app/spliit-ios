@@ -25,6 +25,8 @@ enum UITestSupport {
         /// A group ID to open the expense form in, standing in for `AddExpenseIntent`. The
         /// title and amount it would carry follow as two more arguments.
         static let addExpense = "-uiTestAddExpense"
+        /// A URL to deliver as if the system had just opened the app with it.
+        static let openURL = "-uiTestOpenURL"
     }
 
     static func applyLaunchArguments() {
@@ -53,6 +55,12 @@ enum UITestSupport {
     private static func applyRoute(from arguments: [String]) {
         if let groupID = value(for: Argument.openGroup, in: arguments) {
             Router.shared.go(to: .group(id: groupID))
+        }
+        // A UI test cannot make the system open a URL against the app under test, so the URL is
+        // handed to the router instead. Everything past that point — parsing, joining a group
+        // the device does not know, opening it — is the code that actually runs in the field.
+        if let text = value(for: Argument.openURL, in: arguments), let url = URL(string: text) {
+            Router.shared.deliver(url)
         }
         if let groupID = value(for: Argument.addExpense, in: arguments) {
             let index = arguments.firstIndex(of: Argument.addExpense)!

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Universal Links for shared group URLs. This half is inert until spliit.app serves
+	  /.well-known/apple-app-site-association naming this app — see ROADMAP §6, M2. Until then
+	  a https link opens Safari as before, and the custom scheme keeps working regardless.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:spliit.app</string>
+	</array>
+</dict>
+</plist>

@@ -40,7 +40,8 @@ class SpliitUITestCase: XCTestCase {
         serverURL: String? = nil,
         textSize: UIContentSizeCategory? = nil,
         openGroup: String? = nil,
-        addExpense: (groupID: String, title: String, amount: String)? = nil
+        addExpense: (groupID: String, title: String, amount: String)? = nil,
+        openURL: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
@@ -68,6 +69,9 @@ class SpliitUITestCase: XCTestCase {
             app.launchArguments += [
                 "-uiTestAddExpense", addExpense.groupID, addExpense.title, addExpense.amount,
             ]
+        }
+        if let openURL {
+            app.launchArguments += ["-uiTestOpenURL", openURL]
         }
 
         app.launch()

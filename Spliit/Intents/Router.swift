@@ -32,7 +32,21 @@ final class Router {
 
     private(set) var destination: Destination?
 
+    /// A link waiting to be read, for the case where one arrives before there is a view to read
+    /// it. `onOpenURL` on a cold launch is delivered once, and if the list has not appeared yet
+    /// there is nobody to hear it.
+    private(set) var pendingURL: URL?
+
     private init() {}
+
+    func deliver(_ url: URL) {
+        pendingURL = url
+    }
+
+    func takePendingURL() -> URL? {
+        defer { pendingURL = nil }
+        return pendingURL
+    }
 
     func go(to destination: Destination) {
         self.destination = destination

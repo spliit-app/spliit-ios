@@ -62,6 +62,11 @@ targets:
         SWIFT_APPROACHABLE_CONCURRENCY: YES
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: VKY5EKKU47
+        # Associated Domains, for Universal Links. Needs the capability enabled on the App ID:
+        # `make build-device` passes -allowProvisioningUpdates and will add it, but a signed
+        # build fails until it exists. Simulator builds and CI are unaffected — they build
+        # with CODE_SIGNING_ALLOWED=NO.
+        CODE_SIGN_ENTITLEMENTS: Spliit/Spliit.entitlements
     info:
       path: Spliit/Info.plist
       properties:

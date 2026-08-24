@@ -115,6 +115,7 @@ final class ScreenshotTests: SpliitUITestCase {
         let field = app.textFields[AccessibilityID.ExpenseSearch.field]
         assertExists(field, "The search tab should open its field.")
         replaceText(in: field, with: content.searchTerm)
+        dismissKeyboardIntroduction(in: app)
         XCTAssertEqual(
             field.value as? String, content.searchTerm,
             "The search term should have landed in the field."
@@ -185,6 +186,25 @@ final class ScreenshotTests: SpliitUITestCase {
             return
         }
         button.tap()
+    }
+
+    /// Sends the keyboard's "slide to type" introduction away, if it is up.
+    ///
+    /// It is shown the first time a keyboard appears on a device, it covers the keyboard
+    /// completely, and the keyboard is exactly what the search screenshot is of. "First time on
+    /// a device" means *every* run here, because the run creates its simulator and deletes it
+    /// again. Nothing the app or the script sets can suppress it — the keyboard is out of
+    /// process, and the preference that looks like it should turn it off belongs to Settings
+    /// rather than to the keyboard. So it is dismissed rather than prevented.
+    ///
+    /// The container's identifier is UIKit's own, and the same in every language. The button
+    /// inside it says "Continue" in English and something else elsewhere, so it is reached by
+    /// being the only button there.
+    @MainActor
+    private func dismissKeyboardIntroduction(in app: XCUIApplication) {
+        let introduction = app.otherElements["UIContinuousPathIntroductionView"]
+        guard introduction.waitForExistence(timeout: 3) else { return }
+        introduction.buttons.firstMatch.tap()
     }
 
     /// Scrolls until the element is on screen, or gives up and says so.

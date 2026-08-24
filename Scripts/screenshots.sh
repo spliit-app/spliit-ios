@@ -97,32 +97,40 @@ for device in "${DEVICES[@]}"; do
 
     # The *device's* language, not only the app's. `-testLanguage` covers everything the app
     # draws, but the status bar is drawn by the system — and on iPad it carries the date, which
-    # came out as "Sun Aug 16" over a French screenshot. Written while the device is shut down,
-    # because the preference is read at boot and a running device would overwrite it on the way
-    # out.
+    # came out as "Lundi 24 août" over the English screenshots. Written while the device is shut
+    # down, because the preference is read at boot.
+    #
+    # `plutil` rather than `defaults`: `defaults` goes through cfprefsd, which caches the file
+    # and writes it back when it feels like it. CoreSimulator writes the same file when it
+    # creates and boots a device, and between the two the language quietly failed to take —
+    # reliably so on the second device of a run, which is how English screenshots ended up with
+    # a French status bar. `plutil` edits the file on disk and nothing else touches it while the
+    # device is off.
+    plist="$HOME/Library/Developer/CoreSimulator/Devices/$udid/data/Library/Preferences/.GlobalPreferences.plist"
     xcrun simctl shutdown "$udid" 2>/dev/null || true
-    defaults write \
-      "$HOME/Library/Developer/CoreSimulator/Devices/$udid/data/Library/Preferences/.GlobalPreferences" \
-      AppleLanguages -array "$language"
-    defaults write \
-      "$HOME/Library/Developer/CoreSimulator/Devices/$udid/data/Library/Preferences/.GlobalPreferences" \
-      AppleLocale -string "${language}_${region}"
+    plutil -replace AppleLanguages -json "[\"$language\"]" "$plist"
+    plutil -replace AppleLocale -string "${language}_${region}" "$plist"
 
     xcrun simctl boot "$udid" 2>/dev/null || true
     xcrun simctl bootstatus "$udid" -b > /dev/null
+
+    # And check that it took, because the way this fails is a screenshot that looks right until
+    # someone reads the status bar. A wrong language here is worth a stopped run.
+    actual="$(xcrun simctl spawn "$udid" defaults read -g AppleLanguages | tr -d ' \n()\"')"
+    if [[ "$actual" != "$language"* ]]; then
+      echo "the simulator came up in '$actual', not '$language'" >&2
+      exit 1
+    fi
 
     # Everything else that would otherwise date the picture: the clock, the battery, the signal,
     # and whether the machine happened to be in dark mode that evening.
     xcrun simctl ui "$udid" appearance light > /dev/null
 
-    # A keyboard nobody has typed on yet offers its "slide to type" introduction the first time
-    # it comes up, and that splash is what a screenshot of the search screen catches instead of
-    # the keyboard. Marking it as already seen is the only way to say no to it — the keyboard is
-    # out of process, so nothing the app or the test does can reach it.
-    xcrun simctl spawn "$udid" defaults write com.apple.Preferences \
-      DidShowContinuousPathIntroduction -bool true
-    xcrun simctl spawn "$udid" defaults write com.apple.keyboard.preferences \
-      DidShowGestureKeyboardIntroduction -bool true
+    # The keyboard's "slide to type" introduction is not suppressed here. It looks like a
+    # preference — `DidShowContinuousPathIntroduction` — but that one belongs to Settings, and
+    # writing it changes nothing: the splash still comes up the first time a keyboard does, on
+    # every fresh device, and this run makes a fresh device every time. `ScreenshotTests`
+    # dismisses it instead, which is the only thing that actually works.
     xcrun simctl status_bar "$udid" override \
       --time "9:41" \
       --dataNetwork wifi --wifiMode active --wifiBars 3 \

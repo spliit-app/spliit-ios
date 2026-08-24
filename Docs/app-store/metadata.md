@@ -237,9 +237,15 @@ Scripts/screenshots.sh --devices iphone-6.9         # just the iPhone set
 The script drives `SpliitUITests/ScreenshotTests` against the throwaway instance from
 `make e2e-up`, once per language, with `-testLanguage` so that both the interface *and* the
 seeded data are in that language — the demo group is called "Weekend in Lisbon" in one and
-"Week-end à Lisbonne" in the other. It boots a simulator of its own, pins it to light appearance
-and a 9:41 status bar, and exports the pictures out of the result bundle into the tree above,
-failing if any of them is not the size App Store Connect accepts.
+"Week-end à Lisbonne" in the other. It boots a simulator of its own, sets **the device** to that
+language too, pins it to light appearance and a 9:41 status bar, and exports the pictures out of
+the result bundle into the tree above.
+
+Two things it refuses to ship rather than warn about: a picture that is not the size App Store
+Connect accepts, and a device that did not come up in the language that was asked for. The
+second one matters because the app obeys `-testLanguage` while the status bar obeys the device,
+so the failure looks like a correct screenshot until someone reads the date in the corner — and
+on iPad the date is right there.
 
 `make e2e` skips `ScreenshotTests`, and so does CI: it is not a test, and it would cost a minute
 on every pull request to assert nothing.

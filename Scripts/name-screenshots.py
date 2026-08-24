@@ -66,6 +66,12 @@ def main() -> int:
             print(f"manifest names {exported}, which was not exported", file=sys.stderr)
             return 1
 
+        # A failing run attaches the element hierarchy as text, and XCTest attaches a few
+        # diagnostics of its own. Only the pictures are wanted here, and a run that failed has
+        # a better story to tell than "that attachment was not a PNG".
+        if file.suffix.lower() != ".png":
+            continue
+
         size = png_size(file)
         if size != expected_size:
             print(

@@ -322,8 +322,17 @@ Store Connect line below.
   files were left in place. Worth knowing: iOS accepted the re-signed install as
   an upgrade, so the container survived — deleting the app first would have been
   both destructive and pointless
-- App Store Connect: screenshots, release notes, and a check of how much of the
-  installed base is below iOS 26
+- App Store Connect: **the listing is written and the screenshots are generated**
+  — [Docs/app-store/metadata.md](Docs/app-store/metadata.md) holds the copy in
+  both languages, the review notes and the App Privacy answers, and
+  `make screenshots` produces six pictures per language for both the 6.9" iPhone
+  and the 13" iPad the universal build obliges us to supply. Three things are
+  still open, and none of them is copy: **there is no privacy policy to link to**
+  (spliit.app has no such page, and App Store Connect will not accept a
+  submission without the URL), the App Privacy answer for group data needs
+  deciding and `PrivacyInfo.xcprivacy` needs to agree with whatever is filed, and
+  nobody has checked how much of the installed base is below iOS 26 — they stay
+  on 1.2.0
 - ~~A pass over Dynamic Type and VoiceOver~~ — **done**. Rows that pair a name
   with an amount now stack once the text reaches the accessibility sizes, and
   three things that were only ever said visually are said out loud: whether a

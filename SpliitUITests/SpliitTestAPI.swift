@@ -23,16 +23,23 @@ struct SpliitTestAPI {
         }
     }
 
-    /// - Parameter information: the group's free-text note, which the information tab shows.
+    /// - Parameters:
+    ///   - information: the group's free-text note, which the information tab shows.
+    ///   - currency: the symbol the group's amounts are drawn with.
+    ///   - currencyCode: the ISO code, which is what decides how many minor-unit digits the
+    ///     amounts have. Dollars unless a test says otherwise, because two decimals is the case
+    ///     most of them are written against.
     func createGroup(
         name: String,
         participants: [String],
-        information: String? = nil
+        information: String? = nil,
+        currency: String = "$",
+        currencyCode: String = "USD"
     ) async throws -> Group {
         var values: [String: Any] = [
             "name": name,
-            "currency": "$",
-            "currencyCode": "USD",
+            "currency": currency,
+            "currencyCode": currencyCode,
             "participants": participants.map { ["name": $0] },
         ]
         // Omitted rather than sent as null: the field is optional on the server, and a group
@@ -66,40 +73,75 @@ struct SpliitTestAPI {
         /// Server category ID. 0 is Uncategorized/General, which is what most tests want; pass one
         /// of the other 43 to exercise the category glyph on the expense row.
         category: Int = 0,
-        isReimbursement: Bool = false
+        isReimbursement: Bool = false,
+        /// One of `EVENLY`, `BY_SHARES`, `BY_PERCENTAGE`, `BY_AMOUNT`.
+        splitMode: String = "EVENLY",
+        /// Per-participant share by name, for a split that isn't even. The units are the split
+        /// mode's: a raw minor-unit amount for `BY_AMOUNT`, the share value ×100 for the rest.
+        /// Whoever appears here is who the expense was paid for, so `paidFor` is not needed too.
+        shares: [String: Int]? = nil,
+        notes: String? = nil
     ) async throws {
         let payer = try require(group.participants[paidBy], "unknown participant \(paidBy)")
-        let beneficiaries = (paidFor ?? Array(group.participants.keys)).compactMap {
-            group.participants[$0]
-        }
         let date = Calendar(identifier: .gregorian).date(
             byAdding: .day, value: -daysAgo, to: Date()
         ) ?? Date()
 
+        let split: [[String: Any]]
+        if let shares {
+            split = try shares.map { name, value in
+                let id = try require(group.participants[name], "unknown participant \(name)")
+                return ["participant": id, "shares": value]
+            }
+        } else {
+            split = (paidFor ?? Array(group.participants.keys))
+                .compactMap { group.participants[$0] }
+                .map { ["participant": $0, "shares": 100] }
+        }
+
+        var values: [String: Any] = [
+            "title": title,
+            "expenseDate": ISO8601DateFormatter().string(from: date),
+            "amount": amount,
+            "category": category,
+            "paidBy": payer,
+            "paidFor": split,
+            "splitMode": splitMode,
+            "saveDefaultSplittingOptions": false,
+            "isReimbursement": isReimbursement,
+            "documents": [],
+            "recurrenceRule": "NONE",
+        ]
+        if let notes { values["notes"] = notes }
+
         _ = try await mutate(
             "groups.expenses.create",
-            [
-                "groupId": group.id,
-                "expenseFormValues": [
-                    "title": title,
-                    "expenseDate": ISO8601DateFormatter().string(from: date),
-                    "amount": amount,
-                    "category": category,
-                    "paidBy": payer,
-                    "paidFor": beneficiaries.map { ["participant": $0, "shares": 100] },
-                    "splitMode": "EVENLY",
-                    "saveDefaultSplittingOptions": false,
-                    "isReimbursement": isReimbursement,
-                    "documents": [],
-                    "recurrenceRule": "NONE",
-                ],
-            ]
+            ["groupId": group.id, "expenseFormValues": values]
         )
     }
 
     /// The JSON the app would store for these groups, for `-uiTestRecentGroups`.
     static func recentGroupsJSON(_ groups: [(id: String, name: String)]) -> String {
-        let payload = groups.map { ["groupId": $0.id, "groupName": $0.name] }
+        recentGroupsJSON(
+            organised: groups.map {
+                (id: $0.id, name: $0.name, isStarred: false, isArchived: false)
+            }
+        )
+    }
+
+    /// The same, for a list that has already been organised. Named rather than overloaded: the
+    /// two tuple types differ only in their labels, and the compiler cannot tell them apart.
+    static func recentGroupsJSON(
+        organised groups: [(id: String, name: String, isStarred: Bool, isArchived: Bool)]
+    ) -> String {
+        let payload = groups.map {
+            [
+                "groupId": $0.id,
+                "groupName": $0.name,
+                "isStarred": $0.isStarred,
+                "isArchived": $0.isArchived,
+            ] as [String: Any]
+        }
         let data = try! JSONSerialization.data(withJSONObject: payload)
         return String(decoding: data, as: UTF8.self)
     }

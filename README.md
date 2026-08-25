@@ -160,6 +160,26 @@ every language, silently. The check diffs the catalogues against the strings the
 actually extracted and fails on anything missing, stale or untranslated; CI runs it on every
 push.
 
+## The App Store listing
+
+Everything App Store Connect asks for lives in
+[`Docs/app-store/metadata.md`](Docs/app-store/metadata.md) — the copy in both languages, the
+review notes, the App Privacy answers, and what is still outstanding before a build can be
+submitted.
+
+The screenshots beside it are generated, not taken by hand:
+
+```sh
+make screenshots                              # both languages, iPhone and iPad, ~6 min
+Scripts/screenshots.sh --languages fr         # or one of them
+```
+
+It drives `SpliitUITests/ScreenshotTests` against the throwaway instance, once per language,
+with `-testLanguage` — so the demo group is called "Weekend in Lisbon" in one run and
+"Week-end à Lisbonne" in the next, and the interface agrees with it. The simulator is pinned to
+9:41 and light appearance, and the run fails if a picture comes out at a size App Store Connect
+would reject. `make e2e` skips that suite; it is not a test.
+
 ## Migrating from the React Native app
 
 The old app stored two keys — `recent-groups` and `spliit-settings` — through AsyncStorage, in

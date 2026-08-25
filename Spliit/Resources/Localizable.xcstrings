@@ -722,7 +722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Également"
+            "value": "Équitable"
           }
         }
       }
@@ -1132,7 +1132,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pourcent"
+            "value": "%"
           }
         }
       }

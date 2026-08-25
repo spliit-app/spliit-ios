@@ -7,6 +7,7 @@
 #   make e2e          run the end-to-end suite against the shared server
 #   make run          install and launch the app on this worktree's simulator
 #   make shot         screenshot that simulator
+#   make screenshots  regenerate the App Store screenshots, in every language
 #   make testflight   archive, export and upload a build to TestFlight
 #
 # Several worktrees can run all of this at once. Two things make that work: each worktree
@@ -29,6 +30,11 @@ SIM_NAME  ?= Spliit $(notdir $(CURDIR))
 # several worktrees are running at once, because each run boots WORKERS clones of its own.
 WORKERS   ?= 3
 PARALLEL  := -parallel-testing-enabled YES -maximum-parallel-testing-workers $(WORKERS)
+
+# `ScreenshotTests` is in the UI test bundle but is not a test: it photographs the app for the
+# App Store listing, and it asserts nothing a suite would miss. `make screenshots` runs it, on a
+# device of its own with a pinned clock; every other run leaves it alone.
+SKIP_SCREENSHOTS := -skip-testing:SpliitUITests/ScreenshotTests
 SCHEME    := Spliit
 PROJECT   := Spliit.xcodeproj
 E2E_URL   ?= http://localhost:3009/
@@ -49,7 +55,7 @@ ASC_KEY_ID    ?= 3NJ328MR4F
 ASC_ISSUER_ID ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures run shot sim sim-clean clean lint archive ipa testflight
+.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots run shot sim sim-clean clean lint archive ipa testflight
 
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -131,9 +137,13 @@ e2e: $(PROJECT) sim ## Full end-to-end run: the UI suite against the shared serv
 		-derivedDataPath $(DERIVED) \
 		$(UNSIGNED) \
 		$(PARALLEL) \
+		$(SKIP_SCREENSHOTS) \
 		-test-timeouts-enabled YES \
 		-maximum-test-execution-time-allowance 180 \
 		-quiet
+
+screenshots: $(PROJECT) ## Regenerate the App Store screenshots, in every language
+	@Scripts/screenshots.sh
 
 build-device: $(PROJECT) ## Build a signed build for a physical device
 	@xcodebuild build \

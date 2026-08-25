@@ -38,6 +38,7 @@ make device       # build signed, install and launch on a connected iPhone
 make shot         # screenshot this worktree's simulator
 make sim-clean    # delete this worktree's simulator, and any leftover clones
 make fixtures     # re-record the API fixtures the unit tests decode
+make screenshots  # regenerate the App Store screenshots, in both languages
 make testflight   # archive, export and upload a build to TestFlight
 ```
 

@@ -8,6 +8,7 @@
 #   make run          install and launch the app on this worktree's simulator
 #   make shot         screenshot that simulator
 #   make screenshots  regenerate the App Store screenshots, in every language
+#   make testflight   archive, export and upload a build to TestFlight
 #
 # Several worktrees can run all of this at once. Two things make that work: each worktree
 # drives a simulator of its own (below), and the server is a shared, long-lived resource that
@@ -41,8 +42,20 @@ DESTINATION := platform=iOS Simulator,name=$(SIM_NAME)
 BUNDLE_ID := app.spliit.spliitmobile
 DERIVED   := build
 
+# Release. The archive and the .ipa are separate steps so a rejected upload can be retried
+# without rebuilding — an archive is minutes, an upload is seconds.
+ARCHIVE   := $(DERIVED)/Spliit.xcarchive
+EXPORT    := $(DERIVED)/export
+IPA       := $(EXPORT)/Spliit.ipa
+
+# The App Store Connect API key. altool finds the .p8 itself, by key ID, in
+# ~/.appstoreconnect/private_keys — the issuer is the half that can't be derived from it, so
+# it comes from the environment: export ASC_ISSUER_ID, or pass it on the command line.
+ASC_KEY_ID    ?= 3NJ328MR4F
+ASC_ISSUER_ID ?=
+
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots run shot sim sim-clean clean lint
+.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots run shot sim sim-clean clean lint archive ipa testflight
 
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -139,6 +152,42 @@ build-device: $(PROJECT) ## Build a signed build for a physical device
 		-derivedDataPath $(DERIVED) \
 		-allowProvisioningUpdates \
 		-quiet
+
+# Release config, unlike every other build here, and signed for distribution. The build number
+# comes from project.yml and must exceed everything App Store Connect has already seen — it
+# rejects a duplicate outright, after the upload rather than before it.
+archive: $(PROJECT) ## Build a signed App Store archive
+	@xcodebuild archive \
+		-project $(PROJECT) -scheme $(SCHEME) \
+		-destination 'generic/platform=iOS' \
+		-archivePath $(ARCHIVE) \
+		-allowProvisioningUpdates \
+		-quiet
+	@echo "Archived $$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleShortVersionString' $(ARCHIVE)/Info.plist)" \
+		"($$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleVersion' $(ARCHIVE)/Info.plist)) to $(ARCHIVE)."
+
+ipa: archive ## Export that archive as an App Store .ipa
+	@rm -rf $(EXPORT)
+	@xcodebuild -exportArchive \
+		-archivePath $(ARCHIVE) \
+		-exportOptionsPlist ExportOptions.plist \
+		-exportPath $(EXPORT) \
+		-allowProvisioningUpdates \
+		-quiet
+	@echo "$(IPA)"
+
+# The credential check comes before the build rather than after it, so a missing issuer costs
+# a second instead of the minutes an archive takes.
+testflight: ## Upload it to TestFlight (needs ASC_ISSUER_ID)
+	@test -n "$(ASC_ISSUER_ID)" || { \
+		echo "ASC_ISSUER_ID is not set — it's the Issuer ID shown above the key list at"; \
+		echo "https://appstoreconnect.apple.com/access/integrations/api, and pairs with"; \
+		echo "key $(ASC_KEY_ID). Re-run as: make testflight ASC_ISSUER_ID=<uuid>"; \
+		exit 1; }
+	@$(MAKE) ipa
+	@xcrun altool --upload-app --type ios --file "$(IPA)" \
+		--apiKey $(ASC_KEY_ID) --apiIssuer $(ASC_ISSUER_ID)
+	@echo "Uploaded. App Store Connect takes a few minutes to finish processing the build."
 
 device: build-device ## Install and launch on a connected iPhone
 	@xcrun devicectl device install app --device "$(DEVICE)" \

@@ -383,10 +383,8 @@ follows the decision about where the page lives, so it is not drafted here.
 ## 8. Before you submit
 
 - [ ] Publish a privacy policy and put its URL in App Store Connect (§7)
-- [ ] File the three App Privacy answers in §6. The manifest already declares them, so this is
-      filling in the questionnaire to match — not a decision. **This is the change that needs a
-      new build:** `PrivacyInfo.xcprivacy` ships inside the binary, so whatever is uploaded must
-      be built after it
+- [ ] File the three App Privacy answers in §6. The manifest declares them and build 22 carries
+      it, so this is filling in the questionnaire to match — not a decision
 - [ ] Look at the iPad screenshots. SwiftUI does adapt: the tabs become a pill in the navigation
       bar and the rows go full width, so it is a real iPad layout rather than a blown-up phone.
       But nothing has been *designed* for the size — the roadmap defers that to M4 — and it
@@ -395,8 +393,10 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [ ] Confirm the build number exceeds 20 — `project.yml` says 21. If build 21 has *already*
-      been uploaded, the privacy-manifest change needs 22: a build number cannot be reused
+- [x] ~~Upload a build.~~ **2.0.0 (22) is uploaded** — with the privacy manifest, the French
+      split-mode fix and the orientations that got 21 refused. 21 is spent: a build number is
+      consumed by the attempt, not by the acceptance. Apple mails you if processing fails after
+      an upload that reported success
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0
 - [ ] Serve `apple-app-site-association` from spliit.app if Universal Links should work on day
       one ([Docs/universal-links.md](../universal-links.md))

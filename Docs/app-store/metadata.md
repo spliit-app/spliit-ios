@@ -15,11 +15,10 @@ they are checked, not estimated.
 - **Minimum iOS**: 26.0. Everyone below it keeps 1.2.0 through the App Store's
   last-compatible-version fallback; their data is untouched.
 
-> **What is not in this file, because it needs a decision rather than a paragraph:** the privacy
-> policy URL, which does not exist yet and without which App Store Connect will not take a
-> submission (§7); the App Privacy answer for group data (§6); and two judgement calls about
-> what the screenshots show (§8). Each is written up where it belongs, and §8 is the list to
-> work through.
+> **The one thing that blocks a submission outright:** there is no privacy policy page to link
+> to, and App Store Connect will not take a submission without the URL. A draft ready to host is
+> in §7. Everything else outstanding is a judgement call rather than a blocker — §8 is the list
+> to work through.
 
 ---
 
@@ -281,29 +280,49 @@ over it; the link simply opens the website instead of the app until that file is
 
 ## 6. App Privacy
 
-Two answers, and the second one is a decision rather than a fact.
+Three answers. File exactly these, because they are what
+[`Spliit/PrivacyInfo.xcprivacy`](../../Spliit/PrivacyInfo.xcprivacy) now declares, and the
+questionnaire and the manifest are supposed to be two statements of the same fact.
 
-**Product Interaction → Analytics. Not linked to identity. Not used for tracking.** The app
-reports screen views and two events to Plausible, which is cookieless and stores no per-person
-identifier. Nothing is sent from debug builds or under UI tests. This is already declared in
-`Spliit/PrivacyInfo.xcprivacy`.
+| Questionnaire section | Data type | Used for | Linked to identity | Tracking |
+|---|---|---|---|---|
+| Contact Info | Name | App Functionality | No | No |
+| User Content | Other User Content | App Functionality | No | No |
+| Usage Data | Product Interaction | Analytics | No | No |
 
-**Other Data — group names, participant names, expense titles and amounts.** These are typed by
-the user and stored on the Spliit server. Against the public instance that server is operated by
-the developer, and under Apple's definitions data your server receives is data you *collect*,
-even with no account attached to it. The honest answer is therefore:
+**Why group data is "collected" at all.** Apple counts data as collected once it leaves the
+device and is kept longer than the request needs — which a group is, because the whole point of
+a group is that it is still there tomorrow for everyone holding the link. Against the public
+instance the server keeping it is the developer's, so it is declared, account or no account.
 
-> **Other Data → App Functionality. Not linked to identity** (there are no accounts to link it
-> to) **. Not used for tracking.**
+**Name** is the participant names, typed by whoever set the group up. They are labels on a split
+rather than contact details — the app has no address book access, and asks for no email or
+phone number anywhere — but a first name is a first name, and it is better declared than
+explained away.
 
-`PrivacyInfo.xcprivacy` does not declare this today — it lists Product Interaction and nothing
-else. If the answers above are the ones filed, the manifest should say the same thing, or the
-listing and the binary disagree. **That is a code change nobody has made yet, and it is a
-decision to take before submitting, not after.**
+**Other User Content** is the group's own name and information note, and the title, notes and
+amount of every expense. Deliberately *not* filed as financial information: Apple means salary,
+assets and debts by that, and putting "Financial Info" on the privacy label for what a dinner
+cost would say something untrue about the app.
+
+**Nothing is linked to identity**, in all three cases, because there is nothing to link it to.
+Spliit has no accounts, no user identifier, and no way to list the groups a person belongs to —
+a group is reachable by its link and by nothing else.
+
+**Product Interaction** is the Plausible screen views and the two events (a group created, an
+expense created). Plausible is cookieless and stores no per-person identifier, and nothing is
+sent from debug builds or under UI tests.
 
 Everything else is a clean no: no tracking, no advertising identifier, no data brokers, no data
-shared with third parties, no contact information, no location, no identifiers, no health,
-financial-account or purchase data. The app asks for no system permissions at all.
+shared with third parties, no email address or phone number, no location, no identifiers, no
+health, financial-account or purchase data. The app asks for no system permissions at all — it
+shows no permission prompt of any kind.
+
+**Required-reason APIs.** One: `UserDefaults`, under `CA92.1` — read and write only this app's
+own data, never another app's. That is `SettingsStore` keeping the instance address. The app
+touches none of the other required-reason categories (file timestamps, disk space, boot time,
+active keyboards), which is worth knowing because an undeclared one is rejected on **upload**,
+by an automated mail, rather than at review.
 
 ---
 
@@ -356,7 +375,10 @@ follows the decision about where the page lives, so it is not drafted here.
 ## 8. Before you submit
 
 - [ ] Publish a privacy policy and put its URL in App Store Connect (§7)
-- [ ] Decide the App Privacy answer for group data, and make `PrivacyInfo.xcprivacy` agree (§6)
+- [ ] File the three App Privacy answers in §6. The manifest already declares them, so this is
+      filling in the questionnaire to match — not a decision. **This is the change that needs a
+      new build:** `PrivacyInfo.xcprivacy` ships inside the binary, so whatever is uploaded must
+      be built after it
 - [ ] Look at the iPad screenshots. SwiftUI does adapt: the tabs become a pill in the navigation
       bar and the rows go full width, so it is a real iPad layout rather than a blown-up phone.
       But nothing has been *designed* for the size — the roadmap defers that to M4 — and it
@@ -370,7 +392,8 @@ follows the decision about where the page lives, so it is not drafted here.
       "Montant" it reads as *also* rather than *equally* — "Égal" or "Équitable" would fit the
       segment and say the thing. It is one string in `Localizable.xcstrings`, and it belongs to
       the French pass rather than to this change, so nothing here touched it
-- [ ] Confirm the build number exceeds 20 — `project.yml` says 21
+- [ ] Confirm the build number exceeds 20 — `project.yml` says 21. If build 21 has *already*
+      been uploaded, the privacy-manifest change needs 22: a build number cannot be reused
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0
 - [ ] Serve `apple-app-site-association` from spliit.app if Universal Links should work on day
       one ([Docs/universal-links.md](../universal-links.md))

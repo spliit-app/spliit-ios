@@ -9,8 +9,51 @@
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 
+	<!-- What leaves the device. Apple counts data as *collected* once it is transmitted off
+	     the device and kept for longer than the request needs — which a group is, because the
+	     whole point of a group is that it is still there tomorrow, for everyone holding the
+	     link. Against the public instance the server storing it is the developer's, so it is
+	     declared here even though no account is attached to any of it.
+
+	     Everything below is `Linked` = false, because there is nothing to link it to: Spliit
+	     has no accounts, no user identifier, and no way to list the groups a person belongs
+	     to. It is reachable by its link and by nothing else. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
+		<!-- Participant names, typed by whoever set the group up. They are labels on a
+		     split rather than contact details — there is no address book access, no email
+		     and no phone number anywhere in the app — but a first name is a first name, so
+		     it is declared as one rather than folded into the catch-all below. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!-- The group itself: its name, its information note, and the title, notes and amount
+		     of every expense in it. Deliberately *not* declared as financial information —
+		     Apple means salary, assets and debts by that, and putting "Financial Info" on the
+		     privacy label for what a dinner cost would say something untrue about the app. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
 		<!-- Plausible screen views and two events (a group created, an expense created).
 		     Plausible is cookieless and stores no per-person identifier, so this is not
 		     linked to identity and is not used for tracking. -->

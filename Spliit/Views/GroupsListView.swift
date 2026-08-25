@@ -334,9 +334,12 @@ private struct GroupRow: View {
         .padding(.vertical, 4)
     }
 
+    /// Localised, and pluralised by the catalogue rather than by a ternary here: the two forms
+    /// English needs are not the two forms every language needs, and French already disagrees —
+    /// it counts zero as singular.
     private var participantText: String {
         guard let count = summary?.participantCount else { return "…" }
-        return count == 1 ? "1 participant" : "\(count) participants"
+        return String(localized: "\(count) participants")
     }
 }
 

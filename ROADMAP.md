@@ -29,7 +29,7 @@ but no split-view design work until M4), offline-first sync.
 | Backend contract | Hand-written tRPC client over URLSession | No changes needed in the web repo; works against `spliit.app` and every self-hosted instance today. Models must be kept in sync by hand. |
 | E2E harness | XCUITest against a real local backend | Faithful, first-party, no runtime deps. Needs Postgres + the Next.js app running in CI. |
 | Minimum iOS | **iOS 26** | Full access to Liquid Glass, the newest SwiftUI, Swift 6.2 concurrency defaults, on-device Foundation Models and Vision document recognition. Users below iOS 26 keep receiving 1.1.0 via the App Store's last-compatible-version fallback — their data is untouched and they are not broken, just not updated. |
-| Localization | String Catalog from the first commit, English-only until M3 | No large retrofit later; importing the web's 35 locales becomes mechanical. |
+| Localization | String Catalog from the first commit; English and French | No large retrofit later; importing the rest of the web's 35 locales is a catalogue edit and nothing else. |
 
 ---
 
@@ -153,7 +153,9 @@ fast, CI simple, and the App Store review surface small.
   `.tabBarMinimizeBehavior(.onScrollDown)`; it grows naturally into the web's
   six tabs later
 - Sheets for create/edit expense, group settings, about
-- `.navigationTransition(.zoom(sourceID:in:))` from a group row into the group
+- ~~`.navigationTransition(.zoom(sourceID:in:))` from a group row into the
+  group~~ — built, then taken back out: it read as showy next to a push, which
+  is the movement iOS uses to say "deeper in". See [DESIGN.md](DESIGN.md) §6
 
 **Persistence:**
 
@@ -163,8 +165,11 @@ fast, CI simple, and the App Store review surface small.
   via a launch argument
 
 **Design language:** brand `#059669` as the accent (secondary `#be185d`),
-system materials everywhere else, `ContentUnavailableView` for empty states,
-`Charts` for the balances view instead of the hand-rolled bars.
+system materials everywhere else. Three of the specifics guessed at here did not
+survive contact: empty states are the app's own `EmptyState` rather than
+`ContentUnavailableView`, the balances view keeps its hand-rolled bars rather
+than adopting `Charts`, and `.green`/`.red` gave way to a branded money axis.
+What shipped is described in [DESIGN.md](DESIGN.md).
 
 ---
 
@@ -441,7 +446,8 @@ Ordered by value to a phone user, not by web-app order.
 - Recurring expenses (`NONE` / `DAILY` / `WEEKLY` / `MONTHLY`)
 
 **Wave 4 — localization**
-- Import the web repo's `messages/*.json` into the String Catalog
+- French shipped; import the rest of the web repo's `messages/*.json` into the
+  String Catalogs. `make strings` names what each new language still owes
 - RTL layout pass (the web app supports Arabic and Hebrew)
 
 ### M4 — Beyond the web · size TBD
@@ -490,7 +496,8 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Expense documents | ➖ | ✅ | M3.3 |
 | Receipt scanning | ➖ | ✅ | M3.3 |
 | Recurring expenses | ➖ | ✅ | M3.3 |
-| 35 locales | ➖ | ✅ | M3.4 |
+| French | ➖ | ✅ | ✅ |
+| The other 34 locales | ➖ | ✅ | M3.4 |
 | Delete a group | ➖ | ➖ | — (no API) |
 
 ---

@@ -23,6 +23,12 @@ settings:
     DEAD_CODE_STRIPPING: YES
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
     CLANG_ENABLE_MODULES: YES
+    # Xcode turns this on for you when you add a string catalog through the UI, which is a
+    # thing that never happens here. Without it the compiler emits no .stringsdata, nothing
+    # knows which strings the source actually contains, and the catalogue quietly stops
+    # growing — it had 21 of 166 keys before anyone noticed. `make strings` reads what this
+    # emits.
+    SWIFT_EMIT_LOC_STRINGS: YES
 
 targets:
   Spliit:

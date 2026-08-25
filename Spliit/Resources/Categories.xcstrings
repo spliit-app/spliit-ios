@@ -1,0 +1,512 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Bicycle": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bicyclette"
+          }
+        }
+      }
+    },
+    "Bus/Train": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus/Train"
+          }
+        }
+      }
+    },
+    "Car": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voiture"
+          }
+        }
+      }
+    },
+    "Childcare": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garde d’enfants"
+          }
+        }
+      }
+    },
+    "Cleaning": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nettoyage"
+          }
+        }
+      }
+    },
+    "Clothing": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vêtements"
+          }
+        }
+      }
+    },
+    "Dining Out": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repas au restaurant"
+          }
+        }
+      }
+    },
+    "Donation": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don"
+          }
+        }
+      }
+    },
+    "Education": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éducation"
+          }
+        }
+      }
+    },
+    "Electricity": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Électricité"
+          }
+        }
+      }
+    },
+    "Electronics": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Électronique"
+          }
+        }
+      }
+    },
+    "Entertainment": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Divertissement"
+          }
+        }
+      }
+    },
+    "Food and Drink": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nourriture et boissons"
+          }
+        }
+      }
+    },
+    "Furniture": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mobilier"
+          }
+        }
+      }
+    },
+    "Games": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeux"
+          }
+        }
+      }
+    },
+    "Gas/Fuel": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essence/Carburant"
+          }
+        }
+      }
+    },
+    "General": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Général"
+          }
+        }
+      }
+    },
+    "Gifts": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cadeaux"
+          }
+        }
+      }
+    },
+    "Groceries": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Épicerie"
+          }
+        }
+      }
+    },
+    "Heat/Gas": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chauffage/Gaz"
+          }
+        }
+      }
+    },
+    "Home": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maison"
+          }
+        }
+      }
+    },
+    "Hotel": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôtel"
+          }
+        }
+      }
+    },
+    "Household Supplies": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fournitures ménagères"
+          }
+        }
+      }
+    },
+    "Insurance": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assurance"
+          }
+        }
+      }
+    },
+    "Life": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vie"
+          }
+        }
+      }
+    },
+    "Liquor": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcool"
+          }
+        }
+      }
+    },
+    "Maintenance": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entretien"
+          }
+        }
+      }
+    },
+    "Medical Expenses": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dépenses médicales"
+          }
+        }
+      }
+    },
+    "Mortgage": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hypothèque"
+          }
+        }
+      }
+    },
+    "Movies": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Films"
+          }
+        }
+      }
+    },
+    "Music": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Musique"
+          }
+        }
+      }
+    },
+    "Parking": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parking"
+          }
+        }
+      }
+    },
+    "Payment": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paiement"
+          }
+        }
+      }
+    },
+    "Pets": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Animaux"
+          }
+        }
+      }
+    },
+    "Plane": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avion"
+          }
+        }
+      }
+    },
+    "Rent": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loyer"
+          }
+        }
+      }
+    },
+    "Services": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Services"
+          }
+        }
+      }
+    },
+    "Sports": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sport"
+          }
+        }
+      }
+    },
+    "TV/Phone/Internet": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TV/Téléphone/Internet"
+          }
+        }
+      }
+    },
+    "Taxes": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impôts"
+          }
+        }
+      }
+    },
+    "Taxi": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taxi"
+          }
+        }
+      }
+    },
+    "Transportation": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport"
+          }
+        }
+      }
+    },
+    "Trash": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poubelle"
+          }
+        }
+      }
+    },
+    "Uncategorized": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non classé"
+          }
+        }
+      }
+    },
+    "Utilities": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Services publics"
+          }
+        }
+      }
+    },
+    "Water": {
+      "comment": "An expense category, as the server names it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eau"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

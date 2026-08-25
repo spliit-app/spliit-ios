@@ -249,6 +249,14 @@ on iPad the date is right there.
 `make e2e` skips `ScreenshotTests`, and so does CI: it is not a test, and it would cost a minute
 on every pull request to assert nothing.
 
+**One thing the screenshots settled.** The split-mode segments read "Équitable / Parts / % /
+Montant" in French, and two of those words were changed to get there. "Également" is the adverb
+*also*; it is what the web app uses and it works there, because its dropdown spells the options
+out in full and "Également" stands against "Inégalement – Par parts". Alone in a segmented
+control the contrast is gone. And "Pourcent" is not a French word — but "Pourcentage" truncates
+to "Pourcent…" on a 375pt iPhone, which is worse than what it replaced, so the segment carries
+the symbol the share fields already use.
+
 What changes between two runs: the demo groups are created fresh and the server assigns new IDs,
 and a monogram's colour is seeded from the ID — so the coloured circles differ from one run to
 the next. Within a run they agree, which is what matters, and everything else is fixed. Two
@@ -387,11 +395,6 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [ ] Decide whether **"Également"** is the word for the *Evenly* split mode. It is in
-      `03-split` in both French sets, so the listing ships it. Beside "Parts", "Pourcent" and
-      "Montant" it reads as *also* rather than *equally* — "Égal" or "Équitable" would fit the
-      segment and say the thing. It is one string in `Localizable.xcstrings`, and it belongs to
-      the French pass rather than to this change, so nothing here touched it
 - [ ] Confirm the build number exceeds 20 — `project.yml` says 21. If build 21 has *already*
       been uploaded, the privacy-manifest change needs 22: a build number cannot be reused
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0

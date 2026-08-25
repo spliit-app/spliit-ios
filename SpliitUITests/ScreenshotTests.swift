@@ -76,9 +76,19 @@ final class ScreenshotTests: SpliitUITestCase {
             content.hero.expenses.first { $0.title == content.showcaseExpense },
             "The showcase expense should be one of the seeded ones."
         )
-        let sharer = try XCTUnwrap(
-            showcase.shares?.keys.first.flatMap { hero.group.participants[$0] },
+        XCTAssertNotNil(
+            showcase.shares,
             "The showcase expense is the one with named shares — that is what it is for."
+        )
+
+        // The *last* participant, so scrolling stops with the whole split list on screen rather
+        // than with the first row of it. Asking `shares` for a participant would not do: it is a
+        // dictionary, so it hands back an arbitrary one, and the shot ends up framed differently
+        // from run to run — which is how the French iPad screenshot came to show one name where
+        // the English one showed four.
+        let lastSharer = try XCTUnwrap(
+            content.hero.participants.last.flatMap { hero.group.participants[$0] },
+            "The hero group should have participants."
         )
 
         app.staticTexts[content.showcaseExpense].tap()
@@ -88,7 +98,7 @@ final class ScreenshotTests: SpliitUITestCase {
         )
         try await scroll(
             app,
-            until: app.textFields[AccessibilityID.ExpenseForm.participantValue(sharer)]
+            until: app.textFields[AccessibilityID.ExpenseForm.participantValue(lastSharer)]
         )
         try await photograph("03-split")
         app.buttons[AccessibilityID.ExpenseForm.cancelButton].tap()

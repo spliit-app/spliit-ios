@@ -196,10 +196,30 @@ struct ExpenseFormView: View {
                 }
             }
         } header: {
-            Text("Paid for")
+            HStack {
+                Text("Paid for")
+                Spacer()
+                selectAllButton(form)
+            }
         } footer: {
             splitFooter(form.wrappedValue)
         }
+    }
+
+    /// One control rather than two: with everyone already in the split, "select all" has nothing
+    /// left to do, which is how the web app words it too.
+    private func selectAllButton(_ form: Binding<ExpenseFormDraft>) -> some View {
+        let allIncluded = form.wrappedValue.allParticipantsIncluded
+        return Button(allIncluded ? "Select none" : "Select all") {
+            form.wrappedValue.setAllParticipantsIncluded(!allIncluded)
+        }
+        // A control sitting in a section header inherits the muted header font, which reads as
+        // one more caption rather than as something to tap. Plain, so it stays flat text beside
+        // the heading instead of growing a button's own background.
+        .buttonStyle(.plain)
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(Color.accentColor)
+        .accessibilityIdentifier(AccessibilityID.ExpenseForm.selectAllButton)
     }
 
     private func splitModePicker(_ form: Binding<ExpenseFormDraft>) -> some View {

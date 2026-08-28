@@ -444,7 +444,13 @@ Ordered by value to a phone user, not by web-app order.
   you" was written on that pair and was false. The real figures are `groups.stats.get`'s
   `totalParticipantSpendings` and `totalParticipantShare`, which the stats tab below brings in;
   the section footer on that screen claimed the same wrong thing and has been corrected too
-- Select all / none in the paid-for list, and saved default splitting options
+- ~~Select all / none in the paid-for list~~ — **done**. One control in the "Paid for"
+  header rather than two, because with everyone already in the split "select all" has
+  nothing left to offer. It flips the `isIncluded` flags and touches nothing else, so the
+  rows never leave the draft and a share typed before an accidental "select none" comes
+  back with its owner — the web app rebuilds the list instead, and gives anyone re-added a
+  share of 1
+- Saved default splitting options
 - ~~Starred and archived groups on the home screen~~ — **done**. Both flags live on
   the group in `recent-groups.json` rather than in two lists of IDs the way the web
   app keeps them: one file, one write, and no way to end up starring a group the
@@ -525,7 +531,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Currency code + picker | ➖ | ✅ | ✅ M3.1 |
 | Multi-currency expenses | ➖ | ✅ | M3.1 |
 | Active user / personal balance | ➖ | ✅ | ✅ M3.1 |
-| Select all-or-none participants | ➖ | ✅ | M3.1 |
+| Select all-or-none participants | ➖ | ✅ | ✅ M3.1 |
 | Default splitting options | ➖ | ✅ | M3.1 |
 | Starred / archived groups | ➖ | ✅ | ✅ M3.1 |
 | Group information tab | ➖ | ✅ | ✅ M3.2 |

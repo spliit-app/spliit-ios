@@ -76,6 +76,54 @@ final class ExpenseTests: SpliitUITestCase {
         assertExists(app.staticTexts["Taxi"], "A balanced split should save.")
     }
 
+    /// One control that flips the whole paid-for list, for the group where an expense covers
+    /// nearly nobody and unchecking everyone by hand is the slow way round.
+    @MainActor
+    func testSelectAllAndNoneFlipTheWholePaidForList() async throws {
+        let group = try await api.createGroup(
+            name: "Select test", participants: ["Ana", "Bruno", "Chloé"]
+        )
+        let app = launchApp(
+            recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Select test")])
+        )
+
+        app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
+        app.buttons[AccessibilityID.ExpenseList.emptyAddButton].tap()
+        replaceText(in: app.textFields[AccessibilityID.ExpenseForm.titleField], with: "Groceries")
+        replaceText(in: app.textFields[AccessibilityID.ExpenseForm.amountField], with: "30.00")
+
+        let selectAll = app.buttons[AccessibilityID.ExpenseForm.selectAllButton]
+        for _ in 0..<10 where !selectAll.isHittable { app.swipeUp() }
+        XCTAssertTrue(selectAll.isHittable, "The paid-for header should offer a select control.")
+
+        // A new expense starts with everyone in it, so the only thing left to offer is the way out.
+        XCTAssertEqual(selectAll.label.lowercased(), "select none")
+
+        let ana = try XCTUnwrap(group.participants["Ana"])
+        let anaCheckbox = app.descendants(matching: .any)[
+            AccessibilityID.ExpenseForm.participantToggle(ana)
+        ]
+        XCTAssertEqual(anaCheckbox.value as? String, "1", "Everyone starts in the split.")
+
+        selectAll.tap()
+        XCTAssertEqual(anaCheckbox.value as? String, "0", "Select none should clear the list.")
+        XCTAssertEqual(selectAll.label.lowercased(), "select all")
+
+        // An expense paid for nobody is not one the server would take either.
+        app.buttons[AccessibilityID.ExpenseForm.saveButton].tap()
+        assertExists(
+            app.staticTexts[AccessibilityID.ExpenseForm.error],
+            "An expense with nobody in the split should be refused."
+        )
+
+        for _ in 0..<10 where !selectAll.isHittable { app.swipeUp() }
+        selectAll.tap()
+        XCTAssertEqual(anaCheckbox.value as? String, "1", "Select all should bring everyone back.")
+
+        app.buttons[AccessibilityID.ExpenseForm.saveButton].tap()
+        assertExists(app.staticTexts["Groceries"], "The restored split should save.")
+    }
+
     @MainActor
     func testEditAnExpense() async throws {
         let group = try await api.createGroup(name: "Edits", participants: ["Ana", "Bruno"])

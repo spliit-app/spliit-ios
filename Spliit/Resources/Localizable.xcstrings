@@ -1287,6 +1287,26 @@
         }
       }
     },
+    "Select all": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout sélectionner"
+          }
+        }
+      }
+    },
+    "Select none": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout désélectionner"
+          }
+        }
+      }
+    },
     "Server": {
       "localizations": {
         "fr": {

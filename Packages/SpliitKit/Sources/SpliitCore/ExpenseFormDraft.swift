@@ -180,6 +180,22 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         participants.filter(\.isIncluded)
     }
 
+    /// Whether the split covers the whole group, which is what decides whether the paid-for list
+    /// offers to select all or to select none.
+    public var allParticipantsIncluded: Bool {
+        !participants.isEmpty && participants.allSatisfy(\.isIncluded)
+    }
+
+    /// Puts the whole group in the split, or takes it all out — whichever the selection isn't.
+    ///
+    /// Everyone keeps the share they were last given, since the rows stay in `participants`
+    /// either way: a value typed before an unintended "select none" comes back with its owner.
+    public mutating func setAllParticipantsIncluded(_ isIncluded: Bool) {
+        for index in participants.indices {
+            participants[index].isIncluded = isIncluded
+        }
+    }
+
     /// What each included participant's `shares` field should be sent as.
     ///
     /// The server stores this verbatim, and its meaning changes with the split mode: a share

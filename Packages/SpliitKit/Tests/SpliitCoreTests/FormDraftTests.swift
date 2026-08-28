@@ -333,6 +333,44 @@ struct ExpenseFormDraftTests {
         #expect(form.isValid)
     }
 
+    @Test("A blank expense already covers the whole group")
+    func reportsEveryoneIncluded() {
+        #expect(draft().allParticipantsIncluded)
+        #expect(!draft(included: ["ana", "bruno"]).allParticipantsIncluded)
+        #expect(!draft(included: []).allParticipantsIncluded)
+    }
+
+    @Test("Selecting all puts everyone in the split, selecting none empties it")
+    func selectsAllOrNone() {
+        var form = draft(included: ["ana"])
+
+        form.setAllParticipantsIncluded(true)
+        #expect(form.includedParticipants.map(\.id) == ["ana", "bruno", "chloe"])
+        #expect(form.allParticipantsIncluded)
+
+        form.setAllParticipantsIncluded(false)
+        #expect(form.includedParticipants.isEmpty)
+        #expect(!form.allParticipantsIncluded)
+        #expect(form.problems.contains(.noParticipantsSelected))
+    }
+
+    /// The rows never leave the draft, so the numbers survive the round trip — unlike the web
+    /// app, which rebuilds the list and gives anyone re-added a share of 1.
+    @Test("Deselecting everyone and back again keeps the shares that were typed")
+    func keepsSharesAcrossSelectAll() throws {
+        var form = draft(
+            amount: "30.00",
+            splitMode: .byAmount,
+            values: ["ana": "5.00", "bruno": "10.00", "chloe": "15.00"]
+        )
+
+        form.setAllParticipantsIncluded(false)
+        form.setAllParticipantsIncluded(true)
+
+        let values = try #require(form.formValues)
+        #expect(values.paidFor.map(\.shares) == [500, 1000, 1500])
+    }
+
     @Test("A share of zero or less is rejected")
     func rejectsNonPositiveShares() {
         let form = draft(splitMode: .byShares, values: ["ana": "0", "bruno": "1", "chloe": "1"])

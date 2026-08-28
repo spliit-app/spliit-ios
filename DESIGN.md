@@ -92,8 +92,11 @@ Money(value: formatter.string(minorUnits: balance.total),
 | `.row` | `.body` | A list row. The default. |
 | `.support` | `.footnote` | An inline aside. |
 
-`.hero` is what the balances tab leads with: your own balance, once you have said which
-participant you are. `.support` is still spare, and stays because the scale is the point —
+`.hero` is what the balances tab leads with — your own balance, once you have said which
+participant you are — and what the totals tab leads with, where the group's own spending is the
+one figure that exists before anybody says anything. The two personal figures under it are
+`.lead`, which is the scale saying they are the second half of that sentence rather than a
+second headline. `.support` is still spare, and stays because the scale is the point —
 inventing a fifth size later is worse than leaving one over.
 
 **Sign is carried by colour, and only where the amount has a direction.** An expense amount has
@@ -101,11 +104,16 @@ none, so it is `.primary`. A balance is positive, negative or settled — `Money
 does that mapping, and `.settled` is `.secondary` rather than a third colour, because zero is
 not an outcome worth tinting.
 
-**One amount is drawn unsigned: your own balance**, at the top of the balances tab. It sits
-under a sentence that says which way the money goes — "You are owed", "You owe" — and a minus
-sign under that sentence says it twice while contradicting itself. Everywhere else the sign
-stays on the number, because nothing beside it is saying so in words. The colour is the same
-either way: it comes from the real, signed total.
+**Amounts are drawn unsigned wherever a caption above them already says which way they go.**
+Your own balance, at the top of the balances tab, sits under "You are owed" or "You owe"; the
+three figures on the totals tab sit under captions that flip between spending and earnings the
+same way. A minus sign under such a sentence says it twice while contradicting itself.
+Everywhere else the sign stays on the number, because nothing beside it is saying so in words.
+
+The two cases part company on colour. A balance keeps its tint, taken from the real signed
+total, because being owed and owing are opposite outcomes. A total is not an outcome — it is a
+quantity the group happens to have — so the totals carry no tint at all, and the only colour on
+that screen is the bar under each personal figure.
 
 **Reimbursements** render regular-weight and italic, matching how the expense list has always
 drawn their titles.
@@ -220,11 +228,12 @@ places where state changed on its own simply cut.
 three durations; two of them (a press, a push) are already animated by iOS before anyone writes
 a line, and restating them here would only invite someone to override them.
 
-Three places use it, each bound to the narrowest value that should trigger it:
+Four places use it, each bound to the narrowest value that should trigger it:
 
 | Bound to | Effect |
 |---|---|
 | `model.balances` | Settling a payment moves every figure and bar at once, rather than the screen merely being different the next time you look. |
+| `model.stats` | The same, for the totals: an expense added on another tab moves all three at once when you come back to them. |
 | `model.expenses.count` | A deleted expense leaves rather than vanishing — and editing one in place does not animate the whole list along with it. |
 | `model.pendingDeletion` | The undo bar arrives and leaves from the bottom edge. |
 
@@ -289,7 +298,11 @@ dead code.
 product, which is what a welcome screen is for.
 
 **The hand-rolled diverging bar beat Swift Charts.** Charts is a dependency-sized concept for a
-shape that is twenty lines of layout. The unused `import Charts` is gone.
+shape that is twenty lines of layout. The unused `import Charts` is gone. The totals tab's
+proportion bar is the second of these and settles the question: two bars, forty lines, no
+dependency. Both are `accessibilityHidden` and both say in words what they draw — "is owed" as a
+value on the name, "60% of the group" as a caption — because a length is not a thing a screen
+reader can read.
 
 **`BrandSecondary` is defined and currently unused.** It is `Monogram4`'s value, so the pink is
 on screen, but nothing references the colour by that name. It stays because the palette is a

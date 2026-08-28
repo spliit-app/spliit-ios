@@ -224,6 +224,18 @@ async function dumpFixtures(result) {
       () => query('groups.expenses.get', { groupId: lisbon, expenseId: expenses.expenses[0].id }),
     ],
     ['balances-list', () => query('groups.balances.list', { groupId: lisbon })],
+    // Both shapes, because the participant fields are what changes between them: named, Ana's
+    // share comes back as a non-integer; unnamed, the two participant fields are `undefined`
+    // and superjson annotates them rather than omitting them.
+    [
+      'groups-stats-get',
+      () =>
+        query('groups.stats.get', {
+          groupId: lisbon,
+          participantId: result.groups.lisbon.participants['Ana'],
+        }),
+    ],
+    ['groups-stats-get-anonymous', () => query('groups.stats.get', { groupId: lisbon })],
     ['error-not-found', () => query('groups.getDetails', { groupId: 'does-not-exist' }).catch((e) => e)],
   ]
 

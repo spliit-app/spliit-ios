@@ -20,7 +20,7 @@ struct GroupDetailView: View {
 
     /// Named to stay clear of SwiftUI's own `Tab`, which `TabView` needs below.
     private enum GroupTab: Hashable {
-        case expenses, balances, information, search
+        case expenses, balances, stats, information, search
     }
 
     private enum Sheet: Identifiable {
@@ -59,6 +59,14 @@ struct GroupDetailView: View {
                     onIdentify: { sheet = .identity }
                 )
                 .trackScreen(.groupBalances)
+            }
+
+            // Beside the balances rather than beside the information, because it answers the
+            // same question from the other end: that tab says where the group will settle, this
+            // one says what it has actually spent.
+            Tab("Totals", systemImage: "chart.pie", value: GroupTab.stats) {
+                StatsView(model: model, onIdentify: { sheet = .identity })
+                    .trackScreen(.groupStats)
             }
 
             Tab("Information", systemImage: "info.circle", value: GroupTab.information) {

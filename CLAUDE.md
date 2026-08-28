@@ -147,6 +147,20 @@ over. One of the two is always zero and the other is `abs(total)`; the recorded 
 it. Only `total` means anything. What was actually paid, and what was actually spent on
 someone, comes from `groups.stats.get` with a `participantId`.
 
+**`totalParticipantShare` is the one amount that is not an `Int`, and has to stay that way.**
+Today's server sends a whole number of minor units — the web app's *Shares* change apportions
+every share in whole units and stops rounding the sum. An instance older than that sums
+floating-point thirds and rounds to two decimals, so it sends `1416.67`, and `Int` does not
+decode that: it throws, and takes the whole totals tab with it. The DTO is `Double?` and the
+rounding happens on the way to the display. `Int(exactly:)` on the way, never `Int(_:)` — that
+one traps rather than returning nil.
+
+**A procedure the instance has never heard of is not a failure to report.** `TRPCServerError`
+has `isUnknownProcedure` for it, and the totals tab is what uses it: a self-hosted instance too
+old for `groups.stats.get` — or, when upstream deploys what its `main` already has, too new for
+it — gets a screen that says so, rather than an error with a "Try again" that can never work.
+Any new endpoint should degrade the same way.
+
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`
 sends `createdAt` with no annotation at all, so trusting the metadata would break exactly one

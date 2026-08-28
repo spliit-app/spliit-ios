@@ -46,6 +46,27 @@ struct RequestBuildingTests {
         #expect(request.url?.path == "/spliit/api/trpc/groups.get")
     }
 
+    /// The server's `participantId` is `z.string().optional()`, so leaving it out is how you
+    /// ask for the group's total and nobody's share. Sending `null` instead is a 400.
+    @Test("Stats for nobody in particular leave the participant out of the input")
+    func omitsAbsentParticipant() throws {
+        let request = try client("https://spliit.app/")
+            .makeRequest(for: Spliit.stats(groupId: "abc123"))
+
+        let input = try decodedInput(request)
+        #expect(request.url?.path == "/api/trpc/groups.stats.get")
+        #expect(input["groupId"] as? String == "abc123")
+        #expect(input["participantId"] == nil)
+    }
+
+    @Test("Stats for a participant name them in the input")
+    func sendsParticipantForStats() throws {
+        let request = try client("https://spliit.app/")
+            .makeRequest(for: Spliit.stats(groupId: "abc123", participantId: "ana"))
+
+        #expect(try decodedInput(request)["participantId"] as? String == "ana")
+    }
+
     @Test("A procedure with no input sends no input parameter")
     func omitsEmptyInput() throws {
         let request = try client("https://spliit.app/").makeRequest(for: Spliit.categories())

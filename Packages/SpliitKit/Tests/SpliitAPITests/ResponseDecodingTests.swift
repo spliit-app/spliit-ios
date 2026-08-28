@@ -103,6 +103,52 @@ struct ResponseDecodingTests {
         #expect(total == owed)
     }
 
+    /// Recorded for Ana in the seeded Lisbon group: she paid the taxi and the tram tickets, and
+    /// is on all four expenses.
+    @Test("Stats answer for a participant with what they paid and what they owe")
+    func decodesStats() throws {
+        let response = try SuperJSON.decode(
+            Spliit.GroupStatsResponse.self, fromResponse: Fixture.data("groups-stats-get")
+        )
+
+        #expect(response.totalGroupSpendings == 4250 + 9630 + 48000 + 1800)
+        #expect(response.totalParticipantSpendings == 4250 + 1800)
+        // A third of the taxi, a third of the dinner, a quarter of the apartment and the tram
+        // amount she was billed for — apportioned into whole minor units by the server.
+        #expect(response.totalParticipantShare == 17627)
+    }
+
+    /// Asking about nobody is a different answer from asking about someone who spent nothing,
+    /// and superjson says so with `meta.values` rather than by leaving the keys out. The
+    /// decoder ignores that metadata, so what has to work is the `null` underneath it.
+    @Test("Stats for nobody in particular leave the participant figures absent")
+    func decodesStatsWithoutAParticipant() throws {
+        let response = try SuperJSON.decode(
+            Spliit.GroupStatsResponse.self,
+            fromResponse: Fixture.data("groups-stats-get-anonymous")
+        )
+
+        #expect(response.totalGroupSpendings == 63680)
+        #expect(response.totalParticipantSpendings == nil)
+        #expect(response.totalParticipantShare == nil)
+    }
+
+    /// The wire type is `Double` for instances older than the web app's *Shares* change, which
+    /// summed floating-point thirds and rounded to two decimals. `Int` would throw on this and
+    /// take the screen with it, so the type has to stay wide enough for a server nobody has
+    /// upgraded yet.
+    @Test("A share from a server that still splits in floating point decodes")
+    func decodesFractionalShare() throws {
+        let legacy = Data(
+            #"{"result":{"data":{"json":{"totalGroupSpendings":4250,"totalParticipantSpendings":4250,"totalParticipantShare":1416.67}}}}"#
+                .utf8
+        )
+
+        let response = try SuperJSON.decode(Spliit.GroupStatsResponse.self, fromResponse: legacy)
+
+        #expect(response.totalParticipantShare == 1416.67)
+    }
+
     @Test("The full category list decodes with its groupings")
     func decodesCategories() throws {
         let response = try SuperJSON.decode(

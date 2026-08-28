@@ -493,11 +493,34 @@ Ordered by value to a phone user, not by web-app order.
   participants, which is the only place outside the editor that names who is in the group, and
   the currency and creation date. The note is still edited in the group form: it is a field on
   the group, and a second editor for one field is a second thing to keep in step
-- Stats tab (total group spending, your spending, your share). `groups.stats.get` takes a
-  `participantId` and answers the last two, so it is the active user that makes them
-  answerable — and it is the only endpoint that knows what anybody actually paid. Note that
-  `totalParticipantShare` is not an integer: an evenly split expense divides in the server's
-  own floating-point arithmetic, so the DTO cannot be `Int` the way every other amount is
+- ~~Stats tab (total group spending, your spending, your share)~~ — **done**, as *Totals*.
+  `groups.stats.get` takes a `participantId` and answers the last two, so it is the active user
+  that makes them answerable — and it is the only endpoint that knows what anybody actually
+  paid. So the "who are you?" picker is offered from a third screen, below the group's total
+  rather than in front of it: the tab is worth one number without an answer and three with one.
+  Each personal figure also carries the slice of the group's spending it is, because "what
+  fraction of this trip is mine" is the question the numbers are opened for and neither number
+  answers it alone. Loaded lazily and keyed on the participant — it is a fourth request on a
+  screen that already makes three, and the other tabs never need it. Named *Totals* rather than
+  the web's *Stats* because "Statistiques" beside "Informations" leaves a French tab bar with
+  two truncated labels; the Plausible screen keeps the web's route name, `group-stats`.
+  Three things found on the way in, none of them what this bullet predicted:
+  - **`totalParticipantShare` is a whole number of minor units now**, not the float this said it
+    was. The web app's *Shares* change (2026-08-13) apportions every share in whole minor units
+    and no longer rounds the sum. The DTO is still `Double` and has to stay `Double`: an
+    instance older than that sums floating-point thirds and sends `1416.67`, which `Int` cannot
+    decode — it throws, and takes the screen with it. The rounding happens on the way to the
+    display instead
+  - **the procedure is on its way out upstream.** `groups.stats.get` was folded into a wider
+    `groups.stats.overview` on 2026-08-16, which also returns spending by month, participant and
+    category. Nothing serves it yet — not `spliit.app`, not the published image, both checked —
+    so building against it today would 404 for every user. The tab degrades to a plain "no
+    totals on this server" rather than an error with a retry that cannot work, which is the
+    first use of `TRPCServerError.isUnknownProcedure`. `upstream-drift` is what will say when
+    the shape moves, and `overview` is worth taking then: it is the wave-3 stats tab already
+    written
+  - **reimbursements are excluded from all three figures**, which the tab's footer now says.
+    `make test-live` is what confirmed it rather than a reading of the web app
 - Activity log tab
 - Export to CSV / JSON via the share sheet
 
@@ -555,7 +578,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Default splitting options | ➖ | ✅ | M3.1 |
 | Starred / archived groups | ➖ | ✅ | ✅ M3.1 |
 | Group information tab | ➖ | ✅ | ✅ M3.2 |
-| Stats | ➖ | ✅ | M3.2 |
+| Stats | ➖ | ✅ | ✅ M3.2 |
 | Activity log | ➖ | ✅ | M3.2 |
 | Export CSV / JSON | ➖ | ✅ | M3.2 |
 | Expense documents | ➖ | ✅ | M3.3 |

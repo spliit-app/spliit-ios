@@ -15,12 +15,14 @@ final class GroupDetailModel {
     private(set) var balances: [String: Balance] = [:]
     private(set) var reimbursements: [Reimbursement] = []
     private(set) var categories: [ExpenseCategory] = []
+    private(set) var stats: Spliit.GroupStatsResponse?
 
     /// One per request, because they run concurrently and finish in any order. Sharing a
     /// single flag is what made the list say "no expenses yet" the moment the *group* arrived.
     private(set) var groupLoad = LoadState()
     private(set) var expensesLoad = LoadState()
     private(set) var balancesLoad = LoadState()
+    private(set) var statsLoad = LoadState()
 
     private(set) var isLoadingMore = false
     private(set) var hasMoreExpenses = false
@@ -123,6 +125,21 @@ final class GroupDetailModel {
         balancesLoad.failedWithNothingToShow
     }
 
+    /// The totals haven't landed — or the group hasn't, which counts too: its currency is what
+    /// they are drawn in, and a number without one is a number in no currency at all.
+    var isLoadingStats: Bool {
+        stats == nil && !statsUnavailable && (statsLoad.isAwaitingFirstResult || isLoadingGroup)
+    }
+
+    var didFailToLoadStats: Bool {
+        statsLoad.failedWithNothingToShow && !statsUnavailable
+    }
+
+    /// This instance has no `groups.stats.get` — an older self-hosted deployment, or a newer one
+    /// that has moved the procedure. Kept apart from a failure because there is nothing to retry
+    /// and nothing the user did wrong: the screen says so once and offers no button.
+    private(set) var statsUnavailable = false
+
     func retry(using client: TRPCClient) async {
         await reload(using: client)
     }
@@ -170,7 +187,8 @@ final class GroupDetailModel {
         async let expensesResult: Void = loadFirstPage(using: client)
         async let balancesResult: Void = loadBalances(using: client)
         async let searchResult: Void = reloadSearch(using: client)
-        _ = await (expensesResult, balancesResult, searchResult)
+        async let statsResult: Void = reloadStatsIfRequested(using: client)
+        _ = await (expensesResult, balancesResult, searchResult, statsResult)
     }
 
     private func loadGroup(using client: TRPCClient) async {
@@ -239,6 +257,60 @@ final class GroupDetailModel {
     private func loadCategories(using client: TRPCClient) async {
         guard categories.isEmpty else { return }
         categories = (try? await client.call(Spliit.categories()).categories) ?? []
+    }
+
+    // MARK: - Stats
+
+    /// Whose figures `stats` answers for. Nil is a real answer — the group's total with nobody's
+    /// share beside it — which is why `didRequestStats` is a second property rather than a check
+    /// against this one.
+    private var statsParticipantID: String?
+    private var didRequestStats = false
+
+    /// Loads the totals for whoever the user says they are, if they aren't already loaded.
+    ///
+    /// Lazy on purpose. It is a fourth request on a screen that already makes three, and the
+    /// three tabs beside this one never need it — so nothing asks until somebody opens the tab.
+    /// Keyed on the participant because two of the three numbers are theirs: answering "who are
+    /// you?" from this screen has to ask the question again.
+    func loadStats(for participantID: String?, using client: TRPCClient) async {
+        guard !didRequestStats || participantID != statsParticipantID else { return }
+        await refreshStats(for: participantID, using: client)
+    }
+
+    /// The same, unconditionally — for pull-to-refresh and for "Try again".
+    func refreshStats(for participantID: String?, using client: TRPCClient) async {
+        didRequestStats = true
+        statsParticipantID = participantID
+        statsLoad.begin()
+
+        do {
+            let response = try await client.call(
+                Spliit.stats(groupId: groupID, participantId: participantID)
+            )
+            // The picker may have moved on while this was in flight; somebody else's share must
+            // not become the answer under your name.
+            guard statsParticipantID == participantID else { return }
+            stats = response
+            statsUnavailable = false
+            statsLoad.succeeded()
+        } catch let error as TRPCServerError where error.isUnknownProcedure {
+            statsUnavailable = true
+            statsLoad.failed(nil)
+        } catch {
+            // A tab switch cancels this the way a keystroke cancels a search, and a cancelled
+            // request has nothing to report.
+            guard !Task.isCancelled, statsParticipantID == participantID else { return }
+            statsLoad.failed(error.localizedDescription)
+        }
+    }
+
+    /// Re-runs the totals for whoever they were last run for, and does nothing until the tab has
+    /// been opened once — three tabs' worth of editing should not pay for an answer nobody has
+    /// asked to see.
+    private func reloadStatsIfRequested(using client: TRPCClient) async {
+        guard didRequestStats else { return }
+        await refreshStats(for: statsParticipantID, using: client)
     }
 
     // MARK: - Search

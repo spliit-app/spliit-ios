@@ -132,11 +132,12 @@ enum AccessibilityID {
     }
 
     /// Saying who you are in a group, and what that then shows. The picker is one screen reached
-    /// from two — the balances tab and the information tab — so the two entry points are named
-    /// apart while everything inside the picker is named once.
+    /// from three — the balances tab, the stats tab and the information tab — so the entry
+    /// points are named apart while everything inside the picker is named once.
     enum ActiveUser {
         static let balancesButton = "activeUser.balances"
         static let informationButton = "activeUser.information"
+        static let statsButton = "activeUser.stats"
         static let direction = "activeUser.direction"
         static let total = "activeUser.total"
         static let nobodyOption = "activeUser.option.nobody"
@@ -148,6 +149,25 @@ enum AccessibilityID {
         static func badge(_ participantID: String) -> String {
             "activeUser.badge.\(participantID)"
         }
+    }
+
+    enum Stats {
+        /// The one number the tab has before anybody says who they are.
+        static let groupTotal = "stats.groupTotal"
+        static let yourSpending = "stats.yourSpending"
+        static let yourShare = "stats.yourShare"
+        /// The caption above each amount. Two of the three flip between spending and earnings
+        /// with the sign, and a test that only read the numbers could not tell which it got.
+        static let groupTotalLabel = "stats.groupTotal.label"
+        static let yourSpendingLabel = "stats.yourSpending.label"
+        static let yourShareLabel = "stats.yourShare.label"
+        /// The "X% of the group" caption under each personal figure. Named because the amount
+        /// alone cannot say whether the slice was measured against the right whole.
+        static let yourSpendingFraction = "stats.yourSpending.fraction"
+        static let yourShareFraction = "stats.yourShare.fraction"
+        static let retryButton = "stats.retry"
+        // Nothing for the "no totals on this server" state: it is a title and a paragraph with
+        // no action under them, and an identifier would have to go on the container.
     }
 
     enum Balances {

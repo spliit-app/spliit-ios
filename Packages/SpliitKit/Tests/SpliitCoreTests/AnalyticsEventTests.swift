@@ -61,6 +61,7 @@ struct AnalyticsEventTests {
                 "group-balances",
                 "group-search",
                 "group-information",
+                "group-stats",
                 "group-settings",
                 "group-create-expense",
                 "group-edit-expense",

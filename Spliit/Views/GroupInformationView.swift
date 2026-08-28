@@ -20,6 +20,8 @@ struct GroupInformationView: View {
     let model: GroupDetailModel
     /// Opens group settings, where the note actually lives.
     let onEdit: () -> Void
+    /// Opens the "who are you?" picker, which this screen shares with the balances tab.
+    let onIdentify: () -> Void
 
     var body: some View {
         content
@@ -50,6 +52,7 @@ struct GroupInformationView: View {
                 noteSection(for: group)
                 participantsSection(for: group)
                 detailsSection(for: group)
+                youSection(for: group)
             }
             // `reload` rather than the other tabs' `reloadAfterExpenseChange`: the group itself
             // is what this screen shows, and that is the one thing an expense-shaped refresh
@@ -105,6 +108,42 @@ struct GroupInformationView: View {
             Text("Participants")
         } footer: {
             Text("Add or remove participants in the group settings.")
+        }
+    }
+
+    /// The second way to the picker. The first is on the balances tab, where the answer changes
+    /// what is on screen; this one is for changing an answer already given, which is a thing you
+    /// go looking for rather than a thing you are offered — so it sits at the bottom, below the
+    /// facts about the group rather than among them.
+    private func youSection(for group: SpliitAPI.Group) -> some View {
+        let you = ActiveParticipant.resolve(
+            app.recentGroups.activeParticipant(inGroup: model.groupID),
+            in: group.participants
+        )
+
+        return Section {
+            Button(action: onIdentify) {
+                LabeledContent("You", value: description(of: you, in: group))
+            }
+            .accessibilityIdentifier(AccessibilityID.ActiveUser.informationButton)
+        } footer: {
+            Text("Which participant you are, on this phone. It decides whose balance the balances tab leads with, and who a new expense is paid by.")
+        }
+    }
+
+    /// What the row shows on the right: a name, an explicit "nobody", or the question still
+    /// waiting to be asked.
+    private func description(
+        of you: ActiveParticipant?,
+        in group: SpliitAPI.Group
+    ) -> String {
+        switch you {
+        case .participant(let id):
+            group.participants.first { $0.id == id }?.name ?? String(localized: "Not set")
+        case .nobody:
+            String(localized: "Nobody")
+        case .none:
+            String(localized: "Not set")
         }
     }
 

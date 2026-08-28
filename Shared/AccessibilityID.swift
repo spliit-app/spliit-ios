@@ -125,6 +125,25 @@ enum AccessibilityID {
         static func participantValue(_ id: String) -> String { "expenseForm.share.\(id)" }
     }
 
+    /// Saying who you are in a group, and what that then shows. The picker is one screen reached
+    /// from two — the balances tab and the information tab — so the two entry points are named
+    /// apart while everything inside the picker is named once.
+    enum ActiveUser {
+        static let balancesButton = "activeUser.balances"
+        static let informationButton = "activeUser.information"
+        static let direction = "activeUser.direction"
+        static let total = "activeUser.total"
+        static let nobodyOption = "activeUser.option.nobody"
+
+        static func option(_ participantID: String) -> String {
+            "activeUser.option.\(participantID)"
+        }
+        /// The "You" marker on your own row in the balances list.
+        static func badge(_ participantID: String) -> String {
+            "activeUser.badge.\(participantID)"
+        }
+    }
+
     enum Balances {
         static let settled = "balances.settled"
 

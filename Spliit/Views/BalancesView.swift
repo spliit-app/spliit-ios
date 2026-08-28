@@ -6,8 +6,11 @@ import SwiftUI
 struct BalancesView: View {
 
     @Environment(AppModel.self) private var app
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let model: GroupDetailModel
     let onSettle: (Reimbursement) -> Void
+    /// Opens the "who are you?" picker, which this screen shares with the information tab.
+    let onIdentify: () -> Void
 
     var body: some View {
         content
@@ -33,6 +36,8 @@ struct BalancesView: View {
             }
         } else if let group = model.group {
             List {
+                youSection(for: group)
+
                 Section {
                     ForEach(Array(group.participants.enumerated()), id: \.element.id) { position, participant in
                         BalanceRow(
@@ -41,13 +46,20 @@ struct BalancesView: View {
                             balance: model.balances[participant.id]
                                 ?? Balance(paid: 0, paidFor: 0, total: 0),
                             largest: largestBalance,
-                            formatter: model.moneyFormatter
+                            formatter: model.moneyFormatter,
+                            isYou: activeParticipant(in: group)?.id == participant.id
                         )
                     }
                 } header: {
                     Text("Balances")
                 } footer: {
-                    Text("What each participant paid, against what was spent on them.")
+                    // Not "what each participant paid, against what was spent on them", which
+                    // is what this said and what the numbers are not. `groups.balances.list`
+                    // returns the web app's *public* balances: figures derived from the
+                    // suggested payments, where `paid` is what a participant will be handed and
+                    // `paidFor` what they will hand over — so one of the two is always zero.
+                    // The total is a settlement position, and only the total is real.
+                    Text("Who is up and who is down, once every expense has been counted.")
                 }
 
                 Section {
@@ -85,6 +97,92 @@ struct BalancesView: View {
         }
     }
 
+    // MARK: - You
+
+    /// The group's balances, read from where the user stands in it.
+    ///
+    /// This sits above the list rather than inside it because it answers a different question.
+    /// The list below says how the group is doing; this says how *you* are doing, which is the
+    /// only line most people open the tab for — and until somebody says who they are, it is the
+    /// invitation to.
+    private func youSection(for group: SpliitAPI.Group) -> some View {
+        Section {
+            if let you = activeParticipant(in: group) {
+                summary(for: model.balances[you.id] ?? Balance(paid: 0, paidFor: 0, total: 0))
+            }
+
+            Button(action: onIdentify) { identityLabel(for: group) }
+                .accessibilityIdentifier(AccessibilityID.ActiveUser.balancesButton)
+        } header: {
+            Text("You")
+        } footer: {
+            // Dropped at the accessibility sizes, where this paragraph is a screenful on its
+            // own — and what it would push off the bottom is the balances. It explains a button
+            // whose label already says what it does, which makes it the part that can go.
+            if activeParticipant(in: group) == nil, !dynamicTypeSize.isAccessibilitySize {
+                Text("Pick yourself once and this group is read from where you stand: your own balance first, and your name already filled in on a new expense.")
+            }
+        }
+    }
+
+    /// The row that opens the picker, saying what it would be changing.
+    @ViewBuilder
+    private func identityLabel(for group: SpliitAPI.Group) -> some View {
+        if let you = activeParticipant(in: group) {
+            LabeledContent("You", value: you.name)
+        } else if storedIdentity(in: group) == .nobody {
+            LabeledContent("You", value: String(localized: "Nobody"))
+        } else {
+            Label("Say who you are", systemImage: "person.crop.circle.badge.questionmark")
+        }
+    }
+
+    /// The headline: which way the money goes, and how much of it. The amount is shown unsigned
+    /// — the sentence above it is what carries the direction, and "You owe −$50.00" says it
+    /// twice and contradicts itself doing so.
+    ///
+    /// It is one number and stays one number. "You paid X, and Y was spent on you" was written
+    /// here first and was false: the `paid` and `paidFor` this endpoint returns are the
+    /// settlement's, not the group's — see the footer below. The real pair comes from
+    /// `groups.stats.get`, which is M3.2's to bring in along with the rest of the stats tab.
+    private func summary(for balance: Balance) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(direction(of: balance))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(AccessibilityID.ActiveUser.direction)
+
+            Money(
+                value: model.moneyFormatter.string(minorUnits: abs(balance.total)),
+                size: .hero,
+                sign: Money.Sign(balance: balance.total)
+            )
+            .accessibilityIdentifier(AccessibilityID.ActiveUser.total)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func direction(of balance: Balance) -> LocalizedStringKey {
+        if balance.total > 0 { "You are owed" }
+        else if balance.total < 0 { "You owe" }
+        else { "You’re settled up" }
+    }
+
+    /// Who the user says they are here, when the group still has them.
+    private func activeParticipant(in group: SpliitAPI.Group) -> Participant? {
+        guard case .participant(let id)? = storedIdentity(in: group) else { return nil }
+        return model.participant(id)
+    }
+
+    /// The stored answer, read against the group — which is what turns a participant who has
+    /// since been removed back into an unanswered question.
+    private func storedIdentity(in group: SpliitAPI.Group) -> ActiveParticipant? {
+        ActiveParticipant.resolve(
+            app.recentGroups.activeParticipant(inGroup: model.groupID),
+            in: group.participants
+        )
+    }
+
     /// The group can arrive and its balances still fail, so name whichever one is missing.
     private var errorTitle: LocalizedStringKey {
         model.didFailToLoad ? "Couldn’t load this group" : "Couldn’t load the balances"
@@ -103,6 +201,7 @@ private struct BalanceRow: View {
     let balance: Balance
     let largest: Int
     let formatter: MoneyFormatter
+    let isYou: Bool
 
     @ScaledMetric private var barHeight: CGFloat = 8
 
@@ -112,12 +211,28 @@ private struct BalanceRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 AdaptiveHStack {
-                    Text(participant.name)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier(
-                            AccessibilityID.Balances.participantName(participant.id)
-                        )
-                        .accessibilityValue(direction)
+                    HStack(spacing: 6) {
+                        Text(participant.name)
+                            .accessibilityIdentifier(
+                                AccessibilityID.Balances.participantName(participant.id)
+                            )
+                            .accessibilityValue(direction)
+
+                        // Left visible to VoiceOver: which row is yours is exactly the kind of
+                        // thing a glance gets for free and a screen reader gets not at all.
+                        if isYou {
+                            Text("You")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(.quaternary, in: .capsule)
+                                .accessibilityIdentifier(
+                                    AccessibilityID.ActiveUser.badge(participant.id)
+                                )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Money(
                         value: formatter.string(minorUnits: balance.total),

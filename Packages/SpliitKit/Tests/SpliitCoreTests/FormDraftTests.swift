@@ -182,6 +182,26 @@ struct ExpenseFormDraftTests {
         ]
     )
 
+    @Test("A new expense is paid by whoever you said you are")
+    func defaultsToTheActiveParticipant() {
+        let form = ExpenseFormDraft(creatingIn: group, paidBy: "bruno")
+
+        #expect(form.paidByID == "bruno")
+    }
+
+    /// Nobody has answered the question yet, so the form falls back to what it always did.
+    @Test("Without an answer, the first participant pays")
+    func defaultsToTheFirstParticipant() {
+        #expect(ExpenseFormDraft(creatingIn: group).paidByID == "ana")
+    }
+
+    /// The stored answer outlives the participant it names: a group can drop somebody between
+    /// one launch and the next, and the payer picker must not open on a person who is gone.
+    @Test("A payer the group no longer has falls back to the first participant")
+    func ignoresAStalePayer() {
+        #expect(ExpenseFormDraft(creatingIn: group, paidBy: "chloe-who-left").paidByID == "ana")
+    }
+
     private func draft(
         amount: String = "42.50",
         splitMode: SplitMode = .evenly,

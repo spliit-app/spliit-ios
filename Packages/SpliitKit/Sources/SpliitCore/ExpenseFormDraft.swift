@@ -77,9 +77,18 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     }
 
     /// A blank expense for a group: everyone included, split evenly.
-    public init(creatingIn group: Group, locale: Locale = .autoupdatingCurrent) {
+    ///
+    /// - Parameter paidBy: whoever the user said they are in this group, when they have said.
+    ///   An ID the group no longer has falls back to the first participant, which is what this
+    ///   form filled in before anybody could answer the question.
+    public init(
+        creatingIn group: Group,
+        paidBy: String? = nil,
+        locale: Locale = .autoupdatingCurrent
+    ) {
+        let payer = group.participants.first { $0.id == paidBy } ?? group.participants.first
         self.init(
-            paidByID: group.participants.first?.id,
+            paidByID: payer?.id,
             participants: group.participants.map {
                 ParticipantShareDraft(id: $0.id, name: $0.name, isIncluded: true)
             },

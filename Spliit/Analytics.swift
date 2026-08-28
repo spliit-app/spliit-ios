@@ -1,39 +1,16 @@
 import Foundation
+import SpliitCore
 import SwiftUI
 
-/// Screen and event tracking, matching what the React Native app reported so the existing
-/// Plausible dashboard keeps working across the rewrite.
+/// Posts ``AnalyticsEvent`` to Plausible, and nothing else.
 ///
-/// Plausible is cookieless and stores nothing per-person; only the screen name and, for a few
-/// events, a group ID travel with the request. Nothing is sent from debug builds or under UI
-/// tests — a test run should never show up as traffic.
+/// Plausible is cookieless and stores nothing per-person; what travels with a request is the
+/// screen name and no more — see ``AnalyticsEvent`` for why a group or expense ID cannot be
+/// attached to one. Nothing is sent from debug builds or under UI tests: a test run should
+/// never show up as traffic.
 struct Analytics: Sendable {
 
-    /// The same site the old app reported to.
-    static let domain = "spliit.app/mobile"
     private static let endpoint = URL(string: "https://plausible.io/api/event")!
-
-    enum Screen: String {
-        case home
-        case about
-        case createGroup = "create-group"
-        case addGroupByURL = "add-group-by-url"
-        case groupExpenses = "group-expenses"
-        case groupBalances = "group-balances"
-        // Neither of these was a React Native screen. Search is a name of our own; the
-        // information tab borrows the web app's route name, so the mobile site and the web one
-        // can be read side by side even though they are separate Plausible sites.
-        case groupSearch = "group-search"
-        case groupInformation = "group-information"
-        case groupSettings = "group-settings"
-        case groupCreateExpense = "group-create-expense"
-        case groupEditExpense = "group-edit-expense"
-    }
-
-    enum Event: String {
-        case createGroup = "create-group"
-        case createExpense = "create-expense"
-    }
 
     var isEnabled: Bool
 
@@ -46,30 +23,23 @@ struct Analytics: Sendable {
         #endif
     }()
 
-    func screen(_ screen: Screen, properties: [String: String] = [:]) {
-        send(name: "pageview", path: screen.rawValue, properties: properties)
+    func screen(_ screen: AnalyticsEvent.Screen) {
+        send(.screen(screen))
     }
 
-    func event(_ event: Event, properties: [String: String] = [:]) {
-        send(name: event.rawValue, path: "", properties: properties)
+    func event(_ action: AnalyticsEvent.Action) {
+        send(.action(action))
     }
 
-    private func send(name: String, path: String, properties: [String: String]) {
+    private func send(_ event: AnalyticsEvent) {
         guard isEnabled else { return }
-
-        var body: [String: Any] = [
-            "name": name,
-            "domain": Self.domain,
-            "url": "https://\(Self.domain)/\(path)",
-        ]
-        if !properties.isEmpty { body["props"] = properties }
 
         var request = URLRequest(url: Self.endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // Plausible rejects requests without one.
         request.setValue("Spliit iOS", forHTTPHeaderField: "User-Agent")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try? JSONSerialization.data(withJSONObject: event.body)
 
         // Fire and forget: analytics must never delay or fail anything the user is doing.
         URLSession.shared.dataTask(with: request).resume()
@@ -78,7 +48,7 @@ struct Analytics: Sendable {
 
 extension View {
     /// Reports a screen view when this view appears.
-    func trackScreen(_ screen: Analytics.Screen, properties: [String: String] = [:]) -> some View {
-        onAppear { Analytics.shared.screen(screen, properties: properties) }
+    func trackScreen(_ screen: AnalyticsEvent.Screen) -> some View {
+        onAppear { Analytics.shared.screen(screen) }
     }
 }

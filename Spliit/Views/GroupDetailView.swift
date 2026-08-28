@@ -47,17 +47,17 @@ struct GroupDetailView: View {
                     onAdd: { sheet = .createExpense },
                     onEdit: { sheet = .editExpense($0) }
                 )
-                .trackScreen(.groupExpenses, properties: ["groupId": model.groupID])
+                .trackScreen(.groupExpenses)
             }
 
             Tab("Balances", systemImage: "arrow.left.arrow.right", value: GroupTab.balances) {
                 BalancesView(model: model, onSettle: { sheet = .settle($0) })
-                    .trackScreen(.groupBalances, properties: ["groupId": model.groupID])
+                    .trackScreen(.groupBalances)
             }
 
             Tab("Information", systemImage: "info.circle", value: GroupTab.information) {
                 GroupInformationView(model: model, onEdit: { sheet = .settings })
-                    .trackScreen(.groupInformation, properties: ["groupId": model.groupID])
+                    .trackScreen(.groupInformation)
             }
 
             // The search role is what puts the magnifying glass in its own capsule beside the

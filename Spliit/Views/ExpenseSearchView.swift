@@ -66,7 +66,7 @@ struct ExpenseSearchView: View {
         .task(id: isActive) {
             isFieldFocused = isActive
             if isActive {
-                Analytics.shared.screen(.groupSearch, properties: ["groupId": model.groupID])
+                Analytics.shared.screen(.groupSearch)
             }
         }
     }

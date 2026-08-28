@@ -9,6 +9,16 @@
       "comment": "A preview label pairing two names that are already localised.",
       "shouldTranslate": false
     },
+    "%@ 1 = %@ %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 1 = %2$@ %3$@"
+          }
+        }
+      }
+    },
     "%@ appears on at least one expense, so they can’t be removed. Delete or reassign those expenses first.": {
       "localizations": {
         "fr": {
@@ -51,6 +61,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ encore à répartir."
+          }
+        }
+      }
+    },
+    "%@ — the rate on %@.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — le taux du %2$@."
           }
         }
       }
@@ -137,12 +157,12 @@
       "comment": "An amount placeholder; the locale's decimal separator is interpolated.",
       "shouldTranslate": false
     },
-    "A custom symbol sits beside amounts the same way, but records no ISO code — so nothing else can tell what the amounts are in.": {
+    "A custom symbol sits beside amounts the same way, but records no ISO code — so nothing else can tell what the amounts are in, and no expense in the group can be recorded in another currency.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un symbole personnalisé s’affiche à côté des montants de la même façon, mais n’enregistre aucun code ISO : rien d’autre ne peut alors savoir dans quelle devise sont les montants."
+            "value": "Un symbole personnalisé s’affiche à côté des montants de la même façon, mais n’enregistre aucun code ISO : rien d’autre ne peut alors savoir dans quelle devise sont les montants, et aucune dépense du groupe ne peut être enregistrée dans une autre devise."
           }
         }
       }
@@ -283,6 +303,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Montant"
+          }
+        }
+      }
+    },
+    "Amount paid": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montant payé"
           }
         }
       }
@@ -473,6 +503,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossible d’ouvrir ce lien"
+          }
+        }
+      }
+    },
+    "Couldn’t reach the rates service. Enter the rate yourself.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de joindre le service de taux de change. Saisissez le taux vous-même."
           }
         }
       }
@@ -747,6 +787,16 @@
         }
       }
     },
+    "Exchange rate": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taux de change"
+          }
+        }
+      }
+    },
     "Expenses": {
       "localizations": {
         "fr": {
@@ -763,6 +813,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trouvez une dépense par son intitulé."
+          }
+        }
+      }
+    },
+    "Getting the exchange rate…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtention du taux de change…"
           }
         }
       }
@@ -1007,6 +1067,16 @@
         }
       }
     },
+    "No published rate for this pair. Enter the rate yourself.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun taux publié pour cette paire de devises. Saisissez le taux vous-même."
+          }
+        }
+      }
+    },
     "Nobody": {
       "localizations": {
         "fr": {
@@ -1023,6 +1093,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Non défini"
+          }
+        }
+      }
+    },
+    "Not yet known": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore connu"
           }
         }
       }
@@ -1123,6 +1203,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Payé pour"
+          }
+        }
+      }
+    },
+    "Paid in": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé en"
           }
         }
       }
@@ -1643,6 +1733,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Utiliser spliit.app"
+          }
+        }
+      }
+    },
+    "Use the published rate": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser le taux publié"
+          }
+        }
+      }
+    },
+    "Using the rate you entered.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisation du taux que vous avez saisi."
           }
         }
       }

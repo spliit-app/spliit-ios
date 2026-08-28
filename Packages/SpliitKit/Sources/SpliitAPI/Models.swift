@@ -368,6 +368,13 @@ public struct ExpenseFormValues: Encodable, Sendable {
     public let documents: [ExpenseDocument]
     public let notes: String?
     public let recurrenceRule: RecurrenceRule
+    /// What was actually paid, in `originalCurrency`'s own minor units, when the expense was in
+    /// a currency the group is not denominated in. Nil when it was in the group's currency.
+    public let originalAmount: Int?
+    /// ISO-4217 of what was actually paid. Nil when the expense was in the group's currency.
+    public let originalCurrency: String?
+    /// `amount` ÷ `originalAmount`: one unit of `originalCurrency` in the group's currency.
+    public let conversionRate: Decimal?
 
     public init(
         title: String,
@@ -381,7 +388,10 @@ public struct ExpenseFormValues: Encodable, Sendable {
         isReimbursement: Bool = false,
         documents: [ExpenseDocument] = [],
         notes: String? = nil,
-        recurrenceRule: RecurrenceRule = .never
+        recurrenceRule: RecurrenceRule = .never,
+        originalAmount: Int? = nil,
+        originalCurrency: String? = nil,
+        conversionRate: Decimal? = nil
     ) {
         self.title = title
         self.expenseDate = expenseDate
@@ -395,5 +405,45 @@ public struct ExpenseFormValues: Encodable, Sendable {
         self.documents = documents
         self.notes = notes
         self.recurrenceRule = recurrenceRule
+        self.originalAmount = originalAmount
+        self.originalCurrency = originalCurrency
+        self.conversionRate = conversionRate
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title, expenseDate, amount, category, paidBy, paidFor, splitMode
+        case saveDefaultSplittingOptions, isReimbursement, documents, notes, recurrenceRule
+        case originalAmount, originalCurrency, conversionRate
+    }
+
+    /// Spelled out rather than synthesised, for `originalCurrency` alone: it is written even when
+    /// nil, as JSON null.
+    ///
+    /// `encodeIfPresent` — what Swift synthesises — would drop it from the request, the server
+    /// would read `undefined`, and Prisma would leave the column exactly as it was. An expense
+    /// moved back to the group's own currency would go on claiming to have been paid in another.
+    ///
+    /// The amount and the rate cannot be cleared the same way, and are omitted instead: the
+    /// server's schema accepts a number, a numeric string or `''` for them, and rejects null
+    /// outright — `make test-live` is what proved it. Whatever they were stays in the database,
+    /// inert: `originalCurrency` is what says an expense was paid in another currency, and
+    /// nothing reads the other two without it.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(title, forKey: .title)
+        try container.encode(expenseDate, forKey: .expenseDate)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(category, forKey: .category)
+        try container.encode(paidBy, forKey: .paidBy)
+        try container.encode(paidFor, forKey: .paidFor)
+        try container.encode(splitMode, forKey: .splitMode)
+        try container.encode(saveDefaultSplittingOptions, forKey: .saveDefaultSplittingOptions)
+        try container.encode(isReimbursement, forKey: .isReimbursement)
+        try container.encode(documents, forKey: .documents)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encode(recurrenceRule, forKey: .recurrenceRule)
+        try container.encode(originalCurrency, forKey: .originalCurrency)
+        try container.encodeIfPresent(originalAmount, forKey: .originalAmount)
+        try container.encodeIfPresent(conversionRate, forKey: .conversionRate)
     }
 }

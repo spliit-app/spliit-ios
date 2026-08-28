@@ -117,7 +117,14 @@ It only shows when whatever changed the amount did so inside an animation — se
 **`moneyInput()`** gives an *editable* amount the same rounded, tabular face, so the number does
 not change shape at the moment it stops being an input and becomes a total. Deliberately not
 coloured or emphasised: it is a value being entered, not a balance being reported. It is on the
-Amount field and the per-participant share and amount fields.
+Amount field, the per-participant share and amount fields, and the two fields an expense paid in
+another currency adds — including the exchange rate, which is not money but sits directly under
+an amount that is, in the same column of digits.
+
+**An amount the app worked out rather than took is not a field.** Under a currency conversion
+the Amount row is the converted total, drawn as `Money` where the field would be: it is what the
+payment comes to at the rate below it, and a total that could disagree with the two numbers it
+is made of is a total those numbers do not explain.
 
 Three rules, all of which have already cost debugging time:
 

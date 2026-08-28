@@ -422,7 +422,27 @@ Ordered by value to a phone user, not by web-app order.
   is left out of the JSON, reaches the server as `undefined` and tells Prisma to
   leave the column alone, so a group moved to a custom symbol would have kept
   claiming to be in dollars. The web writes `''` there for the same reason
-- Multi-currency expenses: original amount, original currency, conversion rate
+- ~~Multi-currency expenses: original amount, original currency, conversion rate~~ — **done**.
+  A *Currency* section on the expense form: what it was paid in, what was paid, and the rate.
+  The rate comes from [Frankfurter](https://frankfurter.dev), which is what the web app calls,
+  so an expense converted on a phone and the same one converted in a browser agree; it is
+  filled in for you and yours to overwrite, because the rate a card was actually charged at
+  beats a published one and a lookup that lands afterwards must not undo it. Nothing about the
+  user is sent — a date and two currency codes — and every failure recovers by letting you type
+  the rate. UI tests stub it through a launch argument rather than reaching the real service.
+  The section is absent for a group with only a free-text symbol: a conversion needs an ISO
+  code on both sides, and the group form's currency picker is where that is explained.
+  Three things it turned up. **The total is derived, not typed** — under a conversion the Amount
+  row shows what the payment comes to and cannot be edited, since a total able to disagree with
+  the rate beside it is a total that rate does not explain. **The two amounts are on different
+  scales**: `originalAmount` is in the currency paid, `amount` in the group's, and a €40.00
+  dinner in a yen group is 4000 and 6540. And **`null` is not a general way to clear a
+  column**: the schema takes one for `originalCurrency` and rejects it for `originalAmount` and
+  `conversionRate`, so an expense that stops being converted keeps those two with nothing
+  reading them — `make test-live` caught that, and nothing local would have.
+  Deliberately not built: per-participant shares typed in the original currency, which the web
+  offers for by-amount splits. That is a second conversion inside the split section for a case
+  the group's own currency already covers
 - ~~Active user ("who are you in this group?") and the personal balance summary~~ — **done**.
   Asked and answered per group, and stored on the group in `recent-groups.json` beside the
   star and the archive flag, for the same reason those are: one file, one write, and no way to
@@ -529,7 +549,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | App Intents / Spotlight | ➖ | ➖ | ✅ M2 |
 | Widget | ➖ | ➖ | M3.1, with starring |
 | Currency code + picker | ➖ | ✅ | ✅ M3.1 |
-| Multi-currency expenses | ➖ | ✅ | M3.1 |
+| Multi-currency expenses | ➖ | ✅ | ✅ M3.1 |
 | Active user / personal balance | ➖ | ✅ | ✅ M3.1 |
 | Select all-or-none participants | ➖ | ✅ | ✅ M3.1 |
 | Default splitting options | ➖ | ✅ | M3.1 |

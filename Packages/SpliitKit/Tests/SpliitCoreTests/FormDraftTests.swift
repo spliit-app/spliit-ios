@@ -556,3 +556,283 @@ struct ExpenseFormDraftTests {
         #expect(form.participants.map(\.valueText) == ["1800", "1200"])
     }
 }
+
+// MARK: - Expenses paid in another currency
+
+@Suite("Expense currency conversion")
+struct ExpenseConversionTests {
+
+    private let euroGroup = Group(
+        id: "g1", name: "Weekend in Lisbon", information: nil, currency: "€",
+        currencyCode: "EUR", createdAt: .now,
+        participants: [.init(id: "ana", name: "Ana"), .init(id: "bruno", name: "Bruno")]
+    )
+
+    private let yenGroup = Group(
+        id: "g2", name: "Tokyo", information: nil, currency: "¥", currencyCode: "JPY",
+        createdAt: .now,
+        participants: [.init(id: "ana", name: "Ana"), .init(id: "bruno", name: "Bruno")]
+    )
+
+    /// A group that only ever had a symbol, which is every group created before the web app
+    /// grew a currency picker.
+    private let symbolOnlyGroup = Group(
+        id: "g3", name: "Flat", information: nil, currency: "kr", currencyCode: nil,
+        createdAt: .now,
+        participants: [.init(id: "ana", name: "Ana"), .init(id: "bruno", name: "Bruno")]
+    )
+
+    private func draft(
+        in group: Group,
+        paidIn code: String? = nil,
+        paid: String = "",
+        rate: String = "",
+        locale: Locale = Locale(identifier: "en_US")
+    ) -> ExpenseFormDraft {
+        var form = ExpenseFormDraft(creatingIn: group, locale: locale)
+        form.title = "Airport taxi"
+        if let code { form.originalCurrencyCode = code }
+        form.originalAmountText = paid
+        form.conversionRateText = rate
+        return form
+    }
+
+    @Test("An expense in the group's own currency records no conversion")
+    func recordsNoConversionByDefault() throws {
+        var form = draft(in: euroGroup)
+        form.amountText = "42.50"
+
+        #expect(form.conversionRequired == false)
+        let values = try #require(form.formValues)
+        #expect(values.amount == 4250)
+        #expect(values.originalAmount == nil)
+        #expect(values.originalCurrency == nil)
+        #expect(values.conversionRate == nil)
+    }
+
+    @Test("An expense paid in another currency is stored at what it converts to")
+    func convertsToTheGroupCurrency() throws {
+        let form = draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "0.92")
+
+        #expect(form.conversionRequired)
+        #expect(form.amountMinorUnits == 3680)
+
+        let values = try #require(form.formValues)
+        #expect(values.amount == 3680)
+        #expect(values.originalAmount == 4000)
+        #expect(values.originalCurrency == "USD")
+        #expect(values.conversionRate == Decimal(string: "0.92"))
+    }
+
+    /// The two sides of a conversion count in their own minor units. €40.00 is 4000 and the
+    /// ¥6,540 it comes to is 6540 — not 654,000, and not 65.
+    @Test("Each side of the conversion uses its own minor units")
+    func scalesEachSideByItsOwnCurrency() throws {
+        let intoYen = draft(in: yenGroup, paidIn: "EUR", paid: "40.00", rate: "163.5")
+
+        #expect(intoYen.originalMinorUnitDigits == 2)
+        #expect(intoYen.minorUnitDigits == 0)
+        #expect(intoYen.originalAmountMinorUnits == 4000)
+        #expect(intoYen.amountMinorUnits == 6540)
+
+        let outOfYen = draft(in: euroGroup, paidIn: "JPY", paid: "3000", rate: "0.0058")
+
+        #expect(outOfYen.originalAmountMinorUnits == 3000)
+        #expect(outOfYen.amountMinorUnits == 1740)
+    }
+
+    /// Three of the Gulf currencies keep three digits, so the amount paid has to as well.
+    @Test("A three-digit currency keeps its third digit")
+    func handlesThreeDigitCurrencies() throws {
+        let form = draft(in: euroGroup, paidIn: "BHD", paid: "12.345", rate: "2.44")
+
+        #expect(form.originalMinorUnitDigits == 3)
+        #expect(form.originalAmountMinorUnits == 12345)
+        // 12.345 × 2.44 = 30.1218, to the euro's two digits.
+        #expect(form.amountMinorUnits == 3012)
+    }
+
+    @Test("The amount paid must be there, numeric, non-zero and under ten million")
+    func validatesTheAmountPaid() {
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "", rate: "0.92")
+                .problems.contains(.originalAmountMissing)
+        )
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "lots", rate: "0.92")
+                .problems.contains(.originalAmountNotANumber)
+        )
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "0", rate: "0.92")
+                .problems.contains(.originalAmountZero)
+        )
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "10000000.01", rate: "0.92")
+                .problems.contains(.originalAmountTooLarge)
+        )
+    }
+
+    @Test("The rate must be there and strictly positive")
+    func validatesTheRate() {
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "")
+                .problems.contains(.conversionRateMissing)
+        )
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "par")
+                .problems.contains(.conversionRateNotANumber)
+        )
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "0")
+                .problems.contains(.conversionRateNotPositive)
+        )
+        #expect(
+            draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "-1")
+                .problems.contains(.conversionRateNotPositive)
+        )
+    }
+
+    /// The amount paid and the rate can each be fine on their own and still come to nothing —
+    /// which would be an expense the balances silently ignore.
+    @Test("A rate that rounds the total away is refused")
+    func refusesATotalThatRoundsToZero() {
+        let form = draft(in: euroGroup, paidIn: "USD", paid: "0.01", rate: "0.0001")
+
+        #expect(form.amountMinorUnits == 0)
+        #expect(form.problems.contains(.amountZero))
+    }
+
+    @Test("A group with only a symbol cannot convert anything")
+    func refusesToConvertWithoutAnISOCode() throws {
+        var form = draft(in: symbolOnlyGroup, paidIn: "USD", paid: "40.00", rate: "0.92")
+        form.amountText = "42.50"
+
+        #expect(form.conversionRequired == false)
+        // The typed total still stands, and nothing about a conversion is sent.
+        let values = try #require(form.formValues)
+        #expect(values.amount == 4250)
+        #expect(values.originalCurrency == nil)
+    }
+
+    @Test("Editing an expense loads its conversion back into the fields")
+    func loadsAnExistingConversion() {
+        let expense = ExpenseDetails(
+            id: "e1", groupId: "g1", title: "Airport taxi", amount: 3680, categoryId: 0,
+            category: nil, expenseDate: .now, createdAt: .now, paidById: "ana",
+            paidBy: .init(id: "ana", name: "Ana"),
+            paidFor: [.init(participantId: "ana", shares: 100)],
+            isReimbursement: false, splitMode: .evenly, notes: nil, documents: [],
+            recurrenceRule: .never,
+            originalAmount: 4000, originalCurrency: "USD",
+            conversionRate: LenientDecimal(Decimal(string: "0.92")!)
+        )
+
+        let form = ExpenseFormDraft(
+            editing: expense, group: euroGroup, locale: Locale(identifier: "en_US")
+        )
+
+        #expect(form.conversionRequired)
+        #expect(form.originalCurrencyCode == "USD")
+        #expect(form.originalAmountText == "40.00")
+        #expect(form.conversionRateText == "0.92")
+        #expect(form.amountMinorUnits == expense.amount)
+    }
+
+    /// An expense saved before any of this existed has no currency of its own, and belongs to
+    /// whatever the group counts in.
+    @Test("An expense with no currency of its own is in the group's")
+    func loadsAnExpenseWithoutAConversion() {
+        let expense = ExpenseDetails(
+            id: "e2", groupId: "g1", title: "Coffee", amount: 450, categoryId: 0,
+            category: nil, expenseDate: .now, createdAt: .now, paidById: "ana",
+            paidBy: .init(id: "ana", name: "Ana"),
+            paidFor: [.init(participantId: "ana", shares: 100)],
+            isReimbursement: false, splitMode: .evenly, notes: nil, documents: [],
+            recurrenceRule: .never,
+            originalAmount: nil, originalCurrency: nil, conversionRate: nil
+        )
+
+        let form = ExpenseFormDraft(
+            editing: expense, group: euroGroup, locale: Locale(identifier: "en_US")
+        )
+
+        #expect(form.originalCurrencyCode == "EUR")
+        #expect(form.conversionRequired == false)
+        #expect(form.amountText == "4.50")
+    }
+
+    /// The server cannot clear the amount and the rate — only the currency — so an expense that
+    /// used to be converted keeps both, with nothing reading them. Loading one has to ignore
+    /// them, or a currency picked afterwards would arrive with someone else's numbers in it.
+    @Test("What a cleared conversion left behind is not read back")
+    func ignoresALeftoverConversion() {
+        let expense = ExpenseDetails(
+            id: "e3", groupId: "g1", title: "Dinner", amount: 3696, categoryId: 0,
+            category: nil, expenseDate: .now, createdAt: .now, paidById: "ana",
+            paidBy: .init(id: "ana", name: "Ana"),
+            paidFor: [.init(participantId: "ana", shares: 100)],
+            isReimbursement: false, splitMode: .evenly, notes: nil, documents: [],
+            recurrenceRule: .never,
+            originalAmount: 4000, originalCurrency: nil,
+            conversionRate: LenientDecimal(Decimal(string: "0.9241")!)
+        )
+
+        let form = ExpenseFormDraft(
+            editing: expense, group: euroGroup, locale: Locale(identifier: "en_US")
+        )
+
+        #expect(form.conversionRequired == false)
+        #expect(form.originalAmountText.isEmpty)
+        #expect(form.conversionRateText.isEmpty)
+        #expect(form.amountText == "36.96")
+    }
+
+    /// Moving back has to clear the currency, and a nil optional would not: it is left out of the
+    /// request and Prisma leaves the column alone. See `ExpenseFormValues.encode(to:)`.
+    @Test("Moving an expense back to the group's currency keeps the total and drops the rate")
+    func clearsTheConversionOnTheWayBack() throws {
+        var form = draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "0.92")
+        form.useCurrency("EUR")
+
+        #expect(form.conversionRequired == false)
+        #expect(form.amountText == "36.80")
+
+        let values = try #require(form.formValues)
+        #expect(values.amount == 3680)
+        #expect(values.originalAmount == nil)
+        #expect(values.originalCurrency == nil)
+        #expect(values.conversionRate == nil)
+    }
+
+    /// A rate is a rate between two currencies. Carrying one to a different pair would convert
+    /// at a number that is right for a conversion nobody asked for.
+    @Test("Changing the currency drops the rate but keeps what was paid")
+    func dropsTheRateWithTheCurrency() {
+        var form = draft(in: euroGroup, paidIn: "USD", paid: "40.00", rate: "0.92")
+        form.useCurrency("GBP")
+
+        #expect(form.originalAmountText == "40.00")
+        #expect(form.conversionRateText.isEmpty)
+        #expect(form.problems.contains(.conversionRateMissing))
+    }
+
+    @Test("A comma decimal separator works for the amount paid and the rate")
+    func parsesACommaSeparator() throws {
+        let form = draft(
+            in: euroGroup, paidIn: "USD", paid: "40,00", rate: "0,92",
+            locale: Locale(identifier: "fr_FR")
+        )
+
+        #expect(form.isValid)
+        #expect(try #require(form.formValues).amount == 3680)
+    }
+
+    @Test("A looked-up rate lands in the field at the precision it arrived with")
+    func takesALookedUpRate() {
+        var form = draft(in: euroGroup, paidIn: "USD", paid: "40.00")
+        form.use(rate: Decimal(string: "0.9241")!)
+
+        #expect(form.conversionRateText == "0.9241")
+        #expect(form.amountMinorUnits == 3696)
+    }
+}

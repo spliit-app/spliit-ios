@@ -31,6 +31,16 @@
         }
       }
     },
+    "Enter an exchange rate.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez un taux de change."
+          }
+        }
+      }
+    },
     "Enter at least one character.": {
       "localizations": {
         "fr": {
@@ -67,6 +77,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saisissez au plus cinq caractères."
+          }
+        }
+      }
+    },
+    "Enter what was actually paid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez le montant réellement payé."
           }
         }
       }
@@ -127,6 +147,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La dépense doit être payée pour au moins un participant."
+          }
+        }
+      }
+    },
+    "The rate must be strictly greater than zero.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le taux de change doit être strictement supérieur à zéro."
           }
         }
       }

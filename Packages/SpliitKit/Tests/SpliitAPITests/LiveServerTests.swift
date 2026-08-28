@@ -112,6 +112,81 @@ struct LiveServerTests {
             == DateComponents(year: 2026, month: 3, day: 17))
     }
 
+    /// The two halves the server has to accept: a conversion written and read back with its
+    /// decimal rate intact, and the same expense moved to the group's own currency, which only
+    /// clears the columns because the fields go out as explicit nulls.
+    @Test("An expense paid in another currency keeps its rate, and gives it up when cleared")
+    func createsAndClearsAConversion() async throws {
+        let client = try client
+
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "Conversion round trip \(UUID().uuidString.prefix(8))",
+                    currency: "€",
+                    currencyCode: "EUR",
+                    participants: [.init(name: "Dana"), .init(name: "Eli")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first { $0.name == "Dana" })
+        let eli = try #require(group.participants.first { $0.name == "Eli" })
+
+        let paidFor: [ExpenseFormValues.PaidFor] = [
+            .init(participant: dana.id, shares: 100),
+            .init(participant: eli.id, shares: 100),
+        ]
+
+        let expense = try await client.call(
+            Spliit.createExpense(
+                groupId: group.id,
+                ExpenseFormValues(
+                    title: "Dinner in dollars",
+                    expenseDate: .now,
+                    amount: 3696,
+                    paidBy: dana.id,
+                    paidFor: paidFor,
+                    originalAmount: 4000,
+                    originalCurrency: "USD",
+                    conversionRate: Decimal(string: "0.9241")
+                )
+            )
+        )
+
+        let converted = try await client.call(
+            Spliit.expense(groupId: group.id, expenseId: expense.expenseId)
+        ).expense
+
+        #expect(converted.amount == 3696)
+        #expect(converted.originalAmount == 4000)
+        #expect(converted.originalCurrency == "USD")
+        #expect(converted.conversionRate?.value == Decimal(string: "0.9241"))
+
+        _ = try await client.call(
+            Spliit.updateExpense(
+                groupId: group.id,
+                expenseId: expense.expenseId,
+                ExpenseFormValues(
+                    title: "Dinner in euros",
+                    expenseDate: .now,
+                    amount: 3696,
+                    paidBy: dana.id,
+                    paidFor: paidFor
+                )
+            )
+        )
+
+        let cleared = try await client.call(
+            Spliit.expense(groupId: group.id, expenseId: expense.expenseId)
+        ).expense
+
+        // The currency is the field that can be cleared, and the field that decides. The schema
+        // takes null only here: `originalAmount` and `conversionRate` accept a number or an empty
+        // string and reject null, so what they held stays in the database with nothing reading it.
+        #expect(cleared.originalCurrency == nil)
+    }
+
     @Test("Balances come back consistent after an expense is added")
     func readsBalances() async throws {
         let client = try client

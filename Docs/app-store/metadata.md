@@ -322,6 +322,12 @@ expense created). Plausible is cookieless and stores no per-person identifier; t
 is the whole payload, with no group or expense ID attached. Nothing is sent from debug builds
 or under UI tests.
 
+**Exchange rates are not a data type.** An expense recorded in a currency the group is not
+counted in asks frankfurter.dev for that day's published rate. The request carries a date and
+two currency codes and nothing else — no identifier, no user content, nothing kept on the other
+end that belongs to anyone — so there is nothing to declare. It is named in the privacy policy
+because a request leaving the device is worth saying out loud, not because it collects anything.
+
 Everything else is a clean no: no tracking, no advertising identifier, no data brokers, no data
 shared with third parties, no email address or phone number, no location, no identifiers, no
 health, financial-account or purchase data. The app asks for no system permissions at all — it
@@ -364,6 +370,10 @@ expense created — to Plausible Analytics. The name of the screen is all that i
 or expense identifier goes with it, so a report cannot be traced back to a group of yours.
 Plausible is cookieless, sets no identifier, and collects no personal data. There is no advertising, no tracking across apps or websites, and no
 data sold or shared with brokers.
+
+Exchange rates. When you record an expense in a currency your group is not counted in, the app
+asks frankfurter.dev for that day's published rate. The request carries a date and two currency
+codes, and nothing about you or your group. You can type the rate yourself instead.
 
 Self-hosting. Spliit is open source. If you point the app at your own instance in Settings, your
 groups are stored on your server and nothing about them reaches spliit.app.

@@ -113,23 +113,30 @@ public final class MoneyFormatter: @unchecked Sendable {
         locale: Locale = .autoupdatingCurrent,
         minorUnitDigits: Int = 2
     ) -> Int? {
+        guard let value = number(from: text, locale: locale) else { return nil }
+        return roundToInteger(value * pow(Decimal(10), minorUnitDigits))
+    }
+
+    /// The number someone typed, unscaled — for the values that are not money.
+    ///
+    /// A conversion rate is the one of those the form has: 1.0575 is a rate and not a hundredth
+    /// of anything, so it must not go through the minor-unit scaling above.
+    public static func number(from text: String, locale: Locale = .autoupdatingCurrent) -> Decimal? {
         let separator = locale.decimalSeparator ?? "."
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.replacingOccurrences(of: separator, with: ".")
         cleaned = cleaned.replacingOccurrences(of: ",", with: ".")
         cleaned = cleaned.filter { $0.isNumber || $0 == "." || $0 == "-" }
 
-        guard !cleaned.isEmpty, let value = Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX"))
-        else {
-            return nil
-        }
+        guard !cleaned.isEmpty else { return nil }
+        return Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX"))
+    }
 
-        let scaled = (value * pow(Decimal(10), minorUnitDigits)) as NSDecimalNumber
-        let rounded = scaled.rounding(accordingToBehavior: NSDecimalNumberHandler(
+    static func roundToInteger(_ value: Decimal) -> Int {
+        (value as NSDecimalNumber).rounding(accordingToBehavior: NSDecimalNumberHandler(
             roundingMode: .plain, scale: 0,
             raiseOnExactness: false, raiseOnOverflow: false,
             raiseOnUnderflow: false, raiseOnDivideByZero: false
-        ))
-        return rounded.intValue
+        )).intValue
     }
 }

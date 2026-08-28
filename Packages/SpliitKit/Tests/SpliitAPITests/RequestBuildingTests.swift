@@ -119,6 +119,61 @@ struct RequestBuildingTests {
         #expect(values2["expenseFormValues.expenseDate"] as? [String] == ["Date"])
     }
 
+    /// `originalCurrency` goes out even when there is nothing to convert. A nil optional would be
+    /// left out of the request, reach tRPC as `undefined` and tell Prisma to leave the column
+    /// alone — so an expense moved back to the group's own currency would go on claiming to have
+    /// been paid in another one. The amount and the rate are omitted instead: the server's schema
+    /// rejects null for those two, and the currency is what governs.
+    @Test("A conversion is sent with the expense, and its currency cleared when there isn't one")
+    func sendsTheConversion() throws {
+        func formValues(in body: Data) throws -> [String: Any] {
+            let envelope = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            let json = try #require(envelope["json"] as? [String: Any])
+            return try #require(json["expenseFormValues"] as? [String: Any])
+        }
+
+        let converted = ExpenseFormValues(
+            title: "Airport taxi",
+            expenseDate: Date(timeIntervalSince1970: 1_700_000_000),
+            amount: 3696,
+            paidBy: "p1",
+            paidFor: [.init(participant: "p1", shares: 100)],
+            originalAmount: 4000,
+            originalCurrency: "USD",
+            conversionRate: Decimal(string: "0.9241")
+        )
+        let body = try #require(
+            try client("https://spliit.app/")
+                .makeRequest(for: Spliit.createExpense(groupId: "g1", converted)).httpBody
+        )
+        let form = try formValues(in: body)
+
+        #expect(form["originalAmount"] as? Int == 4000)
+        #expect(form["originalCurrency"] as? String == "USD")
+        // Asserted on the bytes: a rate that arrives as 0.9241000000000001 is a rate that no
+        // longer produces the amount stored beside it.
+        #expect(String(decoding: body, as: UTF8.self).contains("\"conversionRate\":0.9241"))
+
+        let plain = ExpenseFormValues(
+            title: "Coffee",
+            expenseDate: Date(timeIntervalSince1970: 1_700_000_000),
+            amount: 450,
+            paidBy: "p1",
+            paidFor: [.init(participant: "p1", shares: 100)]
+        )
+        let cleared = try formValues(
+            in: try #require(
+                try client("https://spliit.app/")
+                    .makeRequest(for: Spliit.updateExpense(groupId: "g1", expenseId: "e1", plain))
+                    .httpBody
+            )
+        )
+
+        #expect(cleared["originalCurrency"] is NSNull)
+        #expect(cleared["originalAmount"] == nil)
+        #expect(cleared["conversionRate"] == nil)
+    }
+
     @Test("A base URL with no host is rejected before any request goes out")
     func rejectsUnusableBaseURL() throws {
         let client = TRPCClient(baseURL: try #require(URL(string: "not-a-url")))

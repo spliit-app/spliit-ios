@@ -29,6 +29,30 @@ enum UITestSupport {
         static let addExpense = "-uiTestAddExpense"
         /// A URL to deliver as if the system had just opened the app with it.
         static let openURL = "-uiTestOpenURL"
+        /// The rate every currency lookup should answer with, or "none" to make them all fail.
+        static let exchangeRate = "-uiTestExchangeRate"
+    }
+
+    /// A rates service that answers from a launch argument instead of the network.
+    ///
+    /// Rates are the one thing in the app that comes from somewhere other than the Spliit
+    /// instance under test, and a suite that reached for the real one would be as reliable as the
+    /// runner's connection. Nil when the argument is absent, so the app is otherwise untouched.
+    static func stubbedExchangeRates() -> ExchangeRates? {
+        guard let value = value(for: Argument.exchangeRate, in: ProcessInfo.processInfo.arguments)
+        else { return nil }
+
+        guard value != "none" else {
+            return ExchangeRates { _ in throw URLError(.notConnectedToInternet) }
+        }
+        return ExchangeRates { url in
+            let target = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == "symbols" }?.value ?? ""
+            let day = url.pathComponents.last ?? ""
+            return Data(
+                #"{"amount":1.0,"base":"X","date":"\#(day)","rates":{"\#(target)":\#(value)}}"#.utf8
+            )
+        }
     }
 
     static func applyLaunchArguments() {

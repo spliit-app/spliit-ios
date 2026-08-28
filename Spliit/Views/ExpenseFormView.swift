@@ -37,6 +37,20 @@ struct ExpenseFormView: View {
     @State private var savedCount = 0
     @State private var refusedCount = 0
 
+    @State private var rateLookup = RateLookup.idle
+    /// The last rate this screen filled in by itself, so a rate the user typed over it is left
+    /// alone by the next lookup.
+    @State private var autoFilledRate: String?
+
+    /// Stubbed from a launch argument under UI test, so a run neither depends on reaching an
+    /// external service nor gets a different answer every day.
+    private var rates: ExchangeRates {
+        #if DEBUG
+        if let stubbed = UITestSupport.stubbedExchangeRates() { return stubbed }
+        #endif
+        return ExchangeRates()
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -76,6 +90,7 @@ struct ExpenseFormView: View {
             }
         }
         .task { await load() }
+        .task(id: rateRequest) { await lookUpRate() }
         .interactiveDismissDisabled(isSaving)
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
         .sensoryFeedback(Haptics.refused, trigger: refusedCount)
@@ -92,14 +107,18 @@ struct ExpenseFormView: View {
                 problem(for: [.titleTooShort])
 
                 LabeledContent("Amount") {
-                    TextField(
-                        "0\(decimalSeparator)00",
-                        text: form.amountText
-                    )
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .moneyInput()
-                    .accessibilityIdentifier(AccessibilityID.ExpenseForm.amountField)
+                    if form.wrappedValue.conversionRequired {
+                        convertedTotal(form.wrappedValue)
+                    } else {
+                        TextField(
+                            "0\(decimalSeparator)00",
+                            text: form.amountText
+                        )
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .moneyInput()
+                        .accessibilityIdentifier(AccessibilityID.ExpenseForm.amountField)
+                    }
                 }
                 problem(for: [.amountMissing, .amountNotANumber, .amountZero, .amountTooLarge])
 
@@ -110,6 +129,8 @@ struct ExpenseFormView: View {
                 )
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.dateField)
             }
+
+            currencySection(form)
 
             Section {
                 Picker("Paid by", selection: form.paidByID) {
@@ -154,6 +175,176 @@ struct ExpenseFormView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Currency
+
+    /// What the expense was paid in, and — when that is not what the group counts in — what was
+    /// paid and at what rate.
+    ///
+    /// Absent entirely for a group that has only a free-text symbol: a conversion needs an ISO
+    /// code on both sides, and a row that could never do anything is worse than no row. The
+    /// currency picker in the group form is where that trade-off is explained.
+    @ViewBuilder
+    private func currencySection(_ form: Binding<ExpenseFormDraft>) -> some View {
+        if let groupCode = group.currencyCode, groupCode.count == 3 {
+            Section {
+                NavigationLink {
+                    CurrencyPickerView(
+                        selectedCode: form.wrappedValue.originalCurrencyCode,
+                        promotedCode: groupCode,
+                        allowsCustomSymbol: false
+                    ) { currency in
+                        form.wrappedValue.useCurrency(currency?.code ?? groupCode)
+                    }
+                } label: {
+                    LabeledContent("Paid in", value: currencyName(form.wrappedValue))
+                }
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.currencyButton)
+
+                if form.wrappedValue.conversionRequired {
+                    LabeledContent("Amount paid") {
+                        HStack(spacing: 4) {
+                            TextField(
+                                "0\(decimalSeparator)00",
+                                text: form.originalAmountText
+                            )
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .moneyInput()
+                            .accessibilityIdentifier(
+                                AccessibilityID.ExpenseForm.originalAmountField
+                            )
+
+                            Text(originalCurrency(form.wrappedValue)?.symbol ?? "")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    problem(for: [
+                        .originalAmountMissing, .originalAmountNotANumber,
+                        .originalAmountZero, .originalAmountTooLarge,
+                    ])
+
+                    LabeledContent("Exchange rate") {
+                        TextField("0", text: form.conversionRateText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .moneyInput()
+                            .accessibilityIdentifier(
+                                AccessibilityID.ExpenseForm.conversionRateField
+                            )
+                    }
+                    problem(for: [
+                        .conversionRateMissing, .conversionRateNotANumber,
+                        .conversionRateNotPositive,
+                    ])
+                }
+            } header: {
+                // Nothing to head, and nothing to explain, until the expense is in a currency
+                // of its own: one row saying "Paid in — US Dollar" says what it is, and a
+                // heading and a footnote over it on every expense in every group is furniture.
+                if form.wrappedValue.conversionRequired {
+                    Text("Currency")
+                }
+            } footer: {
+                if form.wrappedValue.conversionRequired {
+                    conversionFooter(form.wrappedValue)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func conversionFooter(_ form: ExpenseFormDraft) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(rateStatus(form))
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.conversionRateStatus)
+
+            if canRefreshRate(form) {
+                Button("Use the published rate") { Task { await refreshRate() } }
+                    .font(.footnote)
+                    .accessibilityIdentifier(AccessibilityID.ExpenseForm.refreshRateButton)
+            }
+        }
+    }
+
+    /// The total the conversion comes to, which is the amount the expense is stored at.
+    ///
+    /// Not editable while a conversion is in force: it is what the amount paid comes to at the
+    /// rate given, and a total that could disagree with those two would be a total the rate
+    /// beside it does not explain.
+    @ViewBuilder
+    private func convertedTotal(_ form: ExpenseFormDraft) -> some View {
+        if let total = form.amountMinorUnits {
+            Money(value: groupFormatter.string(minorUnits: total))
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.amountField)
+        } else {
+            Text(verbatim: "—")
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text("Not yet known"))
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.amountField)
+        }
+    }
+
+    /// Only where pressing it would change something: a rate typed by hand can be given up for
+    /// the published one, and a lookup that failed can be tried again — but a field already
+    /// holding what was just fetched has nothing to refresh, and a button that does nothing is
+    /// worse than no button.
+    private func canRefreshRate(_ form: ExpenseFormDraft) -> Bool {
+        switch rateLookup {
+        case .idle, .loading: false
+        case .found: form.conversionRateText != autoFilledRate
+        case .noRate, .unavailable: true
+        }
+    }
+
+    /// What the footer says about where the rate in the field came from.
+    private func rateStatus(_ form: ExpenseFormDraft) -> String {
+        let base = form.originalCurrencyCode ?? ""
+        let target = form.groupCurrencyCode ?? ""
+
+        if form.conversionRateText != autoFilledRate, !form.conversionRateText.isEmpty {
+            return String(localized: "Using the rate you entered.")
+        }
+
+        switch rateLookup {
+        case .idle, .loading:
+            return String(localized: "Getting the exchange rate…")
+        case .found(let rate):
+            let quote = String(
+                localized: "\(base) 1 = \(target) \(ExpenseFormDraft.text(forRate: rate.rate))"
+            )
+            guard let day = rate.date, !Calendar.autoupdatingCurrent.isDate(
+                day, inSameDayAs: form.expenseDate
+            ) else {
+                return quote
+            }
+            // Rates are published on working days, so a Sunday or a date still to come answers
+            // with the last day there is one. Saying which day avoids the reasonable suspicion
+            // that the number is simply wrong.
+            let dayText = day.formatted(date: .abbreviated, time: .omitted)
+            return String(localized: "\(quote) — the rate on \(dayText).")
+        case .noRate:
+            return String(localized: "No published rate for this pair. Enter the rate yourself.")
+        case .unavailable:
+            return String(localized: "Couldn’t reach the rates service. Enter the rate yourself.")
+        }
+    }
+
+    private func currencyName(_ form: ExpenseFormDraft) -> String {
+        guard let currency = originalCurrency(form) else {
+            return form.originalCurrencyCode ?? group.currency
+        }
+        return currency.name
+    }
+
+    private func originalCurrency(_ form: ExpenseFormDraft) -> Currency? {
+        form.originalCurrencyCode.flatMap { Currency.named($0) }
+    }
+
+    private var groupFormatter: MoneyFormatter {
+        MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode)
     }
 
     @ViewBuilder
@@ -291,6 +482,81 @@ struct ExpenseFormView: View {
     }
 
     // MARK: - Actions
+
+    private enum RateLookup: Equatable {
+        case idle
+        case loading
+        case found(ExchangeRate)
+        case noRate
+        case unavailable
+    }
+
+    /// What to ask the rates service for, and nil when there is nothing to ask. Doubles as the
+    /// identity of the lookup task, so changing the date or either currency starts a new one and
+    /// abandons the answer to the old question.
+    private struct RateRequest: Equatable {
+        let day: String
+        let base: String
+        let target: String
+    }
+
+    private var rateRequest: RateRequest? {
+        guard let form, form.conversionRequired,
+              let base = form.originalCurrencyCode,
+              let target = form.groupCurrencyCode
+        else { return nil }
+        return RateRequest(
+            day: ExchangeRates.day(of: form.expenseDate), base: base, target: target
+        )
+    }
+
+    private func lookUpRate() async {
+        guard let request = rateRequest else {
+            rateLookup = .idle
+            return
+        }
+        rateLookup = .loading
+        do {
+            let rate = try await rates.rate(
+                on: request.day, from: request.base, to: request.target
+            )
+            rateLookup = .found(rate)
+            // Only into a field the user has not made their own. The rate a card was actually
+            // charged at beats a published one, and typing it must not be undone by a lookup
+            // that arrives afterwards.
+            if form?.conversionRateText.isEmpty == true
+                || form?.conversionRateText == autoFilledRate {
+                apply(rate.rate)
+            }
+        } catch ExchangeRates.Failure.noRateForCurrency {
+            rateLookup = .noRate
+        } catch {
+            rateLookup = .unavailable
+        }
+    }
+
+    /// Asks again, and takes the answer whatever is in the field — this is the way back from a
+    /// rate typed by hand, and the retry after a lookup that failed.
+    private func refreshRate() async {
+        guard let request = rateRequest else { return }
+        rateLookup = .loading
+        do {
+            let rate = try await rates.rate(
+                on: request.day, from: request.base, to: request.target
+            )
+            rateLookup = .found(rate)
+            apply(rate.rate)
+        } catch ExchangeRates.Failure.noRateForCurrency {
+            rateLookup = .noRate
+        } catch {
+            rateLookup = .unavailable
+        }
+    }
+
+    private func apply(_ rate: Decimal) {
+        form?.use(rate: rate)
+        autoFilledRate = form?.conversionRateText
+    }
 
     private func load() async {
         if let draft {

@@ -1,7 +1,7 @@
 import SpliitCore
 import SwiftUI
 
-/// Choosing what a group counts in.
+/// Choosing what a group counts in, or what one expense in it was paid in.
 ///
 /// A hundred and fifty-nine currencies is far too many for a menu, so this is the shape iOS
 /// uses for a long list of one-of choices: a pushed, searchable list, with the handful anyone
@@ -11,6 +11,12 @@ struct CurrencyPickerView: View {
 
     /// What the group carries now, or nil when it has only a symbol.
     let selectedCode: String?
+    /// One more currency to offer at the top, when the caller has an obvious candidate — the
+    /// group's own, on the screen that picks what an expense was paid in.
+    var promotedCode: String?
+    /// Whether "custom symbol" is one of the answers. It is for a group, which may be counted in
+    /// anything at all; it is not for an expense, where a conversion needs a code on both sides.
+    var allowsCustomSymbol = true
     /// The chosen currency, or nil for "custom symbol".
     let onSelect: (Currency?) -> Void
 
@@ -45,15 +51,17 @@ struct CurrencyPickerView: View {
                 }
             } else {
                 Section("Suggested") {
-                    ForEach(suggested) { row(for: $0) }
+                    ForEach(suggestions) { row(for: $0) }
                 }
 
                 // Above the full list rather than below it: a hundred and fifty-nine rows is a
                 // long way to scroll for the one option that isn't in them.
-                Section {
-                    customRow
-                } footer: {
-                    Text("A custom symbol sits beside amounts the same way, but records no ISO code — so nothing else can tell what the amounts are in.")
+                if allowsCustomSymbol {
+                    Section {
+                        customRow
+                    } footer: {
+                        Text("A custom symbol sits beside amounts the same way, but records no ISO code — so nothing else can tell what the amounts are in, and no expense in the group can be recorded in another currency.")
+                    }
                 }
 
                 Section("All currencies") {
@@ -69,9 +77,11 @@ struct CurrencyPickerView: View {
             title: Text("No matching currency"),
             description: Text("Nothing here matches “\(trimmedQuery)”.")
         ) {
-            Button("Use a custom symbol") { choose(nil) }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier(AccessibilityID.CurrencyPicker.customOption)
+            if allowsCustomSymbol {
+                Button("Use a custom symbol") { choose(nil) }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(AccessibilityID.CurrencyPicker.customOption)
+            }
         }
     }
 
@@ -145,6 +155,12 @@ struct CurrencyPickerView: View {
         currency.symbol == currency.code
             ? currency.code
             : "\(currency.code) · \(currency.symbol)"
+    }
+
+    /// The handful offered above the full list, with the caller's own candidate first.
+    private var suggestions: [Currency] {
+        guard let promoted = promotedCode.flatMap({ Currency.named($0) }) else { return suggested }
+        return [promoted] + suggested.filter { $0.code != promoted.code }
     }
 
     private var trimmedQuery: String {

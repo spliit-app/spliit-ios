@@ -120,6 +120,25 @@ struct SpliitTestAPI {
         )
     }
 
+    /// An expense the app wrote, read back from the server.
+    ///
+    /// For asserting on what was actually stored rather than on what the screen says about it —
+    /// the fields a conversion leaves behind are on the expense and on no screen at all.
+    func expense(inGroup groupId: String, titled title: String) async throws -> [String: Any] {
+        let list = try await query("groups.expenses.list", ["groupId": groupId, "limit": 50])
+        let expenses = try require(list["expenses"] as? [[String: Any]], "no expenses in \(groupId)")
+        let listed = try require(
+            expenses.first { $0["title"] as? String == title }, "no expense titled \(title)"
+        )
+        let id = try require(listed["id"] as? String, "expense \(title) has no id")
+
+        // The list endpoint selects a subset of the columns; the original amount is only on this.
+        let details = try await query(
+            "groups.expenses.get", ["groupId": groupId, "expenseId": id]
+        )
+        return try require(details["expense"] as? [String: Any], "expense \(id) not found")
+    }
+
     /// The JSON the app would store for these groups, for `-uiTestRecentGroups`.
     static func recentGroupsJSON(_ groups: [(id: String, name: String)]) -> String {
         recentGroupsJSON(

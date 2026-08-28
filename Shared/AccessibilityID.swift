@@ -119,6 +119,11 @@ enum AccessibilityID {
         static let deleteButton = "expenseForm.delete"
         static let error = "expenseForm.error"
         static let remainder = "expenseForm.remainder"
+        static let currencyButton = "expenseForm.currency"
+        static let originalAmountField = "expenseForm.originalAmount"
+        static let conversionRateField = "expenseForm.conversionRate"
+        static let conversionRateStatus = "expenseForm.conversionRate.status"
+        static let refreshRateButton = "expenseForm.conversionRate.refresh"
 
         static func splitModeOption(_ mode: String) -> String { "expenseForm.split.\(mode)" }
         static func participantToggle(_ id: String) -> String { "expenseForm.paidFor.\(id)" }

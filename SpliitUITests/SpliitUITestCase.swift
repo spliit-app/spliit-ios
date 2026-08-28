@@ -41,7 +41,8 @@ class SpliitUITestCase: XCTestCase {
         textSize: UIContentSizeCategory? = nil,
         openGroup: String? = nil,
         addExpense: (groupID: String, title: String, amount: String)? = nil,
-        openURL: String? = nil
+        openURL: String? = nil,
+        exchangeRate: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
@@ -72,6 +73,9 @@ class SpliitUITestCase: XCTestCase {
         }
         if let openURL {
             app.launchArguments += ["-uiTestOpenURL", openURL]
+        }
+        if let exchangeRate {
+            app.launchArguments += ["-uiTestExchangeRate", exchangeRate]
         }
 
         app.launch()

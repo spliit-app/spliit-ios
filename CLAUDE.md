@@ -121,11 +121,24 @@ because that is what it was stored as.
 `BY_SHARES` and `BY_PERCENTAGE` — whatever the currency — but a **raw minor-unit amount** for
 `BY_AMOUNT`, which does scale with it.
 
+An expense paid in another currency carries **two amounts on two different scales**:
+`originalAmount` is in `originalCurrency`'s minor units and `amount` is in the group's. A €40.00
+dinner in a yen group is `originalAmount == 4000` and `amount == 6540`. `ExpenseFormDraft` asks
+each currency for its own precision; only the group's belongs to the group.
+
 **A nil optional is omitted from the request, and the server then leaves that column alone.**
 Swift's synthesised encoding uses `encodeIfPresent`, so nil never reaches the wire; tRPC reads
 it as `undefined` and Prisma skips the field. Clearing something therefore means sending an
 empty value, not nil — `GroupFormDraft.formValues` sends `""` for a currency code the user
 dropped, which is what the web app writes too.
+
+**And what counts as an empty value is per field.** `ExpenseFormValues` writes an explicit
+`null` for `originalCurrency`, the only one of the three conversion fields whose zod schema
+takes one; `originalAmount` and `conversionRate` accept a number, a numeric string or `''`, and
+reject null with a 400. So an expense that stops being converted keeps those two in the database
+with nothing reading them — the currency is what says an expense was paid in another one, and
+`ExpenseFormDraft(editing:)` ignores the other two without it. `make test-live` is what found
+this; nothing local would have.
 
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`

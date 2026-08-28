@@ -46,6 +46,20 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     public var recurrenceRule: RecurrenceRule
     public var documents: [ExpenseDocument]
 
+    // MARK: Currency of the expense
+
+    /// The group's ISO code, or nil when it has only a free-text symbol. Conversion needs one:
+    /// without it there is nothing to convert *to*.
+    public var groupCurrencyCode: String?
+    /// What this expense was actually paid in. Starts as the group's own currency, and only
+    /// means anything once it differs from it.
+    public var originalCurrencyCode: String?
+    /// What was paid, as typed, in `originalCurrencyCode`.
+    public var originalAmountText: String
+    /// One unit of `originalCurrencyCode` in the group's currency, as typed. A rate, not money:
+    /// it is never scaled by anyone's minor units.
+    public var conversionRateText: String
+
     public init(
         title: String = "",
         expenseDate: Date = .now,
@@ -59,7 +73,11 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         locale: Locale = .autoupdatingCurrent,
         minorUnitDigits: Int = 2,
         recurrenceRule: RecurrenceRule = .never,
-        documents: [ExpenseDocument] = []
+        documents: [ExpenseDocument] = [],
+        groupCurrencyCode: String? = nil,
+        originalCurrencyCode: String? = nil,
+        originalAmountText: String = "",
+        conversionRateText: String = ""
     ) {
         self.title = title
         self.expenseDate = expenseDate
@@ -74,6 +92,10 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         self.minorUnitDigits = minorUnitDigits
         self.recurrenceRule = recurrenceRule
         self.documents = documents
+        self.groupCurrencyCode = groupCurrencyCode
+        self.originalCurrencyCode = originalCurrencyCode
+        self.originalAmountText = originalAmountText
+        self.conversionRateText = conversionRateText
     }
 
     /// A blank expense for a group: everyone included, split evenly.
@@ -84,7 +106,9 @@ public struct ExpenseFormDraft: Equatable, Sendable {
                 ParticipantShareDraft(id: $0.id, name: $0.name, isIncluded: true)
             },
             locale: locale,
-            minorUnitDigits: Self.minorUnitDigits(for: group, locale: locale)
+            minorUnitDigits: Self.minorUnitDigits(for: group, locale: locale),
+            groupCurrencyCode: group.currencyCode,
+            originalCurrencyCode: group.currencyCode
         )
     }
 
@@ -99,6 +123,16 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             uniquingKeysWith: { first, _ in first }
         )
         let digits = Self.minorUnitDigits(for: group, locale: locale)
+        // An expense saved before the group had a code, or one saved in the group's own
+        // currency, has no currency of its own — it is in whatever the group counts in. The
+        // amount and rate beside it may still hold what a conversion it no longer has left
+        // there, since the server has no way to clear those two; without a currency they mean
+        // nothing, so they are not read back.
+        let originalCode = expense.originalCurrency ?? group.currencyCode
+        let wasConverted = expense.originalCurrency != nil
+        let originalDigits = MoneyFormatter.minorUnitDigits(
+            forCurrencyCode: originalCode, locale: locale
+        )
 
         self.init(
             title: expense.title,
@@ -128,7 +162,15 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             locale: locale,
             minorUnitDigits: digits,
             recurrenceRule: expense.recurrenceRule ?? .never,
-            documents: expense.documents
+            documents: expense.documents,
+            groupCurrencyCode: group.currencyCode,
+            originalCurrencyCode: originalCode,
+            originalAmountText: wasConverted ? expense.originalAmount.map {
+                Self.text(forMinorUnits: $0, locale: locale, minorUnitDigits: originalDigits)
+            } ?? "" : "",
+            conversionRateText: wasConverted ? expense.conversionRate.map {
+                Self.text(forRate: $0.value, locale: locale)
+            } ?? "" : ""
         )
     }
 
@@ -156,15 +198,96 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             },
             isReimbursement: true,
             locale: locale,
-            minorUnitDigits: digits
+            minorUnitDigits: digits,
+            groupCurrencyCode: group.currencyCode,
+            originalCurrencyCode: group.currencyCode
         )
     }
 
     // MARK: - Derived values
 
     /// The total in minor units, or nil if what was typed isn't a number.
+    ///
+    /// Under a conversion the total is not typed at all: it is what the amount paid comes to at
+    /// the rate given, and deriving it here rather than copying it into `amountText` is what
+    /// makes it impossible to store an expense whose rate does not produce its own amount.
     public var amountMinorUnits: Int? {
-        MoneyFormatter.minorUnits(from: amountText, locale: locale, minorUnitDigits: minorUnitDigits)
+        if conversionRequired { return convertedAmountMinorUnits }
+        return MoneyFormatter.minorUnits(
+            from: amountText, locale: locale, minorUnitDigits: minorUnitDigits
+        )
+    }
+
+    // MARK: Currency conversion
+
+    /// Whether this expense was paid in a currency the group is not denominated in.
+    ///
+    /// Both sides have to be real ISO codes. A group with only a free-text symbol has nothing to
+    /// convert *to* — that is the one case where the feature is unavailable rather than unused,
+    /// and the group form is where it gets explained.
+    public var conversionRequired: Bool {
+        guard let group = Self.isoCode(groupCurrencyCode),
+              let original = Self.isoCode(originalCurrencyCode)
+        else { return false }
+        return group != original
+    }
+
+    /// Digits in the minor unit of what was actually paid, which is not the group's: a €40.00
+    /// dinner charged to a yen group is 4000 in one field and ¥6,540 in the other.
+    public var originalMinorUnitDigits: Int {
+        MoneyFormatter.minorUnitDigits(forCurrencyCode: originalCurrencyCode, locale: locale)
+    }
+
+    /// What was paid, in the minor units of the currency it was paid in.
+    public var originalAmountMinorUnits: Int? {
+        MoneyFormatter.minorUnits(
+            from: originalAmountText, locale: locale, minorUnitDigits: originalMinorUnitDigits
+        )
+    }
+
+    public var conversionRate: Decimal? {
+        MoneyFormatter.number(from: conversionRateText, locale: locale)
+    }
+
+    /// What the amount paid comes to in the group's currency, in its minor units.
+    public var convertedAmountMinorUnits: Int? {
+        guard conversionRequired,
+              let paid = originalAmountMinorUnits,
+              let rate = conversionRate
+        else { return nil }
+
+        let paidInMajorUnits = Decimal(paid) / pow(Decimal(10), originalMinorUnitDigits)
+        return MoneyFormatter.roundToInteger(
+            paidInMajorUnits * rate * pow(Decimal(10), minorUnitDigits)
+        )
+    }
+
+    /// Changing what the expense was paid in.
+    ///
+    /// Coming back to the group's own currency carries the converted total into the amount
+    /// field, so the expense keeps the value it was showing rather than snapping back to
+    /// whatever had been typed before the conversion.
+    public mutating func useCurrency(_ code: String?) {
+        let converted = convertedAmountMinorUnits
+        let isADifferentCurrency = Self.isoCode(code) != Self.isoCode(originalCurrencyCode)
+        originalCurrencyCode = code
+
+        if isADifferentCurrency {
+            // A rate belongs to a pair of currencies, so it cannot come along to another pair —
+            // whether it was looked up or typed. The amount paid does stay: it is what was on
+            // the receipt, and a currency picked by mistake should not cost it.
+            conversionRateText = ""
+        }
+        if !conversionRequired, let converted {
+            amountText = Self.text(
+                forMinorUnits: converted, locale: locale, minorUnitDigits: minorUnitDigits
+            )
+        }
+    }
+
+    /// Takes a looked-up rate as the one to use.
+    public mutating func use(rate: Decimal) {
+        conversionRateText = Self.text(forRate: rate, locale: locale)
     }
 
     public var includedParticipants: [ParticipantShareDraft] {
@@ -215,6 +338,13 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         case amountNotANumber
         case amountZero
         case amountTooLarge
+        case originalAmountMissing
+        case originalAmountNotANumber
+        case originalAmountZero
+        case originalAmountTooLarge
+        case conversionRateMissing
+        case conversionRateNotANumber
+        case conversionRateNotPositive
         case payerMissing
         case noParticipantsSelected
         case shareNotANumber(ParticipantShareDraft.ID)
@@ -232,7 +362,16 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             problems.append(.titleTooShort)
         }
 
-        if amountText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if conversionRequired {
+            // The total is derived from these two, so they are what there is to get wrong — and
+            // the total is still worth checking afterwards, since a small enough rate rounds a
+            // real payment down to nothing.
+            problems.append(contentsOf: conversionProblems)
+            if let amount = amountMinorUnits {
+                if amount == 0 { problems.append(.amountZero) }
+                if amount > 10_000_000_00 { problems.append(.amountTooLarge) }
+            }
+        } else if amountText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             problems.append(.amountMissing)
         } else if let amount = amountMinorUnits {
             if amount == 0 { problems.append(.amountZero) }
@@ -279,6 +418,29 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         return problems
     }
 
+    private var conversionProblems: [Problem] {
+        var problems: [Problem] = []
+
+        if originalAmountText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            problems.append(.originalAmountMissing)
+        } else if let paid = originalAmountMinorUnits {
+            if paid == 0 { problems.append(.originalAmountZero) }
+            if paid > 10_000_000_00 { problems.append(.originalAmountTooLarge) }
+        } else {
+            problems.append(.originalAmountNotANumber)
+        }
+
+        if conversionRateText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            problems.append(.conversionRateMissing)
+        } else if let rate = conversionRate {
+            if rate <= 0 { problems.append(.conversionRateNotPositive) }
+        } else {
+            problems.append(.conversionRateNotANumber)
+        }
+
+        return problems
+    }
+
     public var isValid: Bool { problems.isEmpty }
 
     public func problems(forParticipant id: ParticipantShareDraft.ID) -> [Problem] {
@@ -316,7 +478,12 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             isReimbursement: isReimbursement,
             documents: documents,
             notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            recurrenceRule: recurrenceRule
+            recurrenceRule: recurrenceRule,
+            // Sent as nulls when there is no conversion, which is what clears them on an expense
+            // that used to have one. See `ExpenseFormValues.encode(to:)`.
+            originalAmount: conversionRequired ? originalAmountMinorUnits : nil,
+            originalCurrency: conversionRequired ? Self.isoCode(originalCurrencyCode) : nil,
+            conversionRate: conversionRequired ? conversionRate : nil
         )
     }
 
@@ -325,6 +492,23 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     /// How many digits the group's currency keeps, for a draft being built from one.
     static func minorUnitDigits(for group: Group, locale: Locale) -> Int {
         MoneyFormatter.minorUnitDigits(forCurrencyCode: group.currencyCode, locale: locale)
+    }
+
+    /// A currency code that is worth acting on: three letters, upper case, or nothing.
+    static func isoCode(_ code: String?) -> String? {
+        guard let code = code?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+              code.count == 3
+        else { return nil }
+        return code
+    }
+
+    /// A rate is shown at the precision it arrived with, up to six places — enough for the
+    /// currencies quoted in thousands to a euro — and never grouped, since the field it lands in
+    /// is parsed back as a plain number.
+    public static func text(forRate rate: Decimal, locale: Locale = .autoupdatingCurrent) -> String {
+        rate.formatted(
+            .number.precision(.fractionLength(0...6)).grouping(.never).locale(locale)
+        )
     }
 
     static func text(forMinorUnits value: Int, locale: Locale, minorUnitDigits: Int = 2) -> String {
@@ -366,6 +550,20 @@ extension ExpenseFormDraft.Problem {
             String(localized: "The amount must not be zero.", bundle: Bundle.module)
         case .amountTooLarge:
             String(localized: "The amount must be lower than 10,000,000.", bundle: Bundle.module)
+        case .originalAmountMissing:
+            String(localized: "Enter what was actually paid.", bundle: Bundle.module)
+        case .originalAmountNotANumber:
+            String(localized: "Invalid number.", bundle: Bundle.module)
+        case .originalAmountZero:
+            String(localized: "The amount must not be zero.", bundle: Bundle.module)
+        case .originalAmountTooLarge:
+            String(localized: "The amount must be lower than 10,000,000.", bundle: Bundle.module)
+        case .conversionRateMissing:
+            String(localized: "Enter an exchange rate.", bundle: Bundle.module)
+        case .conversionRateNotANumber:
+            String(localized: "Invalid number.", bundle: Bundle.module)
+        case .conversionRateNotPositive:
+            String(localized: "The rate must be strictly greater than zero.", bundle: Bundle.module)
         case .payerMissing:
             String(localized: "You must select a participant.", bundle: Bundle.module)
         case .noParticipantsSelected:

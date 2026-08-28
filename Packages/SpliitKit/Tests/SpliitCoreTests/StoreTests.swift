@@ -1,4 +1,5 @@
 import Foundation
+import SpliitAPI
 import Testing
 
 @testable import SpliitCore
@@ -259,6 +260,96 @@ struct RecentGroupsStoreTests {
         #expect(store.starred.isEmpty)
     }
 
+    // MARK: - Who you are
+
+    @Test("Who you are is remembered per group, not per phone")
+    @MainActor
+    func remembersWhoYouArePerGroup() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+
+        store.setActiveParticipant(.participant("ana"), groupId: "a")
+
+        #expect(store.activeParticipant(inGroup: "a") == .participant("ana"))
+        #expect(store.activeParticipant(inGroup: "b") == nil)
+    }
+
+    /// "Nobody" is an answer to the question, and the whole point of storing it is that the
+    /// group stops asking. It must not read back as an unanswered question.
+    @Test("Nobody is an answer, and it is not the same as never having been asked")
+    @MainActor
+    func nobodyIsAnAnswer() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+
+        store.setActiveParticipant(.nobody, groupId: "a")
+
+        #expect(store.activeParticipant(inGroup: "a") == .nobody)
+        #expect(store.activeParticipant(inGroup: "a") != nil)
+    }
+
+    /// Renaming rebuilds the group from what the server just returned, which knows nothing
+    /// about who is holding the phone.
+    @Test("Renaming a group doesn’t make you a stranger in it")
+    @MainActor
+    func rememberPreservesWhoYouAre() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.setActiveParticipant(.participant("ana"), groupId: "a")
+
+        store.remember(RecentGroup(groupId: "a", groupName: "Weekend in Lisbon"))
+
+        #expect(store.activeParticipant(inGroup: "a") == .participant("ana"))
+    }
+
+    @Test("Who you are survives a restart, nobody included")
+    @MainActor
+    func persistsWhoYouAreAcrossLaunches() {
+        let url = URL.temporaryDirectory
+            .appending(path: "recent-\(UUID().uuidString)")
+            .appending(path: "recent-groups.json")
+
+        let store = RecentGroupsStore(fileURL: url)
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+        store.setActiveParticipant(.participant("ana"), groupId: "a")
+        store.setActiveParticipant(.nobody, groupId: "b")
+
+        let reloaded = RecentGroupsStore(fileURL: url)
+        #expect(reloaded.activeParticipant(inGroup: "a") == .participant("ana"))
+        #expect(reloaded.activeParticipant(inGroup: "b") == .nobody)
+    }
+
+    /// The participant ID goes on the wire as a bare string so the file stays readable — and so
+    /// a UI test can seed one without knowing anything about how the enum is shaped.
+    @Test("A stored answer is a plain string in the file")
+    @MainActor
+    func encodesAsAPlainString() throws {
+        let groups = [
+            RecentGroup(groupId: "a", groupName: "Lisbon", activeParticipant: .participant("ana")),
+            RecentGroup(groupId: "b", groupName: "Flat 3B", activeParticipant: .nobody),
+            RecentGroup(groupId: "c", groupName: "Ski trip"),
+        ]
+
+        let encoded = String(decoding: try JSONEncoder().encode(groups), as: UTF8.self)
+
+        #expect(encoded.contains(#""activeParticipant":"ana""#))
+        #expect(encoded.contains(#""activeParticipant":"""#))
+        // Never asked is the absence of the key, not an empty answer to it.
+        #expect(try JSONDecoder().decode([RecentGroup].self, from: Data(encoded.utf8)) == groups)
+    }
+
+    @Test("A list saved before this existed still decodes")
+    @MainActor
+    func decodesGroupsWithoutAnActiveParticipant() throws {
+        let stored = Data(#"[{"groupId":"abc","groupName":"Weekend in Lisbon"}]"#.utf8)
+
+        let groups = try JSONDecoder().decode([RecentGroup].self, from: stored)
+
+        #expect(groups.first?.activeParticipant == nil)
+    }
+
     @Test("A migrated list replaces whatever was there")
     @MainActor
     func replacesAll() {
@@ -271,5 +362,41 @@ struct RecentGroupsStoreTests {
         ])
 
         #expect(store.groups.map(\.groupId) == ["a", "b"])
+    }
+}
+
+@Suite("Who you are, read against a group")
+struct ActiveParticipantTests {
+
+    private let participants = [
+        Participant(id: "ana", name: "Ana"),
+        Participant(id: "bruno", name: "Bruno"),
+    ]
+
+    @Test("A participant the group still has resolves to themselves")
+    func resolvesAKnownParticipant() {
+        #expect(
+            ActiveParticipant.resolve(.participant("ana"), in: participants)
+                == .participant("ana")
+        )
+    }
+
+    /// Someone removed from the group leaves an ID pointing at nobody. Reading that as an
+    /// unanswered question is what puts the invitation back on screen; reading it as an answer
+    /// would leave a balance nobody can see and no way to ask for a different one.
+    @Test("A participant who has left the group reads as an unanswered question")
+    func forgetsARemovedParticipant() {
+        #expect(ActiveParticipant.resolve(.participant("chloe"), in: participants) == nil)
+    }
+
+    @Test("Nobody survives whoever is in the group")
+    func keepsNobody() {
+        #expect(ActiveParticipant.resolve(.nobody, in: participants) == .nobody)
+        #expect(ActiveParticipant.resolve(.nobody, in: []) == .nobody)
+    }
+
+    @Test("Never asked stays never asked")
+    func keepsUnanswered() {
+        #expect(ActiveParticipant.resolve(nil, in: participants) == nil)
     }
 }

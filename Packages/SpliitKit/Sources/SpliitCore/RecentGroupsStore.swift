@@ -1,5 +1,52 @@
 import Foundation
 import Observation
+import SpliitAPI
+
+/// Who the person holding this phone is, in one group.
+///
+/// Spliit has no accounts, so this is a local answer to a local question, and it is asked once
+/// per group: someone can be Ana in the flatshare and a guest on the ski trip.
+///
+/// Three states, which is why this is not simply a `String?`. A group nobody has answered for
+/// should be asked; a group answered with "nobody" — a shared phone, a group kept for other
+/// people — should not be asked again. `nil` is the question, `.nobody` is an answer to it.
+public enum ActiveParticipant: Sendable, Hashable, Codable {
+    case participant(String)
+    case nobody
+
+    /// Encoded as the bare participant ID, and as an empty string for "nobody", so the stored
+    /// list stays something a person can read and a test can write by hand.
+    public init(from decoder: any Decoder) throws {
+        let id = try decoder.singleValueContainer().decode(String.self)
+        self = id.isEmpty ? .nobody : .participant(id)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .participant(let id): try container.encode(id)
+        case .nobody: try container.encode("")
+        }
+    }
+
+    public var participantID: String? {
+        if case .participant(let id) = self { return id }
+        return nil
+    }
+
+    /// Reads a stored answer against the group it was stored for.
+    ///
+    /// A participant who has since been removed reads as *unanswered* rather than as a missing
+    /// person: the alternative is a screen that shows no balance, names nobody, and offers no
+    /// way to say so.
+    public static func resolve(
+        _ stored: ActiveParticipant?,
+        in participants: [Participant]
+    ) -> ActiveParticipant? {
+        guard case .participant(let id) = stored else { return stored }
+        return participants.contains { $0.id == id } ? stored : nil
+    }
+}
 
 /// A group the user has opened, remembered locally. Spliit has no accounts — this list is the
 /// only way back to a group, which is why the migration from the old app matters so much.
@@ -19,22 +66,29 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
     /// and archiving say opposite things, so a group is never both.
     public var isArchived: Bool
 
+    /// Which participant the user is here, once they have said. Kept beside the flags for the
+    /// same reason they are: one file, one write, and no way to be somebody in a group the list
+    /// has forgotten.
+    public var activeParticipant: ActiveParticipant?
+
     public var id: String { groupId }
 
     public init(
         groupId: String,
         groupName: String,
         isStarred: Bool = false,
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        activeParticipant: ActiveParticipant? = nil
     ) {
         self.groupId = groupId
         self.groupName = groupName
         self.isStarred = isStarred
         self.isArchived = isArchived
+        self.activeParticipant = activeParticipant
     }
 
     private enum CodingKeys: String, CodingKey {
-        case groupId, groupName, isStarred, isArchived
+        case groupId, groupName, isStarred, isArchived, activeParticipant
     }
 
     /// Written by hand because the flags arrived after the file did: every list saved before
@@ -47,6 +101,9 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         groupName = try container.decode(String.self, forKey: .groupName)
         isStarred = try container.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        activeParticipant = try container.decodeIfPresent(
+            ActiveParticipant.self, forKey: .activeParticipant
+        )
     }
 }
 
@@ -83,12 +140,14 @@ public final class RecentGroupsStore {
     /// Adds a group, or moves it to the front and refreshes its name if it's already there.
     ///
     /// Callers build a `RecentGroup` from what the server just told them, which carries no
-    /// flags — so the stored ones win. Otherwise renaming a group would quietly unstar it.
+    /// flags and no identity — so the stored ones win. Otherwise renaming a group would quietly
+    /// unstar it, and make the person holding the phone a stranger in it.
     public func remember(_ group: RecentGroup) {
         var group = group
         if let existing = groups.first(where: { $0.groupId == group.groupId }) {
             group.isStarred = existing.isStarred
             group.isArchived = existing.isArchived
+            group.activeParticipant = existing.activeParticipant
         }
         groups.removeAll { $0.groupId == group.groupId }
         groups.insert(group, at: 0)
@@ -115,6 +174,18 @@ public final class RecentGroupsStore {
             group.isArchived = isArchived
             if isArchived { group.isStarred = false }
         }
+    }
+
+    /// Who the user said they are in this group, or nil if they have not been asked yet.
+    public func activeParticipant(inGroup groupId: String) -> ActiveParticipant? {
+        groups.first { $0.groupId == groupId }?.activeParticipant
+    }
+
+    /// Records the answer. A group the list has never heard of is not one anybody can be
+    /// standing in — every way into a group screen remembers it first — so this is a no-op
+    /// rather than a reason to invent a row with no name.
+    public func setActiveParticipant(_ participant: ActiveParticipant, groupId: String) {
+        modify(groupId) { $0.activeParticipant = participant }
     }
 
     private func modify(_ groupId: String, _ change: (inout RecentGroup) -> Void) {

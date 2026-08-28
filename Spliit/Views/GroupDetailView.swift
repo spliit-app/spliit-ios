@@ -28,6 +28,7 @@ struct GroupDetailView: View {
         case editExpense(String)
         case settle(Reimbursement)
         case settings
+        case identity
 
         var id: String {
             switch self {
@@ -35,6 +36,7 @@ struct GroupDetailView: View {
             case .editExpense(let id): "edit-\(id)"
             case .settle(let reimbursement): "settle-\(reimbursement.from)-\(reimbursement.to)"
             case .settings: "settings"
+            case .identity: "identity"
             }
         }
     }
@@ -51,13 +53,21 @@ struct GroupDetailView: View {
             }
 
             Tab("Balances", systemImage: "arrow.left.arrow.right", value: GroupTab.balances) {
-                BalancesView(model: model, onSettle: { sheet = .settle($0) })
-                    .trackScreen(.groupBalances)
+                BalancesView(
+                    model: model,
+                    onSettle: { sheet = .settle($0) },
+                    onIdentify: { sheet = .identity }
+                )
+                .trackScreen(.groupBalances)
             }
 
             Tab("Information", systemImage: "info.circle", value: GroupTab.information) {
-                GroupInformationView(model: model, onEdit: { sheet = .settings })
-                    .trackScreen(.groupInformation)
+                GroupInformationView(
+                    model: model,
+                    onEdit: { sheet = .settings },
+                    onIdentify: { sheet = .identity }
+                )
+                .trackScreen(.groupInformation)
             }
 
             // The search role is what puts the magnifying glass in its own capsule beside the
@@ -128,7 +138,7 @@ struct GroupDetailView: View {
     /// The amount arrives as text and stays text: `amountText` is parsed by the same code that
     /// reads the field, in the user's locale, so "12,50" means the same thing spoken as typed.
     private func prefilledDraft(for group: SpliitAPI.Group) -> ExpenseFormDraft {
-        var draft = ExpenseFormDraft(creatingIn: group)
+        var draft = ExpenseFormDraft(creatingIn: group, paidBy: activeParticipant?.participantID)
         if let title = prefill?.title, !title.isEmpty { draft.title = title }
         if let amount = prefill?.amount, !amount.isEmpty { draft.amountText = amount }
         return draft
@@ -142,6 +152,15 @@ struct GroupDetailView: View {
         case .group, .none:
             break
         }
+    }
+
+    /// Who the user said they are in this group, resolved against the participants the group
+    /// still has — someone who was removed is nobody in particular again.
+    private var activeParticipant: ActiveParticipant? {
+        ActiveParticipant.resolve(
+            app.recentGroups.activeParticipant(inGroup: model.groupID),
+            in: model.group?.participants ?? []
+        )
     }
 
     /// The same link the web app shares, so it opens for anyone regardless of platform.
@@ -186,6 +205,17 @@ struct GroupDetailView: View {
                         title: String(localized: "Reimbursement")
                     ),
                     onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                )
+            }
+
+        case .identity:
+            if let group = model.group {
+                ActiveUserPickerView(
+                    group: group,
+                    selection: activeParticipant,
+                    onSelect: {
+                        app.recentGroups.setActiveParticipant($0, groupId: model.groupID)
+                    }
                 )
             }
 

@@ -131,16 +131,26 @@ struct SpliitTestAPI {
 
     /// The same, for a list that has already been organised. Named rather than overloaded: the
     /// two tuple types differ only in their labels, and the compiler cannot tell them apart.
+    ///
+    /// - Parameter activeParticipants: who the user is, by group ID — a participant ID, or an
+    ///   empty string for the "nobody" a group can also be answered with.
     static func recentGroupsJSON(
-        organised groups: [(id: String, name: String, isStarred: Bool, isArchived: Bool)]
+        organised groups: [(id: String, name: String, isStarred: Bool, isArchived: Bool)],
+        activeParticipants: [String: String] = [:]
     ) -> String {
-        let payload = groups.map {
-            [
-                "groupId": $0.id,
-                "groupName": $0.name,
-                "isStarred": $0.isStarred,
-                "isArchived": $0.isArchived,
-            ] as [String: Any]
+        let payload = groups.map { group in
+            var entry: [String: Any] = [
+                "groupId": group.id,
+                "groupName": group.name,
+                "isStarred": group.isStarred,
+                "isArchived": group.isArchived,
+            ]
+            // Left out rather than sent empty when there is none: an absent key is a question
+            // nobody has answered, and an empty string is an answer of "nobody".
+            if let participant = activeParticipants[group.id] {
+                entry["activeParticipant"] = participant
+            }
+            return entry
         }
         let data = try! JSONSerialization.data(withJSONObject: payload)
         return String(decoding: data, as: UTF8.self)

@@ -147,6 +147,18 @@ over. One of the two is always zero and the other is `abs(total)`; the recorded 
 it. Only `total` means anything. What was actually paid, and what was actually spent on
 someone, comes from `groups.stats.get` with a `participantId`.
 
+**Who did it is something you have to tell the server.** `groups.update` and all three
+`groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the
+activity log has to name anybody with. Leave it out and the call still succeeds, the expense is
+still written, and every line about it reads "Someone" — for good, since nothing backfills it.
+`RecentGroupsStore.actorID(inGroup:participants:)` is what resolves it; a write that does not
+pass one is a write nobody will ever be able to attribute.
+
+**An activity's `data` is the expense's title as it was, not as it is.** That is deliberate — a
+rename must not rewrite the line describing the creation — so the log is the one place in the
+app showing a title the expense no longer has. The `expense` sent beside each activity is `null`
+once it has been deleted, and that, not `expenseId`, is what says whether a row can be opened.
+
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`
 sends `createdAt` with no annotation at all, so trusting the metadata would break exactly one

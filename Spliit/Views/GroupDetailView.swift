@@ -20,7 +20,7 @@ struct GroupDetailView: View {
 
     /// Named to stay clear of SwiftUI's own `Tab`, which `TabView` needs below.
     private enum GroupTab: Hashable {
-        case expenses, balances, information, search
+        case expenses, balances, information, activity, search
     }
 
     private enum Sheet: Identifiable {
@@ -70,6 +70,14 @@ struct GroupDetailView: View {
                 .trackScreen(.groupInformation)
             }
 
+            Tab("Activity", systemImage: "clock.arrow.circlepath", value: GroupTab.activity) {
+                ActivityLogView(
+                    model: model,
+                    onEdit: { sheet = .editExpense($0) }
+                )
+                .trackScreen(.groupActivity)
+            }
+
             // The search role is what puts the magnifying glass in its own capsule beside the
             // tab bar, and what docks the field at the bottom of the screen — above the
             // keyboard, where the thumb already is — instead of in the navigation bar.
@@ -101,6 +109,12 @@ struct GroupDetailView: View {
         .toolbar { toolbarContent }
         .sheet(item: $sheet, content: sheetContent)
         .task { await model.loadIfNeeded(using: app.client) }
+        // The store belongs to the view layer, so the model is told who the user is rather than
+        // asking. It is what attributes the delete that waits out its undo window, and it has to
+        // survive both the group arriving — which is what makes an identity resolvable — and the
+        // user answering the picker.
+        .onAppear { model.actorID = activeParticipant?.participantID }
+        .onChange(of: activeParticipant) { model.actorID = activeParticipant?.participantID }
         // The list pushed this screen because an intent asked for it; whatever else that intent
         // wanted is still waiting to be collected.
         .onAppear { collectRoutedIntent() }

@@ -38,8 +38,24 @@ final class GroupDetailModel {
     /// case-insensitively — so a search covers the whole group, not just the pages paged in.
     private(set) var filter: String?
 
+    /// The activity log, newest first. Loaded when its tab is first opened rather than with the
+    /// rest of the group — see `loadActivitiesIfNeeded`.
+    private(set) var activities: [Activity] = []
+    private(set) var activitiesLoad = LoadState()
+    private(set) var hasMoreActivities = false
+    private(set) var isLoadingMoreActivities = false
+
+    /// Who the person holding this phone has said they are in this group, as the four mutating
+    /// procedures want it: a participant ID, or nil for a phone that has not said.
+    ///
+    /// The store this comes from belongs to the view layer, so the model is told rather than
+    /// asking. `GroupDetailView` keeps it current, and it is what attributes the one write this
+    /// model makes on its own — a delete waiting out its undo window.
+    var actorID: String?
+
     private var nextCursor = 0
     private var nextSearchCursor = 0
+    private var nextActivityCursor = 0
     private static let pageSize = 20
 
     /// How long a pause in typing counts as "done typing". `.task(id:)` cancels the previous
@@ -123,6 +139,23 @@ final class GroupDetailModel {
         balancesLoad.failedWithNothingToShow
     }
 
+    /// The group counts here as it does for the expenses: the log names participants, and until
+    /// the group has arrived there is nobody to name.
+    var isLoadingActivities: Bool {
+        activities.isEmpty && (activitiesLoad.isAwaitingFirstResult || isLoadingGroup)
+    }
+
+    var didFailToLoadActivities: Bool {
+        activitiesLoad.failedWithNothingToShow
+    }
+
+    /// What to put under "Couldn't load the activity", preferring the request that actually
+    /// failed. Kept out of `loadFailure`, which the expense list shows inline: a log that
+    /// wouldn't load is no reason to put a warning above somebody's expenses.
+    var activitiesFailure: String? {
+        activitiesLoad.failure ?? groupLoad.failure
+    }
+
     func retry(using client: TRPCClient) async {
         await reload(using: client)
     }
@@ -149,6 +182,21 @@ final class GroupDetailModel {
             .map { (group: $0.key, expenses: $0.value) }
     }
 
+    /// The log in its own buckets, newest first. `Dictionary(grouping:)` keeps the order it was
+    /// given inside each bucket, and the server already sorted by time descending.
+    var activitySections: [(group: ActivityDateGroup, activities: [Activity])] {
+        // An activity of a kind this version does not know is dropped rather than drawn: there
+        // is no honest sentence to put on the row, and a log missing a line it cannot describe
+        // still reads correctly where a line reading "something happened" does not.
+        let describable = activities.filter { $0.activityType.isRecognised }
+        let buckets = Dictionary(grouping: describable) {
+            ActivityDateGroup.containing($0.time)
+        }
+        return buckets
+            .sorted { $0.key < $1.key }
+            .map { (group: $0.key, activities: $0.value) }
+    }
+
     // MARK: - Loading
 
     func loadIfNeeded(using client: TRPCClient) async {
@@ -165,12 +213,14 @@ final class GroupDetailModel {
     }
 
     /// Refreshes everything that an expense change can affect — including an open search, whose
-    /// results are a view of the same expenses and would otherwise still show the old title.
+    /// results are a view of the same expenses and would otherwise still show the old title, and
+    /// the activity log, which has just gained the line describing the change.
     func reloadAfterExpenseChange(using client: TRPCClient) async {
         async let expensesResult: Void = loadFirstPage(using: client)
         async let balancesResult: Void = loadBalances(using: client)
         async let searchResult: Void = reloadSearch(using: client)
-        _ = await (expensesResult, balancesResult, searchResult)
+        async let activitiesResult: Void = reloadActivities(using: client)
+        _ = await (expensesResult, balancesResult, searchResult, activitiesResult)
     }
 
     private func loadGroup(using client: TRPCClient) async {
@@ -239,6 +289,75 @@ final class GroupDetailModel {
     private func loadCategories(using client: TRPCClient) async {
         guard categories.isEmpty else { return }
         categories = (try? await client.call(Spliit.categories()).categories) ?? []
+    }
+
+    // MARK: - Activity
+
+    /// Fetches the log the first time its tab is looked at.
+    ///
+    /// Deliberately not part of `reload`: the log is one tab of four and the only one nothing
+    /// else on the screen needs, so loading it with the rest would put a request every group
+    /// open pays for behind the three that draw the screen. A failure is not retried from here
+    /// — the tab offers a button for that — and an empty log that loaded is left alone.
+    func loadActivitiesIfNeeded(using client: TRPCClient) async {
+        guard activities.isEmpty, activitiesLoad.isAwaitingFirstResult, !activitiesLoad.isLoading
+        else { return }
+        await loadFirstActivityPage(using: client)
+    }
+
+    func retryActivities(using client: TRPCClient) async {
+        // The group may be what failed, and the log cannot name anybody without it.
+        if group == nil { await loadGroup(using: client) }
+        await loadFirstActivityPage(using: client)
+    }
+
+    func refreshActivities(using client: TRPCClient) async {
+        await loadFirstActivityPage(using: client)
+    }
+
+    private func loadFirstActivityPage(using client: TRPCClient) async {
+        activitiesLoad.begin()
+        do {
+            let response = try await client.call(
+                Spliit.activities(groupId: groupID, cursor: 0, limit: Self.pageSize)
+            )
+            activities = response.activities
+            hasMoreActivities = response.hasMore
+            nextActivityCursor = response.nextCursor
+            activitiesLoad.succeeded()
+        } catch {
+            activitiesLoad.failed(error.localizedDescription)
+        }
+    }
+
+    func loadNextActivityPage(using client: TRPCClient) async {
+        guard hasMoreActivities, !isLoadingMoreActivities else { return }
+        isLoadingMoreActivities = true
+        defer { isLoadingMoreActivities = false }
+
+        do {
+            let response = try await client.call(
+                Spliit.activities(
+                    groupId: groupID, cursor: nextActivityCursor, limit: Self.pageSize
+                )
+            )
+            // The log grows at the top, so a page fetched after something new was recorded
+            // repeats a row rather than skipping one. Same guard as the expense list.
+            let known = Set(activities.map(\.id))
+            activities += response.activities.filter { !known.contains($0.id) }
+            hasMoreActivities = response.hasMore
+            nextActivityCursor = response.nextCursor
+        } catch {
+            hasMoreActivities = false
+        }
+    }
+
+    /// Re-reads the log after a change that wrote to it — but only if it has been read once.
+    /// Fetching a log for a tab nobody has opened is a request for something nobody is looking
+    /// at, and the tab will fetch it for itself the moment they do.
+    private func reloadActivities(using client: TRPCClient) async {
+        guard activitiesLoad.hasLoaded else { return }
+        await loadFirstActivityPage(using: client)
     }
 
     // MARK: - Search
@@ -343,6 +462,9 @@ final class GroupDetailModel {
         /// Where the row was, so undo puts it back where it was rather than at the top.
         let listIndex: Int?
         let searchIndex: Int?
+        /// Who the activity log should credit. Captured when the row was swiped rather than
+        /// read when the request goes out, five seconds and possibly an identity change later.
+        let actorID: String?
     }
 
     private(set) var pendingDeletion: PendingDeletion?
@@ -361,7 +483,8 @@ final class GroupDetailModel {
         pendingDeletion = PendingDeletion(
             expense: expense,
             listIndex: expenses.firstIndex { $0.id == expense.id },
-            searchIndex: searchResults.firstIndex { $0.id == expense.id }
+            searchIndex: searchResults.firstIndex { $0.id == expense.id },
+            actorID: actorID
         )
         expenses.removeAll { $0.id == expense.id }
         searchResults.removeAll { $0.id == expense.id }
@@ -402,7 +525,9 @@ final class GroupDetailModel {
 
         do {
             _ = try await client.call(
-                Spliit.deleteExpense(groupId: groupID, expenseId: pending.expense.id)
+                Spliit.deleteExpense(
+                    groupId: groupID, expenseId: pending.expense.id, by: pending.actorID
+                )
             )
             await reloadAfterExpenseChange(using: client)
         } catch {
@@ -431,7 +556,9 @@ final class GroupDetailModel {
         let groupID = groupID
         Task.detached {
             _ = try? await client.call(
-                Spliit.deleteExpense(groupId: groupID, expenseId: pending.expense.id)
+                Spliit.deleteExpense(
+                    groupId: groupID, expenseId: pending.expense.id, by: pending.actorID
+                )
             )
         }
     }

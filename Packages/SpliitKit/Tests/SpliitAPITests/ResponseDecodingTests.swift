@@ -103,6 +103,70 @@ struct ResponseDecodingTests {
         #expect(total == owed)
     }
 
+    @Test("An activity log decodes every kind of entry, newest first")
+    func decodesActivities() throws {
+        let response = try SuperJSON.decode(
+            Spliit.ActivitiesListResponse.self, fromResponse: Fixture.data("activities-list")
+        )
+
+        #expect(response.hasMore == false)
+        #expect(response.activities.count == 8)
+        #expect(response.activities.allSatisfy { $0.activityType.isRecognised })
+
+        // The server orders by time descending, and the log is drawn in the order it arrives.
+        let times = response.activities.map(\.time)
+        #expect(times == times.sorted(by: >))
+
+        // The seed makes the last thing that happened a change to the group itself, which is
+        // the one kind of entry that names no expense at all.
+        let settings = try #require(response.activities.first)
+        #expect(settings.activityType == .updateGroup)
+        #expect(settings.expenseId == nil)
+        #expect(settings.title == nil)
+        #expect(settings.expenseStillExists == false)
+
+        // Every entry is attributed, because the seed sends a `participantId` on every write.
+        #expect(response.activities.allSatisfy { $0.participantId != nil })
+
+        let created = try #require(
+            response.activities.first { $0.activityType == .createExpense && $0.title == "Airport taxi" }
+        )
+        #expect(created.expenseStillExists)
+        #expect(created.expenseId != nil)
+
+        // Created and then deleted, so its two entries point at an expense that is no longer
+        // there. This is what tells a row that leads somewhere from one that cannot.
+        let vanished = response.activities.filter { $0.title == "Pastéis de Belém" }
+        #expect(vanished.map(\.activityType) == [.deleteExpense, .createExpense])
+        #expect(vanished.allSatisfy { !$0.expenseStillExists })
+        #expect(vanished.allSatisfy { $0.expenseId != nil })
+    }
+
+    /// The one place this client is deliberately lenient where `SplitMode` is not: a split mode
+    /// it cannot read is money it would divide wrongly, and an activity it cannot read is a line
+    /// of prose it can leave out.
+    ///
+    /// Hand-written rather than recorded, and legitimately so: no server sends this today, which
+    /// is the entire premise. It is a fifth `ActivityType` arriving from a server newer than
+    /// this app — the thing a recorded fixture cannot be made to contain.
+    @Test("An activity kind this version has never heard of decodes rather than throwing")
+    func decodesUnknownActivityType() throws {
+        let envelope = """
+        {"result":{"data":{"json":{"activities":[{"id":"a1","groupId":"g1",\
+        "time":"2026-08-20T10:00:00.000Z","activityType":"ARCHIVE_GROUP",\
+        "participantId":null,"expenseId":null,"data":null,"expense":null}],\
+        "hasMore":false,"nextCursor":20}}}}
+        """
+
+        let response = try SuperJSON.decode(
+            Spliit.ActivitiesListResponse.self, fromResponse: Data(envelope.utf8)
+        )
+
+        #expect(response.activities.count == 1)
+        #expect(response.activities.first?.activityType == .unknown("ARCHIVE_GROUP"))
+        #expect(response.activities.first?.activityType.isRecognised == false)
+    }
+
     @Test("The full category list decodes with its groupings")
     func decodesCategories() throws {
         let response = try SuperJSON.decode(

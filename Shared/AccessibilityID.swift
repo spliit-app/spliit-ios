@@ -88,6 +88,16 @@ enum AccessibilityID {
         static func participant(_ id: String) -> String { "information.participant.\(id)" }
     }
 
+    enum ActivityLog {
+        static let retryButton = "activity.retry"
+
+        /// The sentence on a row, and the timestamp under it. Keyed by the activity's own ID:
+        /// a group can hold several lines that read identically — the same expense edited
+        /// twice — and only the ID tells them apart.
+        static func entry(_ activityID: String) -> String { "activity.row.\(activityID).summary" }
+        static func time(_ activityID: String) -> String { "activity.row.\(activityID).time" }
+    }
+
     enum ExpenseList {
         static let addButton = "expenses.add"
         static let emptyAddButton = "expenses.emptyAdd"

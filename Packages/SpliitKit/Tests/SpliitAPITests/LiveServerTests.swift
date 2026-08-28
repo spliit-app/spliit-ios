@@ -317,6 +317,180 @@ struct LiveServerTests {
         #expect(reloaded.group?.name == "Renamed")
     }
 
+    /// The log is written by the server as a side effect of every other mutation, so the only
+    /// way to know our writes are recorded — and recorded against the right person — is to make
+    /// some and read them back. Nothing local proves the `participantId` we send survives.
+    @Test("Every kind of change writes an attributed entry to the activity log")
+    func recordsActivities() async throws {
+        let client = try client
+
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "Log \(UUID().uuidString.prefix(8))",
+                    currency: "$",
+                    participants: [.init(name: "Dana"), .init(name: "Eli")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first { $0.name == "Dana" })
+        let eli = try #require(group.participants.first { $0.name == "Eli" })
+
+        let values = { (title: String) in
+            ExpenseFormValues(
+                title: title,
+                expenseDate: .now,
+                amount: 1000,
+                paidBy: dana.id,
+                paidFor: [.init(participant: dana.id, shares: 100)]
+            )
+        }
+
+        let kept = try await client.call(
+            Spliit.createExpense(groupId: group.id, values("Kept"), by: dana.id)
+        )
+        _ = try await client.call(
+            Spliit.updateExpense(
+                groupId: group.id, expenseId: kept.expenseId, values("Kept, renamed"), by: eli.id
+            )
+        )
+        let doomed = try await client.call(
+            Spliit.createExpense(groupId: group.id, values("Doomed"), by: eli.id)
+        )
+        _ = try await client.call(
+            Spliit.deleteExpense(groupId: group.id, expenseId: doomed.expenseId, by: dana.id)
+        )
+        _ = try await client.call(
+            Spliit.updateGroup(
+                id: group.id,
+                values: GroupFormValues(
+                    name: "Log, renamed",
+                    currency: "$",
+                    participants: group.participants.map { .init(id: $0.id, name: $0.name) }
+                ),
+                by: eli.id
+            )
+        )
+
+        let log = try await client.call(Spliit.activities(groupId: group.id)).activities
+
+        // Newest first, so this is the reverse of the order they were made in.
+        #expect(
+            log.map(\.activityType) == [
+                .updateGroup, .deleteExpense, .createExpense, .updateExpense, .createExpense,
+            ]
+        )
+        #expect(log.map(\.participantId) == [eli.id, dana.id, eli.id, eli.id, dana.id])
+
+        // `data` holds the title as it was at the time, not as it is now: the entry for the
+        // creation still says "Kept" although the expense has since been renamed.
+        #expect(log.map(\.title) == [nil, "Doomed", "Doomed", "Kept, renamed", "Kept"])
+
+        // The expense the log points at is what decides whether a row can be opened, and the
+        // deleted one's entries must not claim it can.
+        let doomedEntries = log.filter { $0.expenseId == doomed.expenseId }
+        #expect(doomedEntries.count == 2)
+        #expect(doomedEntries.allSatisfy { !$0.expenseStillExists })
+
+        let keptEntries = log.filter { $0.expenseId == kept.expenseId }
+        #expect(keptEntries.count == 2)
+        #expect(keptEntries.allSatisfy { $0.expenseStillExists })
+    }
+
+    /// Paging the log is what the tab does when someone scrolls, and the cursor is an offset
+    /// rather than a key — so a limit smaller than the log is the only thing that proves the
+    /// second page is the rest of it rather than the first page again.
+    @Test("The activity log pages with an offset cursor")
+    func pagesActivities() async throws {
+        let client = try client
+
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "Paging \(UUID().uuidString.prefix(8))",
+                    currency: "$",
+                    participants: [.init(name: "Dana")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first)
+
+        for index in 1...5 {
+            _ = try await client.call(
+                Spliit.createExpense(
+                    groupId: group.id,
+                    ExpenseFormValues(
+                        title: "Expense \(index)",
+                        expenseDate: .now,
+                        amount: 100 * index,
+                        paidBy: dana.id,
+                        paidFor: [.init(participant: dana.id, shares: 100)]
+                    ),
+                    by: dana.id
+                )
+            )
+        }
+
+        let first = try await client.call(Spliit.activities(groupId: group.id, limit: 2))
+        #expect(first.activities.count == 2)
+        #expect(first.hasMore)
+        #expect(first.nextCursor == 2)
+
+        let second = try await client.call(
+            Spliit.activities(groupId: group.id, cursor: first.nextCursor, limit: 2)
+        )
+        #expect(second.activities.count == 2)
+        #expect(second.hasMore)
+        #expect(Set(second.activities.map(\.id)).isDisjoint(with: first.activities.map(\.id)))
+
+        let last = try await client.call(
+            Spliit.activities(groupId: group.id, cursor: second.nextCursor, limit: 2)
+        )
+        #expect(last.activities.count == 1)
+        #expect(last.hasMore == false)
+    }
+
+    /// The four mutating procedures take an optional `participantId`, and this app leaves it out
+    /// until someone has said who they are. Left out has to mean "unattributed", not "rejected".
+    @Test("A change made by nobody in particular is still recorded")
+    func recordsUnattributedActivity() async throws {
+        let client = try client
+
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "Anon \(UUID().uuidString.prefix(8))",
+                    currency: "$",
+                    participants: [.init(name: "Dana")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first)
+
+        _ = try await client.call(
+            Spliit.createExpense(
+                groupId: group.id,
+                ExpenseFormValues(
+                    title: "Who paid?",
+                    expenseDate: .now,
+                    amount: 500,
+                    paidBy: dana.id,
+                    paidFor: [.init(participant: dana.id, shares: 100)]
+                )
+            )
+        )
+
+        let entry = try #require(
+            try await client.call(Spliit.activities(groupId: group.id)).activities.first
+        )
+        #expect(entry.activityType == .createExpense)
+        #expect(entry.participantId == nil)
+        #expect(entry.title == "Who paid?")
+    }
+
     @Test("A missing group surfaces as a typed server error")
     func reportsNotFound() async throws {
         await #expect(throws: TRPCServerError.self) {

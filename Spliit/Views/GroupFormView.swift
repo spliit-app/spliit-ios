@@ -265,7 +265,7 @@ struct GroupSettingsView: View {
             }
             .navigationTitle("Group settings")
             .navigationBarTitleDisplayMode(.inline)
-            .trackScreen(.groupSettings, properties: ["groupId": groupID])
+            .trackScreen(.groupSettings)
         }
         .task { await load() }
     }

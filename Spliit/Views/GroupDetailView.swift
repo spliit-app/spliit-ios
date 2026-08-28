@@ -49,7 +49,7 @@ struct GroupDetailView: View {
                     onAdd: { sheet = .createExpense },
                     onEdit: { sheet = .editExpense($0) }
                 )
-                .trackScreen(.groupExpenses, properties: ["groupId": model.groupID])
+                .trackScreen(.groupExpenses)
             }
 
             Tab("Balances", systemImage: "arrow.left.arrow.right", value: GroupTab.balances) {
@@ -58,7 +58,7 @@ struct GroupDetailView: View {
                     onSettle: { sheet = .settle($0) },
                     onIdentify: { sheet = .identity }
                 )
-                .trackScreen(.groupBalances, properties: ["groupId": model.groupID])
+                .trackScreen(.groupBalances)
             }
 
             Tab("Information", systemImage: "info.circle", value: GroupTab.information) {
@@ -67,7 +67,7 @@ struct GroupDetailView: View {
                     onEdit: { sheet = .settings },
                     onIdentify: { sheet = .identity }
                 )
-                .trackScreen(.groupInformation, properties: ["groupId": model.groupID])
+                .trackScreen(.groupInformation)
             }
 
             // The search role is what puts the magnifying glass in its own capsule beside the

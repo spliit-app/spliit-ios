@@ -53,10 +53,7 @@ struct ExpenseFormView: View {
                 }
             }
             .navigationTitle(mode.isEditing ? "Edit expense" : "New expense")
-            .trackScreen(
-                mode.isEditing ? .groupEditExpense : .groupCreateExpense,
-                properties: ["groupId": group.id]
-            )
+            .trackScreen(mode.isEditing ? .groupEditExpense : .groupCreateExpense)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -326,7 +323,7 @@ struct ExpenseFormView: View {
                     _ = try await app.client.call(
                         Spliit.createExpense(groupId: group.id, values)
                     )
-                    Analytics.shared.event(.createExpense, properties: ["groupId": group.id])
+                    Analytics.shared.event(.createExpense)
                 case .edit(let expenseID):
                     _ = try await app.client.call(
                         Spliit.updateExpense(groupId: group.id, expenseId: expenseID, values)

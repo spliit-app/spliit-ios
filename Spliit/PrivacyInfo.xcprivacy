@@ -56,7 +56,10 @@
 
 		<!-- Plausible screen views and two events (a group created, an expense created).
 		     Plausible is cookieless and stores no per-person identifier, so this is not
-		     linked to identity and is not used for tracking. -->
+		     linked to identity and is not used for tracking. The screen name is the whole
+		     of what is sent: no group or expense ID is attached, so a report cannot be
+		     tied back to the group it came from. `AnalyticsEvent` has no parameter for
+		     one, which is what keeps that true. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeProductInteraction</string>

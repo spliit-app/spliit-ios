@@ -99,9 +99,18 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     }
 
     /// A blank expense for a group: everyone included, split evenly.
-    public init(creatingIn group: Group, locale: Locale = .autoupdatingCurrent) {
+    ///
+    /// - Parameter paidBy: whoever the user said they are in this group, when they have said.
+    ///   An ID the group no longer has falls back to the first participant, which is what this
+    ///   form filled in before anybody could answer the question.
+    public init(
+        creatingIn group: Group,
+        paidBy: String? = nil,
+        locale: Locale = .autoupdatingCurrent
+    ) {
+        let payer = group.participants.first { $0.id == paidBy } ?? group.participants.first
         self.init(
-            paidByID: group.participants.first?.id,
+            paidByID: payer?.id,
             participants: group.participants.map {
                 ParticipantShareDraft(id: $0.id, name: $0.name, isIncluded: true)
             },
@@ -292,6 +301,22 @@ public struct ExpenseFormDraft: Equatable, Sendable {
 
     public var includedParticipants: [ParticipantShareDraft] {
         participants.filter(\.isIncluded)
+    }
+
+    /// Whether the split covers the whole group, which is what decides whether the paid-for list
+    /// offers to select all or to select none.
+    public var allParticipantsIncluded: Bool {
+        !participants.isEmpty && participants.allSatisfy(\.isIncluded)
+    }
+
+    /// Puts the whole group in the split, or takes it all out — whichever the selection isn't.
+    ///
+    /// Everyone keeps the share they were last given, since the rows stay in `participants`
+    /// either way: a value typed before an unintended "select none" comes back with its owner.
+    public mutating func setAllParticipantsIncluded(_ isIncluded: Bool) {
+        for index in participants.indices {
+            participants[index].isIncluded = isIncluded
+        }
     }
 
     /// What each included participant's `shares` field should be sent as.

@@ -51,33 +51,41 @@ final class AccessibilityTests: SpliitUITestCase {
 
         let ana = try XCTUnwrap(group.participants["Ana"])
         let bruno = try XCTUnwrap(group.participants["Bruno"])
-        assertExists(
-            app.staticTexts[AccessibilityID.Balances.participantAmount(ana)],
-            "Balances should list the payer at any text size."
-        )
+
+        // The list is lazy and at this text size almost nothing fits, so every row here has to
+        // be scrolled towards before it is asked about — including the first one, which now
+        // sits below the personal balance the tab leads with. What is being pinned is the
+        // layout of the row, not where it happens to land.
+        let anaAmount = app.staticTexts[AccessibilityID.Balances.participantAmount(ana)]
+        scroll(app, to: anaAmount)
+        assertExists(anaAmount, "Balances should list the payer at any text size.")
         capture(app, "balances-ax5")
 
         // Both halves of the row have to be intact: stacking them must not cost the amount.
-        XCTAssertEqual(
-            app.staticTexts[AccessibilityID.Balances.participantAmount(ana)].label, "$50.00"
-        )
-        XCTAssertEqual(
-            app.staticTexts[AccessibilityID.Balances.participantAmount(bruno)].label, "-$50.00"
-        )
+        XCTAssertEqual(anaAmount.label, "$50.00")
         XCTAssertTrue(
             app.staticTexts[AccessibilityID.Balances.participantName(ana)].exists,
             "The name should not be dropped to make room for the amount."
         )
 
-        // The list is lazy, and at this text size two balance rows fill the screen — the
-        // suggested payments below them are not built until they are scrolled towards, so this
-        // has to scroll before asking whether they exist.
+        let brunoAmount = app.staticTexts[AccessibilityID.Balances.participantAmount(bruno)]
+        scroll(app, to: brunoAmount)
+        XCTAssertEqual(brunoAmount.label, "-$50.00")
+
         let settle = app.buttons[AccessibilityID.Balances.markAsPaid(0)]
         for _ in 0..<10 where !settle.isHittable { app.swipeUp() }
         XCTAssertTrue(
             settle.isHittable,
             "The suggested payment should be reachable by scrolling at the largest text size."
         )
+    }
+
+    /// Swipes towards an element until the list has built it. Bounded, like every loop in this
+    /// suite: a missing element is a failing assertion, never a run that swipes for forty
+    /// minutes.
+    @MainActor
+    private func scroll(_ app: XCUIApplication, to element: XCUIElement) {
+        for _ in 0..<6 where !element.exists { app.swipeUp() }
     }
 
     /// The welcome screen is the first thing a new install shows, and at this text size its

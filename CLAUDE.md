@@ -140,6 +140,13 @@ with nothing reading them — the currency is what says an expense was paid in a
 `ExpenseFormDraft(editing:)` ignores the other two without it. `make test-live` is what found
 this; nothing local would have.
 
+**`groups.balances.list` does not tell you what anyone paid.** It returns the web app's
+*public* balances — derived from the suggested payments, not from the expenses — so `paid` is
+what a participant will be handed when the group settles and `paidFor` is what they will hand
+over. One of the two is always zero and the other is `abs(total)`; the recorded fixture shows
+it. Only `total` means anything. What was actually paid, and what was actually spent on
+someone, comes from `groups.stats.get` with a `participantId`.
+
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`
 sends `createdAt` with no annotation at all, so trusting the metadata would break exactly one

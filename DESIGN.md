@@ -92,14 +92,20 @@ Money(value: formatter.string(minorUnits: balance.total),
 | `.row` | `.body` | A list row. The default. |
 | `.support` | `.footnote` | An inline aside. |
 
-`.hero` and `.support` are specified and currently unused; the shipped screens need two of the
-four. They stay because the scale is the point, and inventing a fifth later is worse than
-leaving two spare.
+`.hero` is what the balances tab leads with: your own balance, once you have said which
+participant you are. `.support` is still spare, and stays because the scale is the point —
+inventing a fifth size later is worse than leaving one over.
 
 **Sign is carried by colour, and only where the amount has a direction.** An expense amount has
 none, so it is `.primary`. A balance is positive, negative or settled — `Money.Sign(balance:)`
 does that mapping, and `.settled` is `.secondary` rather than a third colour, because zero is
 not an outcome worth tinting.
+
+**One amount is drawn unsigned: your own balance**, at the top of the balances tab. It sits
+under a sentence that says which way the money goes — "You are owed", "You owe" — and a minus
+sign under that sentence says it twice while contradicting itself. Everywhere else the sign
+stays on the number, because nothing beside it is saying so in words. The colour is the same
+either way: it comes from the real, signed total.
 
 **Reimbursements** render regular-weight and italic, matching how the expense list has always
 drawn their titles.

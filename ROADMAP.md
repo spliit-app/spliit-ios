@@ -394,7 +394,9 @@ to a user opening it for the first time.
   posting the expense: an expense needs a payer and the app has no idea who its user
   is in a group, so guessing would put someone else's name against a payment in a
   shared ledger. Revisit when M3.1 lands the active user — that is what makes a
-  headless "add £12 for coffee to Lisbon" safe
+  headless "add £12 for coffee to Lisbon" safe. **The active user has since landed** (M3.1),
+  so that is now possible in any group somebody has said who they are in; what is still missing
+  is the split, which is what "saved default splitting options" below is for
 - **Widget** — moved to M3.1. It was specced as "balances at a glance for a starred
   group", and starring is itself an M3.1 feature. Building it against the
   most-recent group instead would ship it twice: once now with the wrong subject,
@@ -441,8 +443,34 @@ Ordered by value to a phone user, not by web-app order.
   Deliberately not built: per-participant shares typed in the original currency, which the web
   offers for by-amount splits. That is a second conversion inside the split section for a case
   the group's own currency already covers
-- Active user ("who are you in this group?") and the personal balance summary
-- Select all / none in the paid-for list, and saved default splitting options
+- ~~Active user ("who are you in this group?") and the personal balance summary~~ — **done**.
+  Asked and answered per group, and stored on the group in `recent-groups.json` beside the
+  star and the archive flag, for the same reason those are: one file, one write, and no way to
+  be somebody in a group the list has forgotten. Three states rather than two — never asked,
+  a participant, and an explicit "nobody" for a phone the whole group shares — because a
+  question that keeps being asked after it has been answered is a worse feature than no
+  question. Two things it changes: the balances tab leads with **your** balance, unsigned under
+  a sentence that says which way it goes ("You are owed" / "You owe"); and a new expense
+  arrives already paid by you. Deliberately
+  **not** the web's modal on first opening a group: that is a toll gate in front of the
+  expenses somebody just tapped to see, and the question only pays off on the balances tab —
+  which is where it is offered, beside the answer it unlocks. A participant who is later
+  removed from the group reads as unanswered rather than as a missing person, so the invitation
+  comes back rather than a balance quietly disappearing. It is one number and not three, which
+  is a finding worth carrying into wave 2: **`groups.balances.list` returns the web app's
+  *public* balances**, computed from the suggested payments rather than from the expenses, so
+  `paid` is what a participant will be handed and `paidFor` what they will hand over — one of
+  the two is always zero, and neither is what anybody paid. "You paid X, and Y was spent on
+  you" was written on that pair and was false. The real figures are `groups.stats.get`'s
+  `totalParticipantSpendings` and `totalParticipantShare`, which the stats tab below brings in;
+  the section footer on that screen claimed the same wrong thing and has been corrected too
+- ~~Select all / none in the paid-for list~~ — **done**. One control in the "Paid for"
+  header rather than two, because with everyone already in the split "select all" has
+  nothing left to offer. It flips the `isIncluded` flags and touches nothing else, so the
+  rows never leave the draft and a share typed before an accidental "select none" comes
+  back with its owner — the web app rebuilds the list instead, and gives anyone re-added a
+  share of 1
+- Saved default splitting options
 - ~~Starred and archived groups on the home screen~~ — **done**. Both flags live on
   the group in `recent-groups.json` rather than in two lists of IDs the way the web
   app keeps them: one file, one write, and no way to end up starring a group the
@@ -465,7 +493,11 @@ Ordered by value to a phone user, not by web-app order.
   participants, which is the only place outside the editor that names who is in the group, and
   the currency and creation date. The note is still edited in the group form: it is a field on
   the group, and a second editor for one field is a second thing to keep in step
-- Stats tab (total group spending, your spending, your share)
+- Stats tab (total group spending, your spending, your share). `groups.stats.get` takes a
+  `participantId` and answers the last two, so it is the active user that makes them
+  answerable — and it is the only endpoint that knows what anybody actually paid. Note that
+  `totalParticipantShare` is not an integer: an evenly split expense divides in the server's
+  own floating-point arithmetic, so the DTO cannot be `Int` the way every other amount is
 - Activity log tab
 - Export to CSV / JSON via the share sheet
 
@@ -518,8 +550,8 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Widget | ➖ | ➖ | M3.1, with starring |
 | Currency code + picker | ➖ | ✅ | ✅ M3.1 |
 | Multi-currency expenses | ➖ | ✅ | ✅ M3.1 |
-| Active user / personal balance | ➖ | ✅ | M3.1 |
-| Select all-or-none participants | ➖ | ✅ | M3.1 |
+| Active user / personal balance | ➖ | ✅ | ✅ M3.1 |
+| Select all-or-none participants | ➖ | ✅ | ✅ M3.1 |
 | Default splitting options | ➖ | ✅ | M3.1 |
 | Starred / archived groups | ➖ | ✅ | ✅ M3.1 |
 | Group information tab | ➖ | ✅ | ✅ M3.2 |

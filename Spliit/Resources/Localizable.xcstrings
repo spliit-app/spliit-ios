@@ -1007,6 +1007,26 @@
         }
       }
     },
+    "Nobody": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personne"
+          }
+        }
+      }
+    },
+    "Not set": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non défini"
+          }
+        }
+      }
+    },
     "Notes": {
       "localizations": {
         "fr": {
@@ -1147,6 +1167,26 @@
         }
       }
     },
+    "Pick nobody on a phone the whole group shares.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez « personne » sur un téléphone partagé par tout le groupe."
+          }
+        }
+      }
+    },
+    "Pick yourself once and this group is read from where you stand: your own balance first, and your name already filled in on a new expense.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez-vous une fois et ce groupe se lit depuis votre place : votre solde d’abord, et votre nom déjà rempli sur une nouvelle dépense."
+          }
+        }
+      }
+    },
     "Point the app at your own Spliit instance. Leave this alone if you use the official one.": {
       "localizations": {
         "fr": {
@@ -1213,6 +1253,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enregistrement…"
+          }
+        }
+      }
+    },
+    "Say who you are": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dites qui vous êtes"
           }
         }
       }
@@ -1457,6 +1507,16 @@
         }
       }
     },
+    "This stays on this phone. Spliit has no accounts, so nobody else in the group can see which participant you picked.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette information reste sur ce téléphone. Spliit n’a pas de comptes : personne d’autre dans le groupe ne voit quel participant vous avez choisi."
+          }
+        }
+      }
+    },
     "This week": {
       "localizations": {
         "fr": {
@@ -1607,16 +1667,6 @@
         }
       }
     },
-    "What each participant paid, against what was spent on them.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce que chaque participant a payé, face à ce qui a été dépensé pour lui."
-          }
-        }
-      }
-    },
     "What should participants know?": {
       "localizations": {
         "fr": {
@@ -1633,6 +1683,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "C’était pour quoi ?"
+          }
+        }
+      }
+    },
+    "Which participant you are, on this phone. It decides whose balance the balances tab leads with, and who a new expense is paid by.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quel participant vous êtes, sur ce téléphone. Cela décide du solde mis en avant dans l’onglet Soldes et de qui paie une nouvelle dépense."
+          }
+        }
+      }
+    },
+    "Who are you?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qui êtes-vous ?"
+          }
+        }
+      }
+    },
+    "Who is up and who is down, once every expense has been counted.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qui est en positif et qui est en négatif, une fois toutes les dépenses comptées."
+          }
+        }
+      }
+    },
+    "You": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous"
+          }
+        }
+      }
+    },
+    "You are owed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On vous doit"
+          }
+        }
+      }
+    },
+    "You owe": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez"
+          }
+        }
+      }
+    },
+    "You’re settled up": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous êtes à jour"
           }
         }
       }

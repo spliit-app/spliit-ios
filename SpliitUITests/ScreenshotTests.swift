@@ -34,6 +34,11 @@ final class ScreenshotTests: SpliitUITestCase {
         let seeded = try await seed(content)
         let hero = try XCTUnwrap(seeded.first)
 
+        // Who the listing's screenshots are taken as: the hero group's first participant, who
+        // is also the one who paid for the flat — so the balances shot leads with a number
+        // worth photographing rather than with the question that offers to find it.
+        let you = hero.group.participants[content.hero.participants[0]]
+
         let app = launchApp(
             recentGroups: SpliitTestAPI.recentGroupsJSON(
                 organised: seeded.map {
@@ -43,7 +48,8 @@ final class ScreenshotTests: SpliitUITestCase {
                         isStarred: $0.spec.isStarred,
                         isArchived: $0.spec.isArchived
                     )
-                }
+                },
+                activeParticipants: you.map { [hero.group.id: $0] } ?? [:]
             )
         )
 
@@ -109,6 +115,10 @@ final class ScreenshotTests: SpliitUITestCase {
         assertExists(
             app.staticTexts[AccessibilityID.Balances.participantName(anyone)],
             "The balances tab should show the participants."
+        )
+        assertExists(
+            app.staticTexts[AccessibilityID.ActiveUser.total],
+            "And it should lead with the balance of whoever the screenshots are taken as."
         )
         try await photograph("04-balances")
 

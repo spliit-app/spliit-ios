@@ -48,7 +48,7 @@ targets:
         # and strand every existing user's local data.
         PRODUCT_BUNDLE_IDENTIFIER: app.spliit.spliitmobile
         PRODUCT_NAME: Spliit
-        MARKETING_VERSION: 2.0.0
+        MARKETING_VERSION: 2.1.0
         # Must exceed every build App Store Connect has already seen, which is not the same
         # as exceeding what shipped: 21 was uploaded once and refused for declaring no
         # orientations, so it is spent whether or not it ever appeared. The store shows

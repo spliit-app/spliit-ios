@@ -54,8 +54,8 @@ struct ExpenseFormView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let form {
-                    formBody(Binding(get: { form }, set: { self.form = $0 }))
+                if form != nil {
+                    formBody(liveForm)
                 } else if failure != nil {
                     EmptyState(
                         art: .icon("exclamationmark.triangle"),
@@ -94,6 +94,23 @@ struct ExpenseFormView: View {
     }
 
     // MARK: - Form
+
+    /// A binding whose getter reads `form` *now*, rather than the value it held when the body
+    /// last ran.
+    ///
+    /// `Binding(get: { form }, ...)` over the unwrapped constant looks equivalent and is not: the
+    /// getter closes over that constant, so it keeps answering with the draft from this pass of
+    /// the body however many times it is written to in between. Anything that writes and then
+    /// reads back inside one turn then reads its own write away. Two receipts uploaded together
+    /// would land as one — the second append starts from an array without the first — and the
+    /// document viewer, which removes a document and then asks whether any are left, was told
+    /// there still was one and stayed open on nothing.
+    private var liveForm: Binding<ExpenseFormDraft> {
+        Binding(
+            get: { self.form ?? ExpenseFormDraft() },
+            set: { self.form = $0 }
+        )
+    }
 
     @ViewBuilder
     private func formBody(_ form: Binding<ExpenseFormDraft>) -> some View {
@@ -171,6 +188,12 @@ struct ExpenseFormView: View {
                     .lineLimit(2...5)
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.notesField)
             }
+
+            // Below the expense itself, and on an edit as well as a create: unlike scanning,
+            // which is how an expense gets written down, a receipt is worth attaching to one
+            // that was written down last week — and one attached from the web app has to be
+            // visible here whatever this screen is for.
+            ExpenseDocumentsSection(documents: form.documents)
 
             if case .edit(let expenseID) = mode {
                 Section {

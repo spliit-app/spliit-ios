@@ -147,8 +147,31 @@ without Apple Intelligence, the fallback under the model everywhere else, and th
 test` covers. Nothing the model answers is trusted verbatim either: every field it gives back is
 re-checked by the same code that reads the receipt itself.
 
-The photo is not kept. Attaching receipts to expenses is a separate feature the web app has and
-this app does not yet.
+The photo is not kept, and the section below is why: keeping a receipt sends it somewhere, and
+reading one does not. The two sit a tap apart on the same screen and neither does the other's job.
+
+## Keeping receipts
+
+A receipt attached to an expense is the one piece of data in this app that does not live in
+Spliit's database. The instance signs an upload — `POST /api/s3-upload`, a REST route
+`next-s3-upload` puts beside the tRPC one — and the picture goes from the phone straight to the
+instance's bucket. What the expense stores is an address, which is why removing a document only
+forgets it: neither this app nor the web app has credentials to delete anything from that bucket.
+
+The photograph is re-encoded rather than refused. The web app rejects a file over 5 MB, which is
+most of what a phone camera produces, so a picture here is capped at 2048 pixels on its longest
+side and stepped down in quality until it fits. That redraw earns its place twice over: it bakes
+in the orientation, without which a photo out of the library uploads sideways and the width and
+height stored beside it describe it the wrong way round, and it drops the rest of the EXIF along
+with it — a receipt has no business carrying somebody's location into a bucket.
+
+**Storing documents is optional, and there is no way to ask.** The signing route is compiled in
+whether or not a bucket is configured, and the flag that says so is server-side and never exposed
+over tRPC. So the answer only ever arrives as a failed upload, and the app reads that particular
+failure as "this instance keeps no documents" rather than as something worth retrying — a
+self-hosted Spliit without a bucket is entirely ordinary. `make e2e-up` brings object storage up
+beside the test server so the suites cover the upload for real; against an instance without one
+they cover the other half, which is that the app says so plainly.
 
 ## Languages
 

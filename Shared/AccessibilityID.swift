@@ -150,6 +150,18 @@ enum AccessibilityID {
         static func participantValue(_ id: String) -> String { "expenseForm.share.\(id)" }
     }
 
+    /// Receipts kept with an expense. The thumbnails are named by position rather than by
+    /// document ID: a document the app has just uploaded gets an ID minted on the spot, so the
+    /// suite has no way to know one, while "the first one in the grid" is exactly what it means.
+    enum Documents {
+        static let addButton = "documents.add"
+        static let status = "documents.status"
+        static let doneButton = "documents.done"
+        static let removeButton = "documents.remove"
+
+        static func thumbnail(_ index: Int) -> String { "documents.thumbnail.\(index)" }
+    }
+
     /// Saying who you are in a group, and what that then shows. The picker is one screen reached
     /// from three — the balances tab, the stats tab and the information tab — so the entry
     /// points are named apart while everything inside the picker is named once.

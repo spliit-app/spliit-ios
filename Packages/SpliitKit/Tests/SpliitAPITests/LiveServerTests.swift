@@ -576,6 +576,47 @@ struct LiveServerTests {
 
         #expect(response.group == nil)
     }
+
+    // MARK: - Documents
+
+    /// The one part of this client that isn't tRPC, and the one no recorded fixture can stand in
+    /// for: a document is signed by the instance, uploaded straight to its bucket, and then read
+    /// back over plain HTTP by whatever draws it. Three parties have to agree on a single address
+    /// for that to work, and only a real instance can show that they do.
+    ///
+    /// Both outcomes are the point. Against the harness — `make e2e-up` brings object storage up
+    /// alongside the server — this stores a real object and fetches it back. Against an instance
+    /// with no bucket, which is what CI builds from source and what a great many self-hosted
+    /// deployments are, it proves the commoner case instead: that the app reads that as "this
+    /// instance stores no documents" rather than as an error somebody could retry forever.
+    ///
+    /// A text file rather than a photograph. Nothing here is about the picture — signing, the
+    /// upload, the address it produces and whether that address is readable by anyone are all
+    /// indifferent to what the bytes mean — and a JPEG inlined as base64 would be forty lines
+    /// saying so less clearly.
+    @Test("A document round-trips through the instance's own storage, or says there is none")
+    func uploadsADocument() async throws {
+        let uploader = DocumentUploader(baseURL: try #require(LiveServer.baseURL))
+        let contents = Data("Uploaded by the Swift client test suite.".utf8)
+
+        let address: String
+        do {
+            address = try await uploader.upload(
+                contents, filename: "live-test.txt", contentType: "text/plain"
+            )
+        } catch DocumentUploader.Failure.unsupported {
+            return
+        }
+
+        // The address an expense stores has to be one anybody can open: neither product signs
+        // the URL it renders, so an object that is not publicly readable is a broken picture in
+        // both of them.
+        let (data, response) = try await URLSession.shared.data(
+            from: try #require(URL(string: address))
+        )
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+        #expect(data == contents)
+    }
 }
 
 enum LiveServer {

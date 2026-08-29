@@ -42,6 +42,8 @@ public struct AnalyticsEvent: Equatable, Sendable {
         // separate Plausible sites, and this one names its events the way the rest of this
         // enum does.
         case scanReceipt = "scan-receipt"
+        // "expense: attach document" on the web app's site.
+        case attachDocument = "attach-document"
     }
 
     /// Plausible's event name. `pageview` is the one it treats as a screen view.

@@ -32,18 +32,19 @@ enum UITestSupport {
         static let openURL = "-uiTestOpenURL"
         /// The rate every currency lookup should answer with, or "none" to make them all fail.
         static let exchangeRate = "-uiTestExchangeRate"
-        /// Scan a receipt the app draws for itself, instead of opening the camera or the
-        /// library. Present with no value.
+        /// Take the receipt the app draws for itself wherever a photograph is asked for —
+        /// scanning one, and attaching one — instead of opening a camera the simulator has not
+        /// got or a library with nothing in it. Present with no value.
         static let receiptSample = "-uiTestReceiptSample"
     }
 
-    /// Whether this run reads a drawn receipt rather than a photographed one. Asked on every
+    /// Whether this run supplies a drawn receipt rather than a photographed one. Asked on every
     /// pass through the form's body, so it stays a look at the launch arguments.
     static var usesSampleReceipt: Bool {
         ProcessInfo.processInfo.arguments.contains(Argument.receiptSample)
     }
 
-    /// A receipt to scan, for a suite with no camera and an empty photo library.
+    /// A receipt to scan or to attach, for a suite with no camera and an empty photo library.
     ///
     /// Drawn rather than stubbed, and fed through the real `RecognizeDocumentsRequest` and the
     /// real parser: the interesting half of receipt scanning is whether text recognition and the

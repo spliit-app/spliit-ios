@@ -11,9 +11,10 @@ import VisionKit
 /// those four values to a form that shows them again. Here they land in the fields directly,
 /// where they can be corrected in place instead of accepted and then corrected.
 ///
-/// The photo itself is deliberately not kept. Attaching receipts to expenses is a feature of its
-/// own — the web app uploads them to S3 — and a thumbnail on this screen would promise the expense
-/// keeps a copy when it does not.
+/// The photo itself is deliberately not kept, and the section below this one is why: attaching a
+/// receipt uploads it to the instance's bucket, which is a different thing from reading one, and
+/// doing both from a single tap would send a picture somewhere on the strength of a footer that
+/// promises the opposite. Scanning stays on the phone; attaching is asked for.
 struct ReceiptScanSection: View {
 
     let categories: [ExpenseCategory]

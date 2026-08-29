@@ -93,7 +93,7 @@ final class ExpenseTests: SpliitUITestCase {
         replaceText(in: app.textFields[AccessibilityID.ExpenseForm.amountField], with: "30.00")
 
         let selectAll = app.buttons[AccessibilityID.ExpenseForm.selectAllButton]
-        for _ in 0..<10 where !selectAll.isHittable { app.swipeUp() }
+        scrollUntilHittable(selectAll, in: app)
         XCTAssertTrue(selectAll.isHittable, "The paid-for header should offer a select control.")
 
         // A new expense starts with everyone in it, so the only thing left to offer is the way out.
@@ -116,7 +116,7 @@ final class ExpenseTests: SpliitUITestCase {
             "An expense with nobody in the split should be refused."
         )
 
-        for _ in 0..<10 where !selectAll.isHittable { app.swipeUp() }
+        scrollUntilHittable(selectAll, in: app)
         selectAll.tap()
         XCTAssertEqual(anaCheckbox.value as? String, "1", "Select all should bring everyone back.")
 
@@ -161,7 +161,7 @@ final class ExpenseTests: SpliitUITestCase {
         app.staticTexts["Mistake"].tap()
         let delete = app.buttons[AccessibilityID.ExpenseForm.deleteButton]
         assertExists(app.textFields[AccessibilityID.ExpenseForm.titleField], "The editor should open.")
-        for _ in 0..<10 where !delete.isHittable { app.swipeUp() }
+        scrollUntilHittable(delete, in: app)
         XCTAssertTrue(delete.isHittable, "Delete should be reachable by scrolling the form.")
         delete.tap()
 

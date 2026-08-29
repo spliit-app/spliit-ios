@@ -29,6 +29,15 @@ services:
       POSTGRES_PRISMA_URL: postgresql://spliit:spliit@db:5432/spliit
       POSTGRES_URL_NON_POOLING: postgresql://spliit:spliit@db:5432/spliit
       NEXT_PUBLIC_DEFAULT_CURRENCY_CODE: ''
+      # Document storage. The route that signs an upload needs only the four S3 settings; the
+      # flag is what the web UI reads, and it is set so this instance is one that really does
+      # keep documents rather than one that merely could.
+      NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS: 'true'
+      S3_UPLOAD_KEY: spliit
+      S3_UPLOAD_SECRET: spliitspliit
+      S3_UPLOAD_BUCKET: spliit
+      S3_UPLOAD_REGION: us-east-1
+      S3_UPLOAD_ENDPOINT: http://localhost:9009
     depends_on:
       db:
         condition: service_healthy
@@ -42,3 +51,42 @@ services:
       timeout: 5s
       retries: 40
       start_period: 20s
+
+  # Object storage for expense documents. Spliit never handles the file itself: it signs a PUT
+  # against a bucket and the client uploads straight to it, so the harness needs somewhere for
+  # that PUT to land and somewhere the app can then GET the picture back from.
+  #
+  # `S3_UPLOAD_ENDPOINT` below says `localhost:9009`, which is not an address this container can
+  # reach — and does not need to be. Signing is pure arithmetic over the request, so the server
+  # signs a URL it never visits; the one that has to reach it is the simulator, which shares the
+  # host's network. The bucket lives in tmpfs like the database, for the same reason.
+  s3:
+    image: minio/minio:latest
+    entrypoint:
+      - /bin/sh
+      - -c
+      # The bucket is a directory, so making it here is the whole of creating it. Its read
+      # policy is not, though — see `make e2e-up`.
+      - mkdir -p /data/spliit && exec minio server /data --address :9009
+    environment:
+      MINIO_ROOT_USER: spliit
+      MINIO_ROOT_PASSWORD: spliitspliit
+    ports:
+      - '9009:9009'
+    tmpfs:
+      - /data
+
+  # Opens the bucket for anonymous reads, which is what makes a stored document's URL a URL
+  # anybody can open — exactly what the real deployments do, and what the app assumes when it
+  # renders one. Behind a profile because it exits when it is finished, and `up --wait` treats a
+  # container that exits as one that failed; `make e2e-up` runs it separately.
+  s3-policy:
+    image: minio/mc:latest
+    profiles: ['setup']
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        until mc alias set e2e http://s3:9009 spliit spliitspliit >/dev/null 2>&1; do sleep 1; done;
+        mc mb --ignore-existing e2e/spliit;
+        mc anonymous set download e2e/spliit

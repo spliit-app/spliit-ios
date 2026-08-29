@@ -34,6 +34,26 @@ final class AppModel {
         TRPCClient(baseURL: settings.baseURL)
     }
 
+    /// Instances that have said they store no documents, for as long as the app is running.
+    ///
+    /// There is no way to ask: document storage is optional in Spliit, the route that signs an
+    /// upload is compiled in whether or not a bucket is configured, and the flag saying so is a
+    /// server-side one the tRPC API never exposes. So the answer only ever arrives as a failed
+    /// upload — and remembering it is what stops the next expense offering the same dead end.
+    ///
+    /// Not persisted, deliberately. An instance that gains a bucket should start working again
+    /// on the next launch rather than after somebody reinstalls the app.
+    private var instancesWithoutDocumentStorage: Set<URL> = []
+
+    /// Whether attaching a document to an expense is worth offering on this instance.
+    var storesDocuments: Bool {
+        !instancesWithoutDocumentStorage.contains(settings.baseURL)
+    }
+
+    func noteDocumentStorageIsUnavailable() {
+        instancesWithoutDocumentStorage.insert(settings.baseURL)
+    }
+
     /// Brings the React Native app's data across, once, on the first launch after the update.
     ///
     /// Deliberately conservative: it never overwrites data this app already has, and it leaves

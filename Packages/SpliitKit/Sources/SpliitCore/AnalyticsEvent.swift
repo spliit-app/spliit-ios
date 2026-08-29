@@ -38,6 +38,10 @@ public struct AnalyticsEvent: Equatable, Sendable {
     public enum Action: String, CaseIterable, Sendable {
         case createGroup = "create-group"
         case createExpense = "create-expense"
+        // The web app counts this as "expense: scan receipt"; the two products report to
+        // separate Plausible sites, and this one names its events the way the rest of this
+        // enum does.
+        case scanReceipt = "scan-receipt"
     }
 
     /// Plausible's event name. `pageview` is the one it treats as a screen view.

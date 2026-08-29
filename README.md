@@ -132,6 +132,24 @@ currency code decides, which is what `MoneyFormatter` reads it for. One more sha
 `paidFor[].shares` is the share value ×100 for `EVENLY`, `BY_SHARES` and `BY_PERCENTAGE`
 whatever the currency, but a raw minor-unit amount for `BY_AMOUNT`.
 
+## Reading receipts
+
+Photographing a receipt fills in the title, amount, date and category of a new expense, and it
+all happens on the phone: Vision's `RecognizeDocumentsRequest` transcribes the picture and the
+system language model reads the transcript. The web app posts the image to OpenAI from its
+server instead, which costs money per scan, hands somebody's receipt to a third party, and does
+nothing at all on a self-hosted instance with no API key. **No photo and no receipt leaves the
+device**, and the feature works offline.
+
+The model is never the only reader. `SpliitCore/ReceiptScan.swift` parses the transcript by the
+rules receipts are printed by — no model and no network — which is the whole feature on a phone
+without Apple Intelligence, the fallback under the model everywhere else, and the part `make
+test` covers. Nothing the model answers is trusted verbatim either: every field it gives back is
+re-checked by the same code that reads the receipt itself.
+
+The photo is not kept. Attaching receipts to expenses is a separate feature the web app has and
+this app does not yet.
+
 ## Languages
 
 English and French. Both come from String Catalogs — `Spliit/Resources/Localizable.xcstrings`

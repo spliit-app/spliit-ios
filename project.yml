@@ -80,6 +80,11 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        # Photographing a receipt to fill in an expense. The photo library needs no counterpart:
+        # PhotosPicker runs out of process and hands back only what was chosen. Translated in
+        # `Spliit/Resources/InfoPlist.xcstrings` — `make strings` reads what the compiler
+        # extracts and cannot see this one, so its French goes in by hand.
+        NSCameraUsageDescription: Spliit reads receipts you photograph, on your iPhone.
         UIUserInterfaceStyle: Automatic
         # The app builds universal (UIDeviceFamily 1,2) and iPad layouts are a non-goal rather
         # than unsupported, so it has to satisfy the iPad multitasking rule: an iPad-capable app

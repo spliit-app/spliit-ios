@@ -35,55 +35,74 @@ struct ReceiptScanSection: View {
 
     var body: some View {
         Section {
-            if phase == .scanning {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Reading the receipt…")
-                        .foregroundStyle(.secondary)
-                }
-            } else if offersCamera {
-                // No identifiers on the two items: an identifier on the `Menu` would stamp them
-                // both anyway, and nothing looks for them — the suite reaches the scan through
-                // the button below, since a simulator has neither camera nor library.
-                Menu {
-                    Button("Take Photo", systemImage: "camera") { isShowingCamera = true }
-                    Button("Choose Photo", systemImage: "photo.on.rectangle") {
-                        isShowingLibrary = true
+            // The presentations hang off the row, and the row keeps one identity for the whole
+            // life of the screen — `phase` changes what it says and whether it is enabled, never
+            // which view it is.
+            //
+            // This is load-bearing, and it cost a bug on a real phone. Swapping the row between a
+            // menu and a progress indicator rebuilt the view owning `fullScreenCover` in the same
+            // update that dismissed it, and the stranded dismissal then landed on the *next*
+            // presentation: photograph a receipt, open the camera again, and it closed itself
+            // immediately. A simulator has no camera, so nothing in the suite ever presented it.
+            scanRow
+                .fullScreenCover(isPresented: $isShowingCamera) {
+                    DocumentCameraSheet { photo in
+                        if let photo { scan(photo) }
                     }
-                } label: {
-                    scanLabel
                 }
-                .accessibilityIdentifier(AccessibilityID.ExpenseForm.scanButton)
-            } else {
-                // No camera to offer — the simulator, and an iPad that has none. A menu with one
-                // item in it is a menu nobody needs.
-                Button { pickPhoto() } label: { scanLabel }
-                    .accessibilityIdentifier(AccessibilityID.ExpenseForm.scanButton)
-            }
+                .photosPicker(
+                    isPresented: $isShowingLibrary, selection: $pickedItem, matching: .images
+                )
+                .task(id: pickedItem) { await loadPickedPhoto() }
         } footer: {
             Text(status)
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.scanStatus)
         }
-        .fullScreenCover(isPresented: $isShowingCamera) {
-            DocumentCamera { photo in
-                isShowingCamera = false
-                if let photo { scan(photo) }
-            }
-            .ignoresSafeArea()
-        }
-        .photosPicker(isPresented: $isShowingLibrary, selection: $pickedItem, matching: .images)
-        .task(id: pickedItem) { await loadPickedPhoto() }
     }
 
+    @ViewBuilder
+    private var scanRow: some View {
+        if offersCamera {
+            // No identifiers on the two items: an identifier on the `Menu` would stamp them both
+            // anyway, and nothing looks for them — the suite reaches the scan through the button
+            // below, since a simulator has neither camera nor library.
+            Menu {
+                Button("Take Photo", systemImage: "camera") { isShowingCamera = true }
+                Button("Choose Photo", systemImage: "photo.on.rectangle") {
+                    isShowingLibrary = true
+                }
+            } label: {
+                scanLabel
+            }
+            .disabled(phase == .scanning)
+            .accessibilityIdentifier(AccessibilityID.ExpenseForm.scanButton)
+        } else {
+            // No camera to offer — the simulator, and an iPad that has none. A menu with one item
+            // in it is a menu nobody needs.
+            Button { pickPhoto() } label: { scanLabel }
+                .disabled(phase == .scanning)
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.scanButton)
+        }
+    }
+
+    /// The spinner sits beside the label rather than replacing the row, so nothing moves while a
+    /// receipt is being read — and the row goes on being the same row.
     private var scanLabel: some View {
-        Label("Scan receipt", systemImage: "text.viewfinder")
+        HStack {
+            Label("Scan receipt", systemImage: "text.viewfinder")
+            if phase == .scanning {
+                Spacer()
+                ProgressView()
+            }
+        }
     }
 
     private var status: LocalizedStringKey {
         switch phase {
-        // Nothing extra to say while it is reading: the row itself is saying so.
-        case .idle, .scanning:
+        case .idle:
             "Take a photo of the receipt and Spliit fills in what it can read. It never leaves your iPhone."
+        case .scanning:
+            "Reading the receipt…"
         case .scanned(found: true):
             "Filled in from the receipt. Check it before saving."
         case .scanned(found: false):

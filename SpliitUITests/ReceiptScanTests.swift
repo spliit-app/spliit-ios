@@ -86,6 +86,40 @@ final class ReceiptScanTests: SpliitUITestCase {
         XCTAssertEqual(expense["amount"] as? Int, 2000)
     }
 
+    /// A second scan has to work as well as the first. This is as close as a simulator can get to
+    /// the bug that shipped: photographing a receipt and then reopening the camera closed it
+    /// immediately, because the row swapped itself for a progress indicator mid-dismissal and
+    /// stranded a dismissal on the next presentation. The camera cannot be reached here, but the
+    /// phases it churned through can.
+    @MainActor
+    func testScanningTwiceLeavesTheRowWorking() async throws {
+        let group = try await api.createGroup(name: "Lunch club", participants: ["Ana", "Bruno"])
+        let app = launchApp(
+            recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Lunch club")]),
+            receiptSample: true
+        )
+
+        app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
+        app.buttons[AccessibilityID.ExpenseList.emptyAddButton].tap()
+
+        let scan = app.buttons[AccessibilityID.ExpenseForm.scanButton]
+        let title = app.textFields[AccessibilityID.ExpenseForm.titleField]
+
+        scan.tap()
+        XCTAssertTrue(waitForValue(SampleReceipt.merchant, in: title))
+
+        // Typed over, so the second scan has something to put back and the assertion cannot pass
+        // on the first scan's leftovers.
+        replaceText(in: title, with: "Something else")
+        assertExists(scan, "The row should still offer a scan once the first one has finished.")
+        scan.tap()
+
+        XCTAssertTrue(
+            waitForValue(SampleReceipt.merchant, in: title),
+            "A second scan should fill the form in exactly as the first did."
+        )
+    }
+
     /// Text recognition runs for a second or two, and the field filling in is what says it is
     /// done — there is nothing else to wait on.
     @MainActor

@@ -172,6 +172,16 @@ rename must not rewrite the line describing the creation — so the log is the o
 app showing a title the expense no longer has. The `expense` sent beside each activity is `null`
 once it has been deleted, and that, not `expenseId`, is what says whether a row can be opened.
 
+**A presentation belongs to a view that keeps its identity.** `.sheet`, `.fullScreenCover` and
+`.photosPicker` attached to a row whose content swaps — a menu that becomes a progress indicator
+while the work runs — rebuild the presenter in the same update that dismisses it, and the
+stranded dismissal lands on the *next* thing presented. The receipt scanner shipped like this:
+photograph a receipt, open the camera again, and it closed itself immediately; a third attempt
+worked. Keep one view for the row and let state change what it says, not which view it is. Let
+presented content close itself with `@Environment(\.dismiss)` rather than writing the caller's
+`isPresented` binding from a delegate, so only one thing can dismiss it. A simulator has no
+camera, so no UI test will catch this for you.
+
 **Vision's `transcript` is not the receipt's layout.** `RecognizeDocumentsRequest` reads a
 receipt the way it reads a page — as blocks in reading order — so a two-column till slip comes
 back as a column of labels followed by a column of prices, and `TOTAL` lands nine lines from the

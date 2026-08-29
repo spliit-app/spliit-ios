@@ -42,6 +42,26 @@ extension CGImagePropertyOrientation {
     }
 }
 
+/// The document scanner as something to present, which closes itself when it is finished.
+///
+/// The dismissal belongs in here rather than in the caller's `isPresented` binding. Writing that
+/// binding from the scanner's delegate means two things can close the cover — the binding and
+/// SwiftUI's own dismissal of it — and a dismissal that arrives once too often lands on whatever
+/// is presented next.
+struct DocumentCameraSheet: View {
+
+    @Environment(\.dismiss) private var dismiss
+    let onFinish: (ReceiptPhoto?) -> Void
+
+    var body: some View {
+        DocumentCamera { photo in
+            dismiss()
+            onFinish(photo)
+        }
+        .ignoresSafeArea()
+    }
+}
+
 /// The system's document scanner, which finds the receipt's edges, straightens it and drops the
 /// table it was lying on.
 ///

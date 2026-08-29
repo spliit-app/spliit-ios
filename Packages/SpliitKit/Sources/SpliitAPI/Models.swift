@@ -195,6 +195,37 @@ public struct ExpenseListItem: Decodable, Sendable, Identifiable, Hashable {
         paidFor = try container.decode([PaidFor].self, forKey: .paidFor)
         documentCount = try container.decodeIfPresent(Counts.self, forKey: .count)?.documents ?? 0
     }
+
+    /// For building one without a server — what the totals-by-category fold is tested against.
+    /// Everything the wire sends but nothing it needs, so a test can name the two fields it
+    /// cares about and leave the rest alone.
+    public init(
+        id: String,
+        title: String,
+        amount: Int,
+        createdAt: Date = .distantPast,
+        expenseDate: Date = .distantPast,
+        isReimbursement: Bool = false,
+        splitMode: SplitMode = .evenly,
+        recurrenceRule: RecurrenceRule? = nil,
+        category: ExpenseCategory? = nil,
+        paidBy: Participant = Participant(id: "", name: ""),
+        paidFor: [PaidFor] = [],
+        documentCount: Int = 0
+    ) {
+        self.id = id
+        self.title = title
+        self.amount = amount
+        self.createdAt = createdAt
+        self.expenseDate = expenseDate
+        self.isReimbursement = isReimbursement
+        self.splitMode = splitMode
+        self.recurrenceRule = recurrenceRule
+        self.category = category
+        self.paidBy = paidBy
+        self.paidFor = paidFor
+        self.documentCount = documentCount
+    }
 }
 
 /// Everything needed to render and edit a single expense.

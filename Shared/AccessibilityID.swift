@@ -166,6 +166,15 @@ enum AccessibilityID {
         static let yourSpendingFraction = "stats.yourSpending.fraction"
         static let yourShareFraction = "stats.yourShare.fraction"
         static let retryButton = "stats.retry"
+        /// The breakdown by category, keyed by the server's category ID — 0 being both
+        /// "General" and an expense filed under nothing, which the server conflates too.
+        static func categoryName(_ categoryID: Int) -> String {
+            "stats.category.\(categoryID).name"
+        }
+        static func categoryAmount(_ categoryID: Int) -> String {
+            "stats.category.\(categoryID).amount"
+        }
+        static let categoryFailed = "stats.category.failed"
         // Nothing for the "no totals on this server" state: it is a title and a paragraph with
         // no action under them, and an identifier would have to go on the container.
     }

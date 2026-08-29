@@ -504,6 +504,16 @@ Ordered by value to a phone user, not by web-app order.
   screen that already makes three, and the other tabs never need it. Named *Totals* rather than
   the web's *Stats* because "Statistiques" beside "Informations" leaves a French tab bar with
   two truncated labels; the Plausible screen keeps the web's route name, `group-stats`.
+  It also breaks the spending down **by category**, which the endpoint does not answer at all —
+  that is folded on the client from the expenses themselves, in `SpliitCore.CategorySpending`,
+  deliberately the same fold as the unreleased `overview`'s `getSpendingByCategory` down to the
+  zero-total filter and the descending sort. So the day that endpoint is worth taking, the
+  section stops being computed and starts being read without the numbers moving. The sweep pages
+  the whole expense list and keeps only the sums, so a group of two thousand expenses costs the
+  same handful of integers as one of five; it is bounded, and the section only draws when its
+  total reconciles with `totalGroupSpendings`. That check is what makes the bound safe — a sweep
+  cut short has nothing to show rather than a breakdown that does not add up to the number
+  printed above it.
   Three things found on the way in, none of them what this bullet predicted:
   - **`totalParticipantShare` is a whole number of minor units now**, not the float this said it
     was. The web app's *Shares* change (2026-08-13) apportions every share in whole minor units

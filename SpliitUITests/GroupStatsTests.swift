@@ -158,6 +158,63 @@ final class GroupStatsTests: SpliitUITestCase {
         )
     }
 
+    /// The breakdown is folded on the client from every expense in the group, because
+    /// `groups.stats.get` answers three totals and no more. What that has to get right is the
+    /// arithmetic, the order, and leaving settling up out of it.
+    @MainActor
+    func testTheBreakdownByCategoryAddsUpToTheGroupTotal() async throws {
+        let group = try await api.createGroup(name: "Categorised", participants: ["Ana", "Bruno"])
+        // Category IDs are the server's own seeded table: 9 is Groceries, 35 is Taxi.
+        try await api.createExpense(
+            in: group, title: "Market", amount: 3000, paidBy: "Ana", category: 9
+        )
+        try await api.createExpense(
+            in: group, title: "Corner shop", amount: 1000, paidBy: "Bruno", category: 9
+        )
+        try await api.createExpense(
+            in: group, title: "Airport", amount: 6000, paidBy: "Ana", category: 35
+        )
+        try await api.createExpense(
+            in: group,
+            title: "Paying Ana back",
+            amount: 2500,
+            paidBy: "Bruno",
+            paidFor: ["Ana"],
+            category: 35,
+            isReimbursement: true
+        )
+        let app = launchApp(
+            recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Categorised")])
+        )
+
+        openTotals(of: group, in: app)
+
+        let taxi = app.staticTexts[AccessibilityID.Stats.categoryAmount(35)]
+        assertExists(taxi, "The breakdown should list the categories the group used.")
+        XCTAssertEqual(
+            taxi.label, "$60.00",
+            "The 25 handed back was settling up, so it is not another taxi fare."
+        )
+        XCTAssertEqual(
+            app.staticTexts[AccessibilityID.Stats.categoryAmount(9)].label, "$40.00",
+            "Two shopping trips, added together."
+        )
+        XCTAssertEqual(
+            app.staticTexts[AccessibilityID.Stats.groupTotal].label, "$100.00",
+            "And the two categories are the whole of what the group spent."
+        )
+
+        // Biggest first, which is the only reason the order is worth asserting at all.
+        let names = app.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'stats.category.' AND identifier ENDSWITH '.name'")
+        )
+        XCTAssertEqual(
+            names.element(boundBy: 0).identifier, AccessibilityID.Stats.categoryName(35),
+            "Taxi outspent groceries, so it leads."
+        )
+        capture(app, "totals-by-category")
+    }
+
     // MARK: - Helpers
 
     /// $200.00 spent, $120.00 of it by Ana, whose share comes to $100.00 — amounts chosen so the

@@ -310,7 +310,83 @@ final class GroupDetailModel {
     /// asked to see.
     private func reloadStatsIfRequested(using client: TRPCClient) async {
         guard didRequestStats else { return }
-        await refreshStats(for: statsParticipantID, using: client)
+        async let totals: Void = refreshStats(for: statsParticipantID, using: client)
+        async let categories: Void = refreshCategorySpending(using: client)
+        _ = await (totals, categories)
+    }
+
+    // MARK: - Spending by category
+
+    private(set) var categorySpending: [CategorySpending] = []
+    private(set) var categoryLoad = LoadState()
+
+    /// How many expenses one sweep asks for at a time, and how many sweeps it will do.
+    ///
+    /// The cap is what keeps this from being the unbounded loop that a group nobody expected the
+    /// size of would turn it into. It is deliberately far past any real group, and overrunning
+    /// it is not a silent half-answer: the section only draws when its total reconciles with the
+    /// group's, so a sweep that stopped early simply has nothing to show.
+    private static let categoryPageSize = 100
+    private static let categoryPageLimit = 20
+
+    /// True once every expense has been folded in and the result adds up.
+    ///
+    /// The stats endpoint and this sweep count the same expenses the same way — reimbursements
+    /// out of both — so the breakdown must sum to `totalGroupSpendings`. When it doesn't, the
+    /// sweep was cut short or the group moved underneath it, and a breakdown that doesn't add up
+    /// to the total printed above it is worse than no breakdown at all.
+    var categorySpendingReconciles: Bool {
+        guard let total = stats?.totalGroupSpendings, !categorySpending.isEmpty else { return false }
+        return categorySpending.reduce(0) { $0 + $1.total } == total
+    }
+
+    func loadCategorySpending(using client: TRPCClient) async {
+        guard categorySpending.isEmpty, !categoryLoad.hasLoaded else { return }
+        await refreshCategorySpending(using: client)
+    }
+
+    /// Sweeps the whole expense list, keeping only the sums.
+    ///
+    /// Its own request rather than a read of `expenses`, which is one page deep and belongs to
+    /// the list on another tab. Each page is folded and let go, so what this holds is one page
+    /// and a running total per category however large the group is.
+    ///
+    /// Not keyed on the participant, unlike the three figures above it: what a group spent on
+    /// food is the same question whoever is asking.
+    func refreshCategorySpending(using client: TRPCClient) async {
+        categoryLoad.begin()
+
+        var fold = CategorySpending.Fold()
+        var cursor = 0
+
+        do {
+            for _ in 0..<Self.categoryPageLimit {
+                let page = try await client.call(
+                    Spliit.expenses(
+                        groupId: groupID, cursor: cursor, limit: Self.categoryPageSize
+                    )
+                )
+                // Folded and dropped, page by page. Collecting them all first would hold every
+                // expense in the group in memory to produce a dozen integers.
+                fold.add(page.expenses)
+                cursor = page.nextCursor
+                guard page.hasMore else { break }
+            }
+            categorySpending = fold.breakdown
+            categoryLoad.succeeded()
+        } catch {
+            // A cancelled sweep is not a failed one — but leaving it mid-flight would leave the
+            // section spinning for as long as the screen lives, so it goes back to never-asked
+            // and the next visit tries again.
+            guard !Task.isCancelled else {
+                categoryLoad = LoadState()
+                return
+            }
+            // What was already folded stays on screen. It is only drawn while it reconciles
+            // with the group's total, so a stale breakdown either still adds up — in which case
+            // it is still true — or stops being shown on its own.
+            categoryLoad.failed(error.localizedDescription)
+        }
     }
 
     // MARK: - Search

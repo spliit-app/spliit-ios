@@ -113,7 +113,14 @@ Everywhere else the sign stays on the number, because nothing beside it is sayin
 The two cases part company on colour. A balance keeps its tint, taken from the real signed
 total, because being owed and owing are opposite outcomes. A total is not an outcome — it is a
 quantity the group happens to have — so the totals carry no tint at all, and the only colour on
-that screen is the bar under each personal figure.
+that screen is in the bars.
+
+**Every bar on the totals tab is a slice of the same total.** The two personal figures and every
+category row are all measured against the group's own spending, which is what lets their lengths
+be compared straight down the page. Scaling the category rows to the largest *category* instead
+would have used more of the width and quietly changed the denominator halfway down the screen —
+two bars sharing a screen and not a scale, with no marking to say so. One denominator, one
+`groupSlice(of:in:)`, clamped at both ends because a refund can push a category below zero.
 
 **Reimbursements** render regular-weight and italic, matching how the expense list has always
 drawn their titles.
@@ -299,10 +306,15 @@ product, which is what a welcome screen is for.
 
 **The hand-rolled diverging bar beat Swift Charts.** Charts is a dependency-sized concept for a
 shape that is twenty lines of layout. The unused `import Charts` is gone. The totals tab's
-proportion bar is the second of these and settles the question: two bars, forty lines, no
-dependency. Both are `accessibilityHidden` and both say in words what they draw — "is owed" as a
-value on the name, "60% of the group" as a caption — because a length is not a thing a screen
-reader can read.
+proportion bar is the second and third of these and settles the question: three bars, sixty
+lines, no dependency. All of them are `accessibilityHidden` and all of them say in words what
+they draw — "is owed" as a value on the name, "60% of the group" as a caption under the two
+personal figures and as a value on each category's name — because a length is not a thing a
+screen reader can read.
+
+The percentage is written out under the personal figures and not beside the category rows. Those
+are one number each and the caption earns its place; a dozen of them down a list is noise, and
+the bar is what the eye is comparing anyway.
 
 **`BrandSecondary` is defined and currently unused.** It is `Monogram4`'s value, so the pink is
 on screen, but nothing references the colour by that name. It stays because the palette is a

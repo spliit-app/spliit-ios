@@ -408,6 +408,17 @@
         }
       }
     },
+    "By category": {
+      "comment": "Section header over the group’s spending broken down by expense category.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par catégorie"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "fr": {
@@ -784,6 +795,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Équitable"
+          }
+        }
+      }
+    },
+    "Every bar on this screen is a slice of the same total, so the lengths compare straight down the page.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les barres de cet écran représentent une part du même total : leurs longueurs se comparent donc de haut en bas."
           }
         }
       }

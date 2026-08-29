@@ -34,6 +34,13 @@ struct StatsView: View {
                 guard statsKey != nil else { return }
                 await model.loadStats(for: activeParticipantID, using: app.client)
             }
+            // Its own task, keyed on the group alone: what the group spent on food does not
+            // change with who is asking, so this must not be re-swept every time somebody
+            // answers the picker.
+            .task(id: model.group?.id) {
+                guard model.group != nil else { return }
+                await model.loadCategorySpending(using: app.client)
+            }
     }
 
     @ViewBuilder
@@ -81,9 +88,14 @@ struct StatsView: View {
             List {
                 groupSection(stats)
                 youSection(stats, in: group)
+                categorySection(stats)
             }
             .refreshable {
-                await model.refreshStats(for: activeParticipantID, using: app.client)
+                async let totals: Void = model.refreshStats(
+                    for: activeParticipantID, using: app.client
+                )
+                async let categories: Void = model.refreshCategorySpending(using: app.client)
+                _ = await (totals, categories)
             }
             // The totals move together when an expense is added from another tab, so let them
             // roll rather than simply be different the next time you look.
@@ -171,6 +183,56 @@ struct StatsView: View {
         }
     }
 
+    // MARK: - By category
+
+    /// Where the money went, folded on the client from the expenses themselves.
+    ///
+    /// Only drawn once it reconciles with the group's own total — see
+    /// `categorySpendingReconciles`. A breakdown printed under a total it does not add up to
+    /// invites exactly one question, and "because the sweep stopped early" is not an answer
+    /// worth putting on a phone.
+    @ViewBuilder
+    private func categorySection(_ stats: Spliit.GroupStatsResponse) -> some View {
+        if model.categorySpendingReconciles {
+            Section {
+                ForEach(model.categorySpending) { spending in
+                    CategoryRow(
+                        spending: spending,
+                        groupTotal: stats.totalGroupSpendings,
+                        formatter: model.moneyFormatter
+                    )
+                }
+            } header: {
+                Text("By category")
+            } footer: {
+                Text("Every bar on this screen is a slice of the same total, so the lengths compare straight down the page.")
+            }
+        } else if model.categoryLoad.isLoading {
+            // A placeholder rather than nothing: this sweep reads every expense in the group, so
+            // it can land after the three figures above and a section appearing unannounced
+            // moves the page under a thumb already on it.
+            Section {
+                ProgressView()
+            } header: {
+                Text("By category")
+            }
+        } else if model.categoryLoad.didFail {
+            Section {
+                Label(
+                    model.categoryLoad.failure
+                        ?? String(localized: "The server didn’t respond."),
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(AccessibilityID.Stats.categoryFailed)
+            } header: {
+                Text("By category")
+            }
+        }
+        // Otherwise nothing at all — a group with no expenses has no breakdown to draw.
+    }
+
     /// The row that opens the picker, saying what it would be changing. The same three states as
     /// on the balances tab, worded the same way.
     @ViewBuilder
@@ -212,23 +274,11 @@ struct StatsView: View {
             )
             .accessibilityIdentifier(identifier)
 
-            if let fraction, let slice = slice(of: minorUnits, in: fraction.of) {
+            if let fraction, let slice = groupSlice(of: minorUnits, in: fraction.of) {
                 ShareOfGroup(fraction: slice, identifier: fraction.identifier)
             }
         }
         .padding(.vertical, 4)
-    }
-
-    /// How much of the group's spending this figure is, or nothing when the question has no
-    /// answer: a group that has spent nothing has no slices, and one that has taken in more than
-    /// it spent has no scale to measure against.
-    ///
-    /// Clamped, because neither end is impossible. A group whose expenses net out below what one
-    /// person paid would put a bar past its own track, and a negative figure would put one behind
-    /// the start of it.
-    private func slice(of value: Int, in groupTotal: Int) -> Double? {
-        guard groupTotal > 0 else { return nil }
-        return min(max(Double(value) / Double(groupTotal), 0), 1)
     }
 
     /// The share as whole minor units, which is what the formatter takes.
@@ -276,6 +326,92 @@ struct StatsView: View {
     /// The group can arrive and its totals still fail, so name whichever one is missing.
     private var errorTitle: LocalizedStringKey {
         model.didFailToLoad ? "Couldn’t load this group" : "Couldn’t load the totals"
+    }
+}
+
+/// How much of the group's spending a figure is, or nothing when the question has no answer: a
+/// group that has spent nothing has no slices, and one that has taken in more than it spent has
+/// no scale to measure against.
+///
+/// One function, because there is one denominator on this screen. The two personal figures and
+/// every category bar are all a slice of the group's total, which is what lets their lengths be
+/// compared straight down the page — two bars sharing a screen and not a scale is a way to
+/// mislead with no marking on it.
+///
+/// Clamped, because neither end is impossible. A group whose expenses net out below what one
+/// person paid would put a bar past its own track, and a category that came to a refund would
+/// put one behind the start of it.
+private func groupSlice(of value: Int, in groupTotal: Int) -> Double? {
+    guard groupTotal > 0 else { return nil }
+    return min(max(Double(value) / Double(groupTotal), 0), 1)
+}
+
+/// One category, its spend, and how much of the group that is.
+///
+/// Laid out like a balance row — glyph, name, amount, bar — because it is the same shape of
+/// statement and the two tabs sit next to each other. The percentage is not written out here the
+/// way it is under the two figures above: those are one number each and the caption earns its
+/// place; a dozen of them down a list is noise, and the bar is what the eye is comparing anyway.
+/// VoiceOver still gets it, as a value on the name.
+private struct CategoryRow: View {
+
+    let spending: CategorySpending
+    let groupTotal: Int
+    let formatter: MoneyFormatter
+
+    @ScaledMetric private var barHeight: CGFloat = 6
+
+    private var category: ExpenseCategory {
+        ExpenseCategory(id: spending.categoryID, grouping: spending.grouping, name: spending.name)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            CategoryIcon(category: category, size: 26)
+
+            VStack(alignment: .leading, spacing: 6) {
+                AdaptiveHStack {
+                    Text(category.displayName)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier(
+                            AccessibilityID.Stats.categoryName(spending.categoryID)
+                        )
+                        .accessibilityValue(shareDescription)
+
+                    // Signed, unlike the three figures above: nothing here says which way a
+                    // category went, so the minus has to. A total is not a direction, so it
+                    // takes no colour either.
+                    Money(value: formatter.string(minorUnits: spending.total))
+                        .accessibilityIdentifier(
+                            AccessibilityID.Stats.categoryAmount(spending.categoryID)
+                        )
+                }
+
+                if let slice = groupSlice(of: spending.total, in: groupTotal) {
+                    bar(slice)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func bar(_ slice: Double) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.quaternary)
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: max(geometry.size.width * slice, slice > 0 ? 2 : 0))
+            }
+        }
+        .frame(height: barHeight)
+        .accessibilityHidden(true)
+    }
+
+    /// What the bar says, for the reader who cannot see a length.
+    private var shareDescription: Text {
+        guard let slice = groupSlice(of: spending.total, in: groupTotal) else { return Text("") }
+        return Text("\(slice.formatted(.percent.precision(.fractionLength(0)))) of the group")
     }
 }
 

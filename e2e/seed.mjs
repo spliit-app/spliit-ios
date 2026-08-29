@@ -312,6 +312,18 @@ async function dumpFixtures(result) {
       () => query('groups.expenses.get', { groupId: lisbon, expenseId: expenses.expenses[0].id }),
     ],
     ['balances-list', () => query('groups.balances.list', { groupId: lisbon })],
+    // Both shapes, because the participant fields are what changes between them: named, they
+    // carry Ana's figures; unnamed, they come back `undefined` and superjson annotates them
+    // rather than omitting the keys, which is the half the decoder has to survive.
+    [
+      'groups-stats-get',
+      () =>
+        query('groups.stats.get', {
+          groupId: lisbon,
+          participantId: result.groups.lisbon.participants['Ana'],
+        }),
+    ],
+    ['groups-stats-get-anonymous', () => query('groups.stats.get', { groupId: lisbon })],
     [
       'activities-list',
       () => query('groups.activities.list', { groupId: lisbon, limit: 20, cursor: 0 }),

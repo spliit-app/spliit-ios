@@ -59,6 +59,17 @@
         }
       }
     },
+    "%@ of the group": {
+      "comment": "How big a slice of the group’s spending one of the personal totals is. The placeholder is an already-formatted percentage.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ du groupe"
+          }
+        }
+      }
+    },
     "%@ over the total.": {
       "localizations": {
         "fr": {
@@ -457,6 +468,17 @@
         }
       }
     },
+    "By category": {
+      "comment": "Section header over the group’s spending broken down by expense category.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par catégorie"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "fr": {
@@ -553,6 +575,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossible de charger le groupe"
+          }
+        }
+      }
+    },
+    "Couldn’t load the totals": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les totaux"
           }
         }
       }
@@ -843,6 +875,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Équitable"
+          }
+        }
+      }
+    },
+    "Every bar on this screen is a slice of the same total, so the lengths compare straight down the page.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les barres de cet écran représentent une part du même total : leurs longueurs se comparent donc de haut en bas."
           }
         }
       }
@@ -1197,6 +1239,16 @@
         }
       }
     },
+    "No totals on this server": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas de totaux sur ce serveur"
+          }
+        }
+      }
+    },
     "Nobody": {
       "localizations": {
         "fr": {
@@ -1387,6 +1439,16 @@
         }
       }
     },
+    "Pick yourself and this tab also says what you have paid, and what your share of the group came to.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indiquez qui vous êtes et cet onglet dira aussi ce que vous avez payé, et à combien s’élève votre part du groupe."
+          }
+        }
+      }
+    },
     "Pick yourself once and this group is read from where you stand: your own balance first, and your name already filled in on a new expense.": {
       "localizations": {
         "fr": {
@@ -1533,6 +1595,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Réglages"
+          }
+        }
+      }
+    },
+    "Settling up is not spending, so reimbursements are left out of every figure here.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rembourser n’est pas dépenser : les remboursements ne comptent dans aucun des montants de cet onglet."
           }
         }
       }
@@ -1707,12 +1779,33 @@
         }
       }
     },
+    "The group": {
+      "comment": "Section header over the group’s own total, paired with “You” below it.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le groupe"
+          }
+        }
+      }
+    },
     "The server didn’t respond.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Le serveur n’a pas répondu."
+          }
+        }
+      }
+    },
+    "This Spliit instance doesn’t offer them. Everything else in the group works as usual.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette instance Spliit ne les propose pas. Tout le reste du groupe fonctionne normalement."
           }
         }
       }
@@ -1773,6 +1866,37 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aujourd’hui"
+          }
+        }
+      }
+    },
+    "Total group earnings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total des revenus du groupe"
+          }
+        }
+      }
+    },
+    "Total group spending": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total des dépenses du groupe"
+          }
+        }
+      }
+    },
+    "Totals": {
+      "comment": "The stats tab’s title in the tab bar.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totaux"
           }
         }
       }
@@ -1957,6 +2081,16 @@
         }
       }
     },
+    "What you paid, against what was spent on you. The difference is your balance.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce que vous avez payé, face à ce qui a été dépensé pour vous. La différence, c’est votre solde."
+          }
+        }
+      }
+    },
     "Which participant you are, on this phone. It decides whose balance the balances tab leads with, and who a new expense is paid by.": {
       "localizations": {
         "fr": {
@@ -2023,6 +2157,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vous devez"
+          }
+        }
+      }
+    },
+    "Your earnings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos revenus"
+          }
+        }
+      }
+    },
+    "Your share": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre part"
+          }
+        }
+      }
+    },
+    "Your spending": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos dépenses"
           }
         }
       }

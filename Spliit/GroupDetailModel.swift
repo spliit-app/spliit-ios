@@ -15,12 +15,14 @@ final class GroupDetailModel {
     private(set) var balances: [String: Balance] = [:]
     private(set) var reimbursements: [Reimbursement] = []
     private(set) var categories: [ExpenseCategory] = []
+    private(set) var stats: Spliit.GroupStatsResponse?
 
     /// One per request, because they run concurrently and finish in any order. Sharing a
     /// single flag is what made the list say "no expenses yet" the moment the *group* arrived.
     private(set) var groupLoad = LoadState()
     private(set) var expensesLoad = LoadState()
     private(set) var balancesLoad = LoadState()
+    private(set) var statsLoad = LoadState()
 
     private(set) var isLoadingMore = false
     private(set) var hasMoreExpenses = false
@@ -139,6 +141,21 @@ final class GroupDetailModel {
         balancesLoad.failedWithNothingToShow
     }
 
+    /// The totals haven't landed — or the group hasn't, which counts too: its currency is what
+    /// they are drawn in, and a number without one is a number in no currency at all.
+    var isLoadingStats: Bool {
+        stats == nil && !statsUnavailable && (statsLoad.isAwaitingFirstResult || isLoadingGroup)
+    }
+
+    var didFailToLoadStats: Bool {
+        statsLoad.failedWithNothingToShow && !statsUnavailable
+    }
+
+    /// This instance has no `groups.stats.get` — an older self-hosted deployment, or a newer one
+    /// that has moved the procedure. Kept apart from a failure because there is nothing to retry
+    /// and nothing the user did wrong: the screen says so once and offers no button.
+    private(set) var statsUnavailable = false
+
     /// The group counts here as it does for the expenses: the log names participants, and until
     /// the group has arrived there is nobody to name.
     var isLoadingActivities: Bool {
@@ -219,8 +236,11 @@ final class GroupDetailModel {
         async let expensesResult: Void = loadFirstPage(using: client)
         async let balancesResult: Void = loadBalances(using: client)
         async let searchResult: Void = reloadSearch(using: client)
+        async let statsResult: Void = reloadStatsIfRequested(using: client)
         async let activitiesResult: Void = reloadActivities(using: client)
-        _ = await (expensesResult, balancesResult, searchResult, activitiesResult)
+        _ = await (
+            expensesResult, balancesResult, searchResult, statsResult, activitiesResult
+        )
     }
 
     private func loadGroup(using client: TRPCClient) async {
@@ -289,6 +309,136 @@ final class GroupDetailModel {
     private func loadCategories(using client: TRPCClient) async {
         guard categories.isEmpty else { return }
         categories = (try? await client.call(Spliit.categories()).categories) ?? []
+    }
+
+    // MARK: - Stats
+
+    /// Whose figures `stats` answers for. Nil is a real answer — the group's total with nobody's
+    /// share beside it — which is why `didRequestStats` is a second property rather than a check
+    /// against this one.
+    private var statsParticipantID: String?
+    private var didRequestStats = false
+
+    /// Loads the totals for whoever the user says they are, if they aren't already loaded.
+    ///
+    /// Lazy on purpose. It is another request on a screen that already makes several, and the
+    /// only tab that needs it is this one — so nothing asks until somebody opens it.
+    /// Keyed on the participant because two of the three numbers are theirs: answering "who are
+    /// you?" from this screen has to ask the question again.
+    func loadStats(for participantID: String?, using client: TRPCClient) async {
+        guard !didRequestStats || participantID != statsParticipantID else { return }
+        await refreshStats(for: participantID, using: client)
+    }
+
+    /// The same, unconditionally — for pull-to-refresh and for "Try again".
+    func refreshStats(for participantID: String?, using client: TRPCClient) async {
+        didRequestStats = true
+        statsParticipantID = participantID
+        statsLoad.begin()
+
+        do {
+            let response = try await client.call(
+                Spliit.stats(groupId: groupID, participantId: participantID)
+            )
+            // The picker may have moved on while this was in flight; somebody else's share must
+            // not become the answer under your name.
+            guard statsParticipantID == participantID else { return }
+            stats = response
+            statsUnavailable = false
+            statsLoad.succeeded()
+        } catch let error as TRPCServerError where error.isUnknownProcedure {
+            statsUnavailable = true
+            statsLoad.failed(nil)
+        } catch {
+            // A tab switch cancels this the way a keystroke cancels a search, and a cancelled
+            // request has nothing to report.
+            guard !Task.isCancelled, statsParticipantID == participantID else { return }
+            statsLoad.failed(error.localizedDescription)
+        }
+    }
+
+    /// Re-runs the totals for whoever they were last run for, and does nothing until the tab has
+    /// been opened once — three tabs' worth of editing should not pay for an answer nobody has
+    /// asked to see.
+    private func reloadStatsIfRequested(using client: TRPCClient) async {
+        guard didRequestStats else { return }
+        async let totals: Void = refreshStats(for: statsParticipantID, using: client)
+        async let categories: Void = refreshCategorySpending(using: client)
+        _ = await (totals, categories)
+    }
+
+    // MARK: - Spending by category
+
+    private(set) var categorySpending: [CategorySpending] = []
+    private(set) var categoryLoad = LoadState()
+
+    /// How many expenses one sweep asks for at a time, and how many sweeps it will do.
+    ///
+    /// The cap is what keeps this from being the unbounded loop that a group nobody expected the
+    /// size of would turn it into. It is deliberately far past any real group, and overrunning
+    /// it is not a silent half-answer: the section only draws when its total reconciles with the
+    /// group's, so a sweep that stopped early simply has nothing to show.
+    private static let categoryPageSize = 100
+    private static let categoryPageLimit = 20
+
+    /// True once every expense has been folded in and the result adds up.
+    ///
+    /// The stats endpoint and this sweep count the same expenses the same way — reimbursements
+    /// out of both — so the breakdown must sum to `totalGroupSpendings`. When it doesn't, the
+    /// sweep was cut short or the group moved underneath it, and a breakdown that doesn't add up
+    /// to the total printed above it is worse than no breakdown at all.
+    var categorySpendingReconciles: Bool {
+        guard let total = stats?.totalGroupSpendings, !categorySpending.isEmpty else { return false }
+        return categorySpending.reduce(0) { $0 + $1.total } == total
+    }
+
+    func loadCategorySpending(using client: TRPCClient) async {
+        guard categorySpending.isEmpty, !categoryLoad.hasLoaded else { return }
+        await refreshCategorySpending(using: client)
+    }
+
+    /// Sweeps the whole expense list, keeping only the sums.
+    ///
+    /// Its own request rather than a read of `expenses`, which is one page deep and belongs to
+    /// the list on another tab. Each page is folded and let go, so what this holds is one page
+    /// and a running total per category however large the group is.
+    ///
+    /// Not keyed on the participant, unlike the three figures above it: what a group spent on
+    /// food is the same question whoever is asking.
+    func refreshCategorySpending(using client: TRPCClient) async {
+        categoryLoad.begin()
+
+        var fold = CategorySpending.Fold()
+        var cursor = 0
+
+        do {
+            for _ in 0..<Self.categoryPageLimit {
+                let page = try await client.call(
+                    Spliit.expenses(
+                        groupId: groupID, cursor: cursor, limit: Self.categoryPageSize
+                    )
+                )
+                // Folded and dropped, page by page. Collecting them all first would hold every
+                // expense in the group in memory to produce a dozen integers.
+                fold.add(page.expenses)
+                cursor = page.nextCursor
+                guard page.hasMore else { break }
+            }
+            categorySpending = fold.breakdown
+            categoryLoad.succeeded()
+        } catch {
+            // A cancelled sweep is not a failed one — but leaving it mid-flight would leave the
+            // section spinning for as long as the screen lives, so it goes back to never-asked
+            // and the next visit tries again.
+            guard !Task.isCancelled else {
+                categoryLoad = LoadState()
+                return
+            }
+            // What was already folded stays on screen. It is only drawn while it reconciles
+            // with the group's total, so a stale breakdown either still adds up — in which case
+            // it is still true — or stops being shown on its own.
+            categoryLoad.failed(error.localizedDescription)
+        }
     }
 
     // MARK: - Activity

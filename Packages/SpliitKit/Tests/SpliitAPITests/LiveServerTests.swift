@@ -229,6 +229,78 @@ struct LiveServerTests {
         ])
     }
 
+    /// What the stats tab claims in its footer, checked against a server rather than against
+    /// our reading of the web app: settling up is spending that does not count.
+    ///
+    /// The fixtures prove the three numbers decode. Only a live instance proves that leaving
+    /// `participantId` out is a question the server accepts — a null there is a 400 — and that
+    /// it answers a different one from naming somebody who spent nothing.
+    @Test("Stats count the expenses and not the settling up")
+    func readsStats() async throws {
+        let client = try client
+
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "Stats \(UUID().uuidString.prefix(8))",
+                    currency: "$",
+                    currencyCode: "USD",
+                    participants: [.init(name: "Dana"), .init(name: "Eli")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first { $0.name == "Dana" })
+        let eli = try #require(group.participants.first { $0.name == "Eli" })
+
+        let evenly: [ExpenseFormValues.PaidFor] = [
+            .init(participant: dana.id, shares: 100),
+            .init(participant: eli.id, shares: 100),
+        ]
+
+        _ = try await client.call(
+            Spliit.createExpense(
+                groupId: group.id,
+                ExpenseFormValues(
+                    title: "Groceries",
+                    expenseDate: .now,
+                    amount: 5000,
+                    paidBy: dana.id,
+                    paidFor: evenly
+                )
+            )
+        )
+        _ = try await client.call(
+            Spliit.createExpense(
+                groupId: group.id,
+                ExpenseFormValues(
+                    title: "Reimbursement",
+                    expenseDate: .now,
+                    amount: 2500,
+                    paidBy: eli.id,
+                    paidFor: [.init(participant: dana.id, shares: 100)],
+                    isReimbursement: true
+                )
+            )
+        )
+
+        let group_ = try await client.call(Spliit.stats(groupId: group.id))
+        #expect(group_.totalGroupSpendings == 5000)
+        #expect(group_.totalParticipantSpendings == nil)
+        #expect(group_.totalParticipantShare == nil)
+
+        let hers = try await client.call(
+            Spliit.stats(groupId: group.id, participantId: dana.id)
+        )
+        #expect(hers.totalGroupSpendings == 5000)
+        #expect(hers.totalParticipantSpendings == 5000)
+        #expect(hers.totalParticipantShare == 2500)
+
+        let his = try await client.call(Spliit.stats(groupId: group.id, participantId: eli.id))
+        #expect(his.totalParticipantSpendings == 0, "The 2500 Eli handed over was settling up.")
+        #expect(his.totalParticipantShare == 2500)
+    }
+
     @Test("An expense can be updated and then deleted")
     func updatesAndDeletesExpense() async throws {
         let client = try client

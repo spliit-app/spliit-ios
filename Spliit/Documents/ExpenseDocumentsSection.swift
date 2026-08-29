@@ -18,6 +18,10 @@ struct ExpenseDocumentsSection: View {
 
     @Binding var documents: [ExpenseDocument]
 
+    /// A photograph handed over from elsewhere on the form — the receipt scanner — for this
+    /// section to upload, since this is where the uploading lives. Cleared as it is taken.
+    @Binding var photoToAttach: PhotoToAttach?
+
     /// Shared with the gallery, so opening a receipt shows the picture the grid already has.
     @State private var images = DocumentImages()
     @State private var uploads: [Upload] = []
@@ -114,6 +118,7 @@ struct ExpenseDocumentsSection: View {
             matching: .images
         )
         .task(id: pickedItems.count) { await attachPickedPhotos() }
+        .onChange(of: photoToAttach?.id) { _, _ in takeHandedOverPhoto() }
         .fullScreenCover(item: $presented) { presented in
             switch presented {
             case .camera:
@@ -225,6 +230,17 @@ struct ExpenseDocumentsSection: View {
         pickedItems = []
     }
 
+    /// Takes the photograph the scanner just read, if there is one.
+    ///
+    /// `onChange` rather than `task(id:)`: this has nothing to await, and clearing the binding
+    /// would cancel the task it was keyed on. The photo is read out before the binding is
+    /// cleared, because a binding read back after a write answers with what it held before it.
+    private func takeHandedOverPhoto() {
+        guard let pending = photoToAttach else { return }
+        photoToAttach = nil
+        attach(pending.photo)
+    }
+
     // MARK: - Uploading
 
     private func attach(_ photo: ReceiptPhoto) {
@@ -279,4 +295,13 @@ struct ExpenseDocumentsSection: View {
             }
         }
     }
+}
+
+/// A photograph on its way from one part of the expense form to another.
+///
+/// Identified rather than compared: `ReceiptPhoto` is not `Equatable`, and two scans of the same
+/// receipt are two things to attach in any case.
+struct PhotoToAttach: Identifiable {
+    let id = UUID()
+    let photo: ReceiptPhoto
 }

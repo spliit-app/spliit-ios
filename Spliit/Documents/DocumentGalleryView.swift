@@ -49,11 +49,19 @@ struct DocumentGalleryView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Remove", systemImage: "trash", role: .destructive, action: remove)
+                        // The white tint below is what makes "Done" legible on black, and it
+                        // takes the destructive red with it unless this puts it back.
+                        .tint(.red)
                         .accessibilityIdentifier(AccessibilityID.Documents.removeButton)
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        // `preferredColorScheme(.dark)` would be the obvious way to get light chrome on black,
+        // and it is the wrong one: it writes to the *window*, not to this view, so the sheet
+        // underneath stayed dark after the viewer closed. The environment override reaches only
+        // what is inside here, and the tint is what the two toolbar buttons read from.
+        .environment(\.colorScheme, .dark)
+        .tint(.white)
     }
 
     /// "2 of 3", and nothing at all when there is only the one — a counter that never counts is

@@ -554,9 +554,11 @@ Ordered by value to a phone user, not by web-app order.
   the EXIF with it, including where the photo was taken. **Storing documents is optional
   and cannot be asked about**: the route exists whether or not a bucket does, so the only
   answer is a failed upload, and the app reads that as "this instance keeps no documents"
-  rather than as something to retry. And **scanning a receipt still does not attach it** —
-  the two are one tap apart on the same screen, but one promises the photo never leaves
-  the phone and the other sends it somewhere, so neither does the other's job by itself
+  rather than as something to retry. And **scanning a receipt attaches it too**: the photo
+  goes to the documents section as soon as it is taken, whatever the reading of it turns
+  up, since somebody photographing a receipt into an expense means to keep it there. The
+  footer under the scan row gave up its "it never leaves your iPhone" for that, and says
+  instead what is still true and still worth saying — that the *reading* is on-device
 - ~~Receipt scanning~~ — **done**, and on device as hoped: Vision's document recognition
   transcribes the photo and the system model reads the transcript, so it costs nothing,
   sends nobody's receipt anywhere, works offline and works against a self-hosted instance

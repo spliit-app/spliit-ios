@@ -37,6 +37,10 @@ struct ExpenseFormView: View {
     @State private var savedCount = 0
     @State private var refusedCount = 0
 
+    /// The photograph the scanner has just read, on its way to the documents section, which is
+    /// the one that knows how to upload.
+    @State private var scannedPhoto: PhotoToAttach?
+
     @State private var rateLookup = RateLookup.idle
     /// The last rate this screen filled in by itself, so a rate the user typed over it is left
     /// alone by the next lookup.
@@ -119,7 +123,9 @@ struct ExpenseFormView: View {
             // how one gets corrected, and an expense already saved has an amount somebody typed
             // on purpose.
             if !mode.isEditing {
-                ReceiptScanSection(categories: categories) { scan in
+                ReceiptScanSection(categories: categories) { photo in
+                    scannedPhoto = PhotoToAttach(photo: photo)
+                } onScan: { scan in
                     form.wrappedValue.apply(scan)
                 }
             }
@@ -193,7 +199,9 @@ struct ExpenseFormView: View {
             // which is how an expense gets written down, a receipt is worth attaching to one
             // that was written down last week — and one attached from the web app has to be
             // visible here whatever this screen is for.
-            ExpenseDocumentsSection(documents: form.documents)
+            ExpenseDocumentsSection(
+                documents: form.documents, photoToAttach: $scannedPhoto
+            )
 
             if case .edit(let expenseID) = mode {
                 Section {

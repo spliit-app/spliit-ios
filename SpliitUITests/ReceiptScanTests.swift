@@ -9,6 +9,9 @@ import XCTest
 ///
 /// The on-device model is deliberately out of the loop here. It is not on every phone, its answer
 /// is not the same twice, and a suite that asserted on one would be asserting on the weather.
+///
+/// Scanning also keeps the photograph, by handing it to the documents section to upload, so these
+/// run against the harness's bucket exactly as `ExpenseDocumentsTests` do.
 final class ReceiptScanTests: SpliitUITestCase {
 
     @MainActor
@@ -57,6 +60,13 @@ final class ReceiptScanTests: SpliitUITestCase {
             (expense["category"] as? [String: Any])?["name"] as? String,
             SampleReceipt.category,
             "A café should be categorised as dining out."
+        )
+
+        // The receipt that was read is also the receipt that is kept. Asking somebody to
+        // photograph it a second time to attach it would be a strange thing to do.
+        XCTAssertEqual(
+            (expense["documents"] as? [[String: Any]])?.count, 1,
+            "Scanning a receipt should attach the photograph to the expense."
         )
     }
 

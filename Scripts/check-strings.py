@@ -59,6 +59,14 @@ def extracted_keys(derived: Path) -> dict[str, set[str]]:
     """The keys the compiler found, grouped by the catalogue that should hold them."""
     found: dict[str, set[str]] = {name: set() for name in CATALOGS}
     files = list(derived.rglob("*.stringsdata"))
+
+    # Only the simulator build — the one `make strings` just produced. `make device` leaves a
+    # Debug-iphoneos tree beside it, and a union of the two reports a string as missing because
+    # a stale copy from before an edit still mentions the wording that changed. Falls back to
+    # everything so a derived-data layout this does not recognise still gets checked.
+    simulator = [path for path in files if "iphonesimulator" in str(path)]
+    files = simulator or files
+
     if not files:
         sys.exit(
             f"No .stringsdata under {derived} — run `make build` first, and check that\n"

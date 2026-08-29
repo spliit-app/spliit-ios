@@ -147,8 +147,11 @@ without Apple Intelligence, the fallback under the model everywhere else, and th
 test` covers. Nothing the model answers is trusted verbatim either: every field it gives back is
 re-checked by the same code that reads the receipt itself.
 
-The photo is not kept, and the section below is why: keeping a receipt sends it somewhere, and
-reading one does not. The two sit a tap apart on the same screen and neither does the other's job.
+The photo is kept, too: scanning hands it to the documents section below to upload, because
+somebody who has just photographed a receipt into an expense means to keep the receipt with it.
+So the picture does leave the phone, and the wording under the button says so. What stays on the
+phone is the *reading* — no third party ever sees the receipt — which is the claim worth making
+and the one that is still true.
 
 ## Keeping receipts
 

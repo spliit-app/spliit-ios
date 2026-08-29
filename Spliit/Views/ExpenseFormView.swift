@@ -607,12 +607,14 @@ struct ExpenseFormView: View {
                 switch mode {
                 case .create:
                     _ = try await app.client.call(
-                        Spliit.createExpense(groupId: group.id, values)
+                        Spliit.createExpense(groupId: group.id, values, by: actorID)
                     )
                     Analytics.shared.event(.createExpense)
                 case .edit(let expenseID):
                     _ = try await app.client.call(
-                        Spliit.updateExpense(groupId: group.id, expenseId: expenseID, values)
+                        Spliit.updateExpense(
+                            groupId: group.id, expenseId: expenseID, values, by: actorID
+                        )
                     )
                 }
                 // Before the reload, so it lands with the save rather than after the list has
@@ -626,13 +628,21 @@ struct ExpenseFormView: View {
         }
     }
 
+    /// Who the activity log should credit for this save: the participant the user has said they
+    /// are in this group, or nil — which the log reads as "Someone", accurately.
+    private var actorID: String? {
+        app.recentGroups.actorID(inGroup: group.id, participants: group.participants)
+    }
+
     private func delete(_ expenseID: String) {
         isSaving = true
         Task {
             defer { isSaving = false }
             do {
                 _ = try await app.client.call(
-                    Spliit.deleteExpense(groupId: group.id, expenseId: expenseID)
+                    Spliit.deleteExpense(
+                        groupId: group.id, expenseId: expenseID, by: actorID
+                    )
                 )
                 await onFinished()
                 dismiss()

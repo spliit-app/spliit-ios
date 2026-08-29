@@ -167,6 +167,9 @@ async function seed() {
     for (const expense of fixture.expenses) {
       await mutate('groups.expenses.create', {
         groupId,
+        // Who the activity log credits. Optional on every mutating procedure, and the payer is
+        // the realistic answer: whoever paid for dinner is who typed it in.
+        participantId: idFor[expense.paidBy],
         expenseFormValues: {
           title: expense.title,
           expenseDate: expense.date,
@@ -191,9 +194,94 @@ async function seed() {
     console.error(`seeded ${fixture.name} → ${groupId}`)
   }
 
+  await recordActivityHistory(result)
+
   if (dumpDir) await dumpFixtures(result)
 
   process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+}
+
+// Gives the Lisbon group a log worth recording a fixture from.
+//
+// Seeding alone writes nothing but CREATE_EXPENSE, and an `activities-list.json` of four
+// identical rows would prove only that one branch of the decoder works. This adds the other
+// three kinds, and — through an expense created and then deleted — the case that separates a
+// row which can be opened from one which cannot: the server sends the whole expense alongside
+// each activity, and `null` there is how a deleted expense reads.
+//
+// Everything here leaves the group exactly as it found it. The scratch expense is deleted, and
+// the two updates re-send the values already stored, so every other fixture is unaffected.
+async function recordActivityHistory(result) {
+  const group = result.groups.lisbon
+  const { Ana, Bruno, 'Chloé': Chloe } = group.participants
+
+  const scratch = await mutate('groups.expenses.create', {
+    groupId: group.id,
+    participantId: Bruno,
+    expenseFormValues: {
+      title: 'Pastéis de Belém',
+      expenseDate: daysAgo(1),
+      amount: 760,
+      category: 0,
+      paidBy: Bruno,
+      paidFor: [{ participant: Bruno, shares: 100 }],
+      splitMode: 'EVENLY',
+      saveDefaultSplittingOptions: false,
+      isReimbursement: false,
+      documents: [],
+      recurrenceRule: 'NONE',
+    },
+  })
+
+  await mutate('groups.expenses.delete', {
+    groupId: group.id,
+    expenseId: scratch.data.expenseId,
+    participantId: Bruno,
+  })
+
+  const { data: listed } = await query('groups.expenses.list', {
+    groupId: group.id,
+    limit: 20,
+    cursor: 0,
+  })
+  const taxi = listed.expenses.find((expense) => expense.title === 'Airport taxi')
+
+  await mutate('groups.expenses.update', {
+    groupId: group.id,
+    expenseId: taxi.id,
+    participantId: Ana,
+    expenseFormValues: {
+      title: taxi.title,
+      expenseDate: taxi.expenseDate,
+      amount: taxi.amount,
+      category: 0,
+      paidBy: taxi.paidBy.id,
+      paidFor: taxi.paidFor.map((paidFor) => ({
+        participant: paidFor.participant.id,
+        shares: paidFor.shares,
+      })),
+      splitMode: taxi.splitMode,
+      saveDefaultSplittingOptions: false,
+      isReimbursement: taxi.isReimbursement,
+      documents: [],
+      recurrenceRule: 'NONE',
+    },
+  })
+
+  const lisbon = FIXTURES.find((fixture) => fixture.key === 'lisbon')
+  await mutate('groups.update', {
+    groupId: group.id,
+    participantId: Chloe,
+    groupFormValues: {
+      name: lisbon.name,
+      information: lisbon.information,
+      currency: lisbon.currency,
+      currencyCode: lisbon.currencyCode,
+      participants: Object.entries(group.participants).map(([name, id]) => ({ id, name })),
+    },
+  })
+
+  console.error(`recorded activity history for ${lisbon.name}`)
 }
 
 // Saves raw, unmodified API responses so the Swift decoders are tested against exactly what a
@@ -224,9 +312,9 @@ async function dumpFixtures(result) {
       () => query('groups.expenses.get', { groupId: lisbon, expenseId: expenses.expenses[0].id }),
     ],
     ['balances-list', () => query('groups.balances.list', { groupId: lisbon })],
-    // Both shapes, because the participant fields are what changes between them: named, Ana's
-    // share comes back as a non-integer; unnamed, the two participant fields are `undefined`
-    // and superjson annotates them rather than omitting them.
+    // Both shapes, because the participant fields are what changes between them: named, they
+    // carry Ana's figures; unnamed, they come back `undefined` and superjson annotates them
+    // rather than omitting the keys, which is the half the decoder has to survive.
     [
       'groups-stats-get',
       () =>
@@ -236,6 +324,10 @@ async function dumpFixtures(result) {
         }),
     ],
     ['groups-stats-get-anonymous', () => query('groups.stats.get', { groupId: lisbon })],
+    [
+      'activities-list',
+      () => query('groups.activities.list', { groupId: lisbon, limit: 20, cursor: 0 }),
+    ],
     ['error-not-found', () => query('groups.getDetails', { groupId: 'does-not-exist' }).catch((e) => e)],
   ]
 

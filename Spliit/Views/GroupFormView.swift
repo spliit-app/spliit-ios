@@ -238,6 +238,10 @@ struct GroupSettingsView: View {
 
     @State private var draft: GroupFormDraft?
     @State private var participantsWithExpenses: Set<String> = []
+    /// Who was in the group when this form opened, kept only to resolve who is saving it. The
+    /// draft's own list is being edited, and someone removing themselves here is still the one
+    /// who made the change.
+    @State private var participants: [Participant] = []
     @State private var isSaving = false
     @State private var failure: String?
 
@@ -275,6 +279,7 @@ struct GroupSettingsView: View {
             let response = try await app.client.call(Spliit.groupDetails(id: groupID))
             draft = GroupFormDraft(editing: response.group)
             participantsWithExpenses = Set(response.participantsWithExpenses)
+            participants = response.group.participants
         } catch {
             failure = error.localizedDescription
         }
@@ -287,7 +292,13 @@ struct GroupSettingsView: View {
             defer { isSaving = false }
             do {
                 _ = try await app.client.call(
-                    Spliit.updateGroup(id: groupID, values: draft.formValues)
+                    Spliit.updateGroup(
+                        id: groupID,
+                        values: draft.formValues,
+                        by: app.recentGroups.actorID(
+                            inGroup: groupID, participants: participants
+                        )
+                    )
                 )
                 onSaved(draft.formValues.name)
                 dismiss()

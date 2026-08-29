@@ -27,9 +27,9 @@ struct StatsView: View {
 
     var body: some View {
         content
-            // `.task(id:)` is what makes the request lazy — it is a fourth call on a screen that
-            // already makes three, and the other tabs never need it — and what asks again when
-            // the answer to "who are you?" changes, since two of the three numbers are theirs.
+            // `.task(id:)` is what makes the request lazy — it is another call on a screen that
+            // already makes several, and no other tab needs it — and what asks again when the
+            // answer to "who are you?" changes, since two of the three numbers are theirs.
             .task(id: statsKey) {
                 guard statsKey != nil else { return }
                 await model.loadStats(for: activeParticipantID, using: app.client)

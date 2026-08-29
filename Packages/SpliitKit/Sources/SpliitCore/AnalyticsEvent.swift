@@ -22,12 +22,14 @@ public struct AnalyticsEvent: Equatable, Sendable {
         case addGroupByURL = "add-group-by-url"
         case groupExpenses = "group-expenses"
         case groupBalances = "group-balances"
-        // None of these three was a React Native screen. Search is a name of our own; the
-        // information and stats tabs borrow the web app's route names, so the mobile site and
-        // the web one can be read side by side even though they are separate Plausible sites.
+        // None of these four was a React Native screen. Search is a name of our own; the
+        // information, stats and activity screens borrow the web app's route names, so the
+        // mobile site and the web one can be read side by side even though they are separate
+        // Plausible sites.
         case groupSearch = "group-search"
         case groupInformation = "group-information"
         case groupStats = "group-stats"
+        case groupActivity = "group-activity"
         case groupSettings = "group-settings"
         case groupCreateExpense = "group-create-expense"
         case groupEditExpense = "group-edit-expense"

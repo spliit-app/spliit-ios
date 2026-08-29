@@ -500,8 +500,8 @@ Ordered by value to a phone user, not by web-app order.
   rather than in front of it: the tab is worth one number without an answer and three with one.
   Each personal figure also carries the slice of the group's spending it is, because "what
   fraction of this trip is mine" is the question the numbers are opened for and neither number
-  answers it alone. Loaded lazily and keyed on the participant — it is a fourth request on a
-  screen that already makes three, and the other tabs never need it. Named *Totals* rather than
+  answers it alone. Loaded lazily and keyed on the participant — it is another request on a
+  screen that already makes several, and no other tab needs it. Named *Totals* rather than
   the web's *Stats* because "Statistiques" beside "Informations" leaves a French tab bar with
   two truncated labels; the Plausible screen keeps the web's route name, `group-stats`.
   It also breaks the spending down **by category**, which the endpoint does not answer at all —
@@ -531,7 +531,15 @@ Ordered by value to a phone user, not by web-app order.
     written
   - **reimbursements are excluded from all three figures**, which the tab's footer now says.
     `make test-live` is what confirmed it rather than a reading of the web app
-- Activity log tab
+- ~~Activity log~~ — **done**, though not as a tab: it is pushed from the information tab, which
+  is where the things you consult rather than work in already live, and four tabs plus the search
+  capsule already fill the bar. `groups.activities.list` pages on an offset cursor the way the
+  expense list does, and its entries are bucketed more finely than expenses are: an expense is
+  dated by the day it happened, an activity is stamped to the second, and most of a log is from
+  the last day or two — where "This week" would be the whole screen. It is also what made the app
+  start sending `participantId`, which all four mutating procedures accept and none requires.
+  Without it every line of every log reads "Someone", including lines about expenses this app
+  wrote itself
 - Export to CSV / JSON via the share sheet
 
 **Wave 3 — media and automation**
@@ -589,7 +597,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Starred / archived groups | ➖ | ✅ | ✅ M3.1 |
 | Group information tab | ➖ | ✅ | ✅ M3.2 |
 | Stats | ➖ | ✅ | ✅ M3.2 |
-| Activity log | ➖ | ✅ | M3.2 |
+| Activity log | ➖ | ✅ | ✅ M3.2 |
 | Export CSV / JSON | ➖ | ✅ | M3.2 |
 | Expense documents | ➖ | ✅ | M3.3 |
 | Receipt scanning | ➖ | ✅ | M3.3 |

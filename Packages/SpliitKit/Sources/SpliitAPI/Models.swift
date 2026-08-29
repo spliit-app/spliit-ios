@@ -336,6 +336,108 @@ public struct Reimbursement: Decodable, Sendable, Hashable {
     }
 }
 
+// MARK: - Activity
+
+/// What a recorded activity was.
+///
+/// Unknown values decode instead of throwing, which `SplitMode` deliberately does not: a split
+/// mode this client cannot read is money it would divide wrongly, while an activity it cannot
+/// read is one line of prose. A server that grows a fifth kind should cost the log a row, not
+/// the whole tab.
+public enum ActivityType: Decodable, Sendable, Hashable {
+    case updateGroup
+    case createExpense
+    case updateExpense
+    case deleteExpense
+    /// Something this version has no sentence for.
+    case unknown(String)
+
+    public init(from decoder: any Decoder) throws {
+        switch try decoder.singleValueContainer().decode(String.self) {
+        case "UPDATE_GROUP": self = .updateGroup
+        case "CREATE_EXPENSE": self = .createExpense
+        case "UPDATE_EXPENSE": self = .updateExpense
+        case "DELETE_EXPENSE": self = .deleteExpense
+        case let other: self = .unknown(other)
+        }
+    }
+
+    /// False for a kind this version cannot describe, and so should not draw a row for.
+    public var isRecognised: Bool {
+        if case .unknown = self { return false }
+        return true
+    }
+}
+
+/// One thing that happened to a group, as `groups.activities.list` records it.
+public struct Activity: Decodable, Sendable, Identifiable, Hashable {
+    public let id: String
+    public let groupId: String
+    public let time: Date
+    public let activityType: ActivityType
+
+    /// Who did it — but only when the client that did it said so. The four mutating procedures
+    /// take a `participantId` and none of them requires it, so this is nil for anything written
+    /// by the web app before someone identified themselves, and for every expense this app wrote
+    /// before it started sending one.
+    public let participantId: String?
+
+    public let expenseId: String?
+
+    /// The expense's title **as it was** when this was recorded, which is the point: renaming an
+    /// expense leaves the old name on the line that describes it being created. The server calls
+    /// this column `data`; it has never held anything else.
+    public let title: String?
+
+    /// Whether the expense this refers to is still in the group. The server sends the whole
+    /// expense alongside; all a log row does with it is decide whether it can be opened, and
+    /// decoding a second copy of a model we already have would only be one more thing to keep in
+    /// step with the schema.
+    public let expenseStillExists: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id, groupId, time, activityType, participantId, expenseId, expense
+        case data
+    }
+
+    private struct ExpenseReference: Decodable {
+        let id: String
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        groupId = try container.decode(String.self, forKey: .groupId)
+        time = try container.decode(Date.self, forKey: .time)
+        activityType = try container.decode(ActivityType.self, forKey: .activityType)
+        participantId = try container.decodeIfPresent(String.self, forKey: .participantId)
+        expenseId = try container.decodeIfPresent(String.self, forKey: .expenseId)
+        title = try container.decodeIfPresent(String.self, forKey: .data)
+        expenseStillExists =
+            try container.decodeIfPresent(ExpenseReference.self, forKey: .expense) != nil
+    }
+
+    public init(
+        id: String,
+        groupId: String,
+        time: Date,
+        activityType: ActivityType,
+        participantId: String? = nil,
+        expenseId: String? = nil,
+        title: String? = nil,
+        expenseStillExists: Bool = false
+    ) {
+        self.id = id
+        self.groupId = groupId
+        self.time = time
+        self.activityType = activityType
+        self.participantId = participantId
+        self.expenseId = expenseId
+        self.title = title
+        self.expenseStillExists = expenseStillExists
+    }
+}
+
 // MARK: - Form values
 
 public struct GroupFormValues: Encodable, Sendable {

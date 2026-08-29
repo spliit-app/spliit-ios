@@ -109,6 +109,12 @@ struct GroupDetailView: View {
         .toolbar { toolbarContent }
         .sheet(item: $sheet, content: sheetContent)
         .task { await model.loadIfNeeded(using: app.client) }
+        // The store belongs to the view layer, so the model is told who the user is rather than
+        // asking. It is what attributes the delete that waits out its undo window, and it has to
+        // survive both the group arriving — which is what makes an identity resolvable — and the
+        // user answering the picker.
+        .onAppear { model.actorID = activeParticipant?.participantID }
+        .onChange(of: activeParticipant) { model.actorID = activeParticipant?.participantID }
         // The list pushed this screen because an intent asked for it; whatever else that intent
         // wanted is still waiting to be collected.
         .onAppear { collectRoutedIntent() }

@@ -182,6 +182,33 @@ presented content close itself with `@Environment(\.dismiss)` rather than writin
 `isPresented` binding from a delegate, so only one thing can dismiss it. A simulator has no
 camera, so no UI test will catch this for you.
 
+**A `Binding` is only as fresh as its getter.** `Binding(get: { form }, set: { self.form = $0 })`
+over an unwrapped `if let` constant looks like a binding and is a snapshot: the getter closes over
+the value the body was built with, so it keeps answering with that one however many times it is
+written to in between. Anything that writes and then reads back within the same turn reads its own
+write away. It cost two bugs in one screen — two receipts uploaded together landed as one, because
+the second `append` started from an array without the first, and the document viewer removed a
+document, asked whether any were left, was told yes and stayed open on nothing. `ExpenseFormView`
+now hands down `liveForm`, whose getter reads `self.form`.
+
+**Expense documents are the one thing that doesn't go through tRPC.** The instance signs an upload
+at `POST /api/s3-upload` — a REST route `next-s3-upload` puts beside the tRPC one — and the bytes
+go from the phone straight to the bucket; tRPC only ever sees the URL the object ended up at.
+Three things follow. The **upload happens before the expense is saved**, so an abandoned form
+leaves an object nothing points at, and **removing a document only forgets its URL**, because
+neither this app nor the web app has credentials to delete anything. And the **address is derived,
+not returned**: `endpoint` set means `<endpoint>/<bucket>/<key>`, otherwise
+`https://<bucket>.s3.<region>.amazonaws.com/<key>`. Both products have to derive the same one,
+because either may have been the one that attached it.
+
+**Document storage is optional, and there is no way to ask.** The signing route is compiled in
+whether or not a bucket is configured, and the flag saying so is server-side and never exposed
+over tRPC — so the answer only ever arrives as a failed upload: 500 with an empty body, which is
+what `NextResponse.error()` produces. `DocumentUploader.Failure.unsupported` is that, and it is
+not an error to retry; `AppModel.noteDocumentStorageIsUnavailable()` remembers it for the session
+so the next expense doesn't offer the same dead end. A self-hosted instance without a bucket is
+entirely ordinary.
+
 **Vision's `transcript` is not the receipt's layout.** `RecognizeDocumentsRequest` reads a
 receipt the way it reads a page — as blocks in reading order — so a two-column till slip comes
 back as a column of labels followed by a column of prices, and `TOTAL` lands nine lines from the
@@ -232,6 +259,11 @@ Three layers. Add to whichever is cheapest for what you're covering.
 | `make test` | coding, decoding, request building, migration, money, validation | nothing |
 | `make test-live` | the API client against a real server, including writes | `make e2e-up` |
 | `make e2e` | the app itself, in a simulator, against a real server | Docker |
+
+`make e2e-up` brings object storage up beside the server, because expense documents do not live in
+Spliit's database and a stubbed upload would only prove the app can talk to itself. CI starts the
+same thing from pinned binaries, Docker being unavailable there. An instance without a bucket is
+still worth pointing at: the document suites then cover the path where the app says so.
 
 API fixtures under `Packages/SpliitKit/Tests/SpliitAPITests/Fixtures` are **recorded from a
 real server** by `make fixtures`, never hand-written — hand-written fixtures only prove the

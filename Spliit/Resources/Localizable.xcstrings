@@ -160,6 +160,64 @@
         }
       }
     },
+    "%lld documents attached": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld document attached"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld documents attached"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld document joint"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld documents joints"
+                }
+              }
+            }
+          }
+        }
+      },
+      "comment": "Spoken label for the paperclip on an expense row."
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld of %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld sur %2$lld"
+          }
+        }
+      },
+      "comment": "Which document of how many the viewer is showing, e.g. “2 of 3”."
+    },
     "%lld participants": {
       "localizations": {
         "en": {
@@ -458,6 +516,40 @@
         }
       }
     },
+    "Attach a document": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attach a document"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joindre un document"
+          }
+        }
+      },
+      "comment": "Spoken label for the tile that adds one; the tile itself is a plus sign."
+    },
+    "Attach documents": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attach documents"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joindre des documents"
+          }
+        }
+      },
+      "comment": "Section heading over the receipts kept with an expense. The web app's wording."
+    },
     "Balances": {
       "localizations": {
         "fr": {
@@ -518,6 +610,23 @@
           }
         }
       }
+    },
+    "Choose Photos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Photos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir des photos"
+          }
+        }
+      },
+      "comment": "Menu item that opens the photo library, alongside “Take Photo”."
     },
     "Clear search": {
       "localizations": {
@@ -595,6 +704,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossible de charger les totaux"
+          }
+        }
+      }
+    },
+    "Couldn’t load this document": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load this document"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger ce document"
           }
         }
       }
@@ -818,6 +943,23 @@
           }
         }
       }
+    },
+    "Document %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Document %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Document %lld"
+          }
+        }
+      },
+      "comment": "Spoken label for one thumbnail, by its position in the grid."
     },
     "Done": {
       "localizations": {
@@ -1469,6 +1611,22 @@
         }
       }
     },
+    "Photograph the receipt and it stays with the expense.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photograph the receipt and it stays with the expense."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photographiez le reçu et il reste avec la dépense."
+          }
+        }
+      }
+    },
     "Pick nobody on a phone the whole group shares.": {
       "localizations": {
         "fr": {
@@ -1799,12 +1957,35 @@
         }
       }
     },
-    "Take a photo of the receipt and Spliit fills in what it can read. It never leaves your iPhone.": {
+    "Take a photo of the receipt and Spliit fills in what it can read, on your iPhone. The photo is kept with the expense.": {
+      "comment": "Footer under the scan row. Says both halves plainly: the reading is on-device, and the photograph is uploaded and attached, which it did not used to be.",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take a photo of the receipt and Spliit fills in what it can read, on your iPhone. The photo is kept with the expense."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Photographiez le reçu et Spliit remplit ce qu’il arrive à lire. La photo ne quitte jamais votre iPhone."
+            "value": "Prenez une photo du reçu et Spliit remplit ce qu’il peut lire, sur votre iPhone. La photo est conservée avec la dépense."
+          }
+        }
+      }
+    },
+    "Tap a document to see it full size.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap a document to see it full size."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touchez un document pour le voir en grand."
           }
         }
       }
@@ -1835,6 +2016,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ce groupe n’est pas sur %@."
+          }
+        }
+      }
+    },
+    "That photo couldn’t be read.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That photo couldn’t be read."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette photo n’a pas pu être lue."
           }
         }
       }
@@ -1880,6 +2077,22 @@
         }
       }
     },
+    "The server it is stored on didn’t answer.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server it is stored on didn’t answer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur où il est stocké n’a pas répondu."
+          }
+        }
+      }
+    },
     "This Spliit instance doesn’t offer them. Everything else in the group works as usual.": {
       "localizations": {
         "fr": {
@@ -1889,6 +2102,23 @@
           }
         }
       }
+    },
+    "This Spliit instance isn’t set up to store documents.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Spliit instance isn’t set up to store documents."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette instance Spliit n’est pas configurée pour stocker des documents."
+          }
+        }
+      },
+      "comment": "Storing documents needs a bucket the instance's administrator configures; plenty of self-hosted instances have none."
     },
     "This group no longer exists on this server.": {
       "localizations": {
@@ -2057,6 +2287,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "À venir"
+          }
+        }
+      }
+    },
+    "Uploading": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploading"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoi en cours"
+          }
+        }
+      },
+      "comment": "Spoken label for the greyed tile standing in for a picture being uploaded."
+    },
+    "Uploading…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploading…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoi en cours…"
           }
         }
       }

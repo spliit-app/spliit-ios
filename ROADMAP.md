@@ -543,7 +543,22 @@ Ordered by value to a phone user, not by web-app order.
 - Export to CSV / JSON via the share sheet
 
 **Wave 3 — media and automation**
-- Expense documents: attach photos, S3 upload, gallery viewer
+- ~~Expense documents~~ — **done**. The instance signs an upload and the photograph goes
+  from the phone straight to its bucket, so an expense stores an address and nothing
+  else; the grid, the full-screen viewer and the paperclip on a row all read from that.
+  Three things are worth knowing. **The picture is re-encoded rather than refused** — the
+  web app rejects anything over 5 MB, which is most of what a camera produces, so this
+  one caps the longest side at 2048 and steps the quality down until it fits. The redraw
+  also bakes in the orientation, without which a photo out of the library uploads sideways
+  and the size stored beside it describes it the wrong way round, and drops the rest of
+  the EXIF with it, including where the photo was taken. **Storing documents is optional
+  and cannot be asked about**: the route exists whether or not a bucket does, so the only
+  answer is a failed upload, and the app reads that as "this instance keeps no documents"
+  rather than as something to retry. And **scanning a receipt attaches it too**: the photo
+  goes to the documents section as soon as it is taken, whatever the reading of it turns
+  up, since somebody photographing a receipt into an expense means to keep it there. The
+  footer under the scan row gave up its "it never leaves your iPhone" for that, and says
+  instead what is still true and still worth saying — that the *reading* is on-device
 - ~~Receipt scanning~~ — **done**, and on device as hoped: Vision's document recognition
   transcribes the photo and the system model reads the transcript, so it costs nothing,
   sends nobody's receipt anywhere, works offline and works against a self-hosted instance
@@ -613,7 +628,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Stats | ➖ | ✅ | ✅ M3.2 |
 | Activity log | ➖ | ✅ | ✅ M3.2 |
 | Export CSV / JSON | ➖ | ✅ | M3.2 |
-| Expense documents | ➖ | ✅ | M3.3 |
+| Expense documents | ➖ | ✅ | ✅ M3.3 |
 | Receipt scanning | ➖ | ✅ | ✅ M3.3 (on device) |
 | Recurring expenses | ➖ | ✅ | M3.3 |
 | French | ➖ | ✅ | ✅ |

@@ -59,19 +59,26 @@ jobs:
 
   # The real thing: the app driving a real Spliit instance in the simulator.
   #
-  # Only on pull requests that are ready for review. It takes 10-20 minutes, which is too slow
-  # to pay on every push to a branch still being worked on. Because every change reaches main
-  # through a PR, main is still covered — by the run that gated the merge.
+  # Only on pull requests that are ready for review. It takes half an hour, which is far too
+  # slow to pay on every push to a branch still being worked on. Because every change reaches
+  # main through a PR, main is still covered — by the run that gated the merge.
+  #
+  # The allowance is well clear of that half hour on purpose. It ran serially in 27m29s the day
+  # the document suites landed and was cut off at 30 the next time, having lost two minutes to
+  # one flaky test — and a run killed mid-suite reports nothing useful about the other seventy.
+  # Raise this rather than let a slow runner masquerade as a broken change.
   e2e:
     name: End-to-end tests
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       # Pinned so a change upstream cannot turn this repo's CI red, and so the built server is
       # byte-identical from run to run and therefore cacheable. The nightly upstream-drift job
       # is what tracks the moving target.
       SPLIIT_SERVER_REF: c3d8d3e50593d5a7c49f71ea82ebaac5c1b4fc74
+      MINIO_VERSION: RELEASE.2025-09-07T16-13-09Z
+      MC_VERSION: RELEASE.2025-08-13T08-35-41Z
     steps:
       - uses: actions/checkout@v5
 
@@ -102,6 +109,41 @@ jobs:
           export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
           createuser -s spliit || true
           createdb -O spliit spliit || true
+
+      # Object storage for the expense-documents suites. Spliit never handles the file itself:
+      # it signs a PUT against a bucket and the client uploads straight to it, so without a
+      # bucket here the app would only ever be exercised on the path where an instance answers
+      # that it stores nothing.
+      #
+      # The address, the credentials and the anonymous read policy all match
+      # `e2e/compose.yaml`, so one set of `S3_UPLOAD_*` settings describes the harness whether
+      # it is running under Docker locally or as loose binaries here. Pinned and cached for the
+      # reason the server build is: a moving download is a red build nobody changed anything to
+      # earn.
+      - name: Restore MinIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.minio-bin
+          key: minio-${{ runner.os }}-${{ env.MINIO_VERSION }}-${{ env.MC_VERSION }}
+
+      - name: Start object storage
+        run: |
+          mkdir -p ~/.minio-bin
+          [ -x ~/.minio-bin/minio ] || curl -sSLo ~/.minio-bin/minio \
+            "https://dl.min.io/server/minio/release/darwin-arm64/archive/minio.$MINIO_VERSION"
+          [ -x ~/.minio-bin/mc ] || curl -sSLo ~/.minio-bin/mc \
+            "https://dl.min.io/client/mc/release/darwin-arm64/archive/mc.$MC_VERSION"
+          chmod +x ~/.minio-bin/minio ~/.minio-bin/mc
+          mkdir -p "$RUNNER_TEMP/minio/spliit"
+          MINIO_ROOT_USER=spliit MINIO_ROOT_PASSWORD=spliitspliit \
+            nohup ~/.minio-bin/minio server "$RUNNER_TEMP/minio" --address :9009 \
+            > "$RUNNER_TEMP/minio.log" 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9009/minio/health/live >/dev/null && break
+            sleep 1
+          done
+          ~/.minio-bin/mc alias set e2e http://localhost:9009 spliit spliitspliit
+          ~/.minio-bin/mc anonymous set download e2e/spliit
 
       - name: Check out the Spliit server
         uses: actions/checkout@v5
@@ -142,6 +184,12 @@ jobs:
           POSTGRES_PRISMA_URL: postgresql://spliit@localhost:5432/spliit
           POSTGRES_URL_NON_POOLING: postgresql://spliit@localhost:5432/spliit
           NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS: 'true'
+          S3_UPLOAD_KEY: spliit
+          S3_UPLOAD_SECRET: spliitspliit
+          S3_UPLOAD_BUCKET: spliit
+          S3_UPLOAD_REGION: us-east-1
+          S3_UPLOAD_ENDPOINT: http://localhost:9009
         run: |
           npx prisma migrate deploy
           nohup npx next start -p 3009 > "$RUNNER_TEMP/spliit.log" 2>&1 &
@@ -195,6 +243,9 @@ jobs:
     if: github.event_name == 'schedule'
     runs-on: macos-26
     timeout-minutes: 30
+    env:
+      MINIO_VERSION: RELEASE.2025-09-07T16-13-09Z
+      MC_VERSION: RELEASE.2025-08-13T08-35-41Z
     steps:
       - uses: actions/checkout@v5
 
@@ -213,6 +264,41 @@ jobs:
           createuser -s spliit || true
           createdb -O spliit spliit || true
 
+      # Object storage for the expense-documents suites. Spliit never handles the file itself:
+      # it signs a PUT against a bucket and the client uploads straight to it, so without a
+      # bucket here the app would only ever be exercised on the path where an instance answers
+      # that it stores nothing.
+      #
+      # The address, the credentials and the anonymous read policy all match
+      # `e2e/compose.yaml`, so one set of `S3_UPLOAD_*` settings describes the harness whether
+      # it is running under Docker locally or as loose binaries here. Pinned and cached for the
+      # reason the server build is: a moving download is a red build nobody changed anything to
+      # earn.
+      - name: Restore MinIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.minio-bin
+          key: minio-${{ runner.os }}-${{ env.MINIO_VERSION }}-${{ env.MC_VERSION }}
+
+      - name: Start object storage
+        run: |
+          mkdir -p ~/.minio-bin
+          [ -x ~/.minio-bin/minio ] || curl -sSLo ~/.minio-bin/minio \
+            "https://dl.min.io/server/minio/release/darwin-arm64/archive/minio.$MINIO_VERSION"
+          [ -x ~/.minio-bin/mc ] || curl -sSLo ~/.minio-bin/mc \
+            "https://dl.min.io/client/mc/release/darwin-arm64/archive/mc.$MC_VERSION"
+          chmod +x ~/.minio-bin/minio ~/.minio-bin/mc
+          mkdir -p "$RUNNER_TEMP/minio/spliit"
+          MINIO_ROOT_USER=spliit MINIO_ROOT_PASSWORD=spliitspliit \
+            nohup ~/.minio-bin/minio server "$RUNNER_TEMP/minio" --address :9009 \
+            > "$RUNNER_TEMP/minio.log" 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9009/minio/health/live >/dev/null && break
+            sleep 1
+          done
+          ~/.minio-bin/mc alias set e2e http://localhost:9009 spliit spliitspliit
+          ~/.minio-bin/mc anonymous set download e2e/spliit
+
       # Unpinned on purpose: this job exists to notice upstream changes.
       - name: Check out the Spliit server at main
         uses: actions/checkout@v5
@@ -227,6 +313,12 @@ jobs:
           POSTGRES_PRISMA_URL: postgresql://spliit@localhost:5432/spliit
           POSTGRES_URL_NON_POOLING: postgresql://spliit@localhost:5432/spliit
           NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS: 'true'
+          S3_UPLOAD_KEY: spliit
+          S3_UPLOAD_SECRET: spliitspliit
+          S3_UPLOAD_BUCKET: spliit
+          S3_UPLOAD_REGION: us-east-1
+          S3_UPLOAD_ENDPOINT: http://localhost:9009
         run: |
           npm ci
           npx prisma migrate deploy

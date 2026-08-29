@@ -31,9 +31,11 @@ class SpliitUITestCase: XCTestCase {
     ///     not leak into the next test.
     ///   - openGroup: launch as if `OpenGroupIntent` had just run for this group.
     ///   - addExpense: launch as if `AddExpenseIntent` had just run with these values.
-    ///   - receiptSample: make "Scan receipt" read a receipt the app draws for itself, rather
-    ///     than open a camera the simulator does not have. Vision and the parser are the real
-    ///     ones; only the on-device model is skipped, since its answer is not a fixture.
+    ///   - receiptSample: make both "Scan receipt" and "Attach documents" take a receipt the
+    ///     app draws for itself, rather than open a camera the simulator does not have. What
+    ///     happens to the picture afterwards is real either way — Vision and the parser on one
+    ///     path, a genuine upload to the harness's bucket on the other. Only the on-device
+    ///     model is skipped, since its answer is not a fixture.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
@@ -150,6 +152,44 @@ class SpliitUITestCase: XCTestCase {
     private func isEffectivelyEmpty(_ field: XCUIElement) -> Bool {
         let value = (field.value as? String) ?? ""
         return value.isEmpty || value == field.placeholderValue
+    }
+
+    /// Scrolls until `element` can be tapped, and does not say so while it is still moving.
+    ///
+    /// `app.swipeUp()` throws the scroll view and lets it coast. XCUITest answers `isHittable`
+    /// only once the app looks idle, so while a form is gliding every query burns its whole
+    /// quiescence budget — thirteen seconds each — and then answers anyway, about a row that has
+    /// moved on by the time the tap arrives. The tap lands on the row above, or on nothing.
+    ///
+    /// A form short enough to reach its bottom stop hides all of this, because the scroll ends
+    /// dead against it. That is why it surfaced the day the expense form grew another section:
+    /// one test went from passing in 20 seconds to failing in 135, in two different places on
+    /// two different runs. A slow swipe barely coasts, and waiting for the frame to stop moving
+    /// covers what is left.
+    @MainActor
+    func scrollUntilHittable(
+        _ element: XCUIElement, in app: XCUIApplication, swipes: Int = 15
+    ) {
+        for _ in 0..<swipes where !element.isHittable {
+            app.swipeUp(velocity: .slow)
+        }
+        waitUntilStill(element)
+    }
+
+    /// Waits for an element to stop moving, so a tap lands where the check said it would.
+    @MainActor
+    func waitUntilStill(_ element: XCUIElement, timeout: TimeInterval = 5) {
+        guard element.exists else { return }
+        var previous = element.frame
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+            guard element.exists else { return }
+            let current = element.frame
+            if current == previous { return }
+            previous = current
+        }
     }
 
     /// Saves a screenshot into the result bundle, so a failing run can be looked at without

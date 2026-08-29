@@ -74,7 +74,7 @@ struct AnalyticsEventTests {
     func actionNamesAreStable() {
         #expect(
             AnalyticsEvent.Action.allCases.map(\.rawValue)
-                == ["create-group", "create-expense", "scan-receipt"]
+                == ["create-group", "create-expense", "scan-receipt", "attach-document"]
         )
     }
 }

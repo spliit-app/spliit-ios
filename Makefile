@@ -110,8 +110,10 @@ test-live: ## Run the API suites against the local instance (needs `make e2e-up`
 # alone disturb — another's data. Asking the server first means a run that finds it already up
 # never touches Docker, which is both quicker and one less way for two runs to collide.
 e2e-up: ## Start the shared Spliit instance on :3009, if it isn't already up
-	@curl -sf $(E2E_URL)api/health/readiness >/dev/null \
-		|| docker compose -f e2e/compose.yaml up -d --wait
+	@curl -sf $(E2E_URL)api/health/readiness >/dev/null || { \
+		docker compose -f e2e/compose.yaml up -d --wait; \
+		docker compose -f e2e/compose.yaml run --rm --quiet-pull s3-policy >/dev/null; \
+	}
 	@echo "Spliit is up at $(E2E_URL) — make e2e-down stops it."
 
 e2e-down: ## Stop it and discard its data

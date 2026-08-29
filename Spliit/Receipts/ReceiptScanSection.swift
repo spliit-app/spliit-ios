@@ -11,12 +11,20 @@ import VisionKit
 /// those four values to a form that shows them again. Here they land in the fields directly,
 /// where they can be corrected in place instead of accepted and then corrected.
 ///
-/// The photo itself is deliberately not kept. Attaching receipts to expenses is a feature of its
-/// own — the web app uploads them to S3 — and a thumbnail on this screen would promise the expense
-/// keeps a copy when it does not.
+/// The photo is kept as well, by handing it to the documents section below to upload. Somebody
+/// who has just photographed a receipt into an expense means to keep the receipt with it, and
+/// making them photograph it a second time to do that is a strange thing to ask.
+///
+/// That does mean the picture leaves the phone, so the footer says so. What stays on the phone is
+/// the *reading* — Vision and the system model, no third party — which is the claim worth making
+/// and the one that is still true.
 struct ReceiptScanSection: View {
 
     let categories: [ExpenseCategory]
+    /// Called with the photograph as soon as there is one, for the form to keep with the
+    /// expense. Separate from `onScan`, and fired first, because a receipt is worth keeping
+    /// whatever the reading of it turns up — including when it turns up nothing.
+    let onPhoto: (ReceiptPhoto) -> Void
     /// Called with whatever the scan found, on the main actor, for the form to apply.
     let onScan: (ReceiptScan) -> Void
 
@@ -100,7 +108,7 @@ struct ReceiptScanSection: View {
     private var status: LocalizedStringKey {
         switch phase {
         case .idle:
-            "Take a photo of the receipt and Spliit fills in what it can read. It never leaves your iPhone."
+            "Take a photo of the receipt and Spliit fills in what it can read, on your iPhone. The photo is kept with the expense."
         case .scanning:
             "Reading the receipt…"
         case .scanned(found: true):
@@ -158,6 +166,7 @@ struct ReceiptScanSection: View {
     private func scan(_ photo: ReceiptPhoto) {
         phase = .scanning
         Analytics.shared.event(.scanReceipt)
+        onPhoto(photo)
 
         Task {
             let scanner = ReceiptScanner(usesModel: usesModel)

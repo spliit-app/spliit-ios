@@ -52,9 +52,20 @@ struct ExpenseRow: View {
                 )
                 .accessibilityIdentifier(AccessibilityID.ExpenseList.rowAmount(expense.id))
 
-                Text(expense.expenseDate.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 3) {
+                    // The web app's paperclip, in the one place a row has left. It says a
+                    // receipt is attached without saying anything about it, which is all a
+                    // glance needs — the pictures are inside the expense.
+                    if expense.documentCount > 0 {
+                        Image(systemName: "paperclip")
+                            .accessibilityLabel(
+                                Text("\(expense.documentCount) documents attached")
+                            )
+                    }
+                    Text(expense.expenseDate.formatted(date: .abbreviated, time: .omitted))
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
             }
         }
         .contentShape(.rect)

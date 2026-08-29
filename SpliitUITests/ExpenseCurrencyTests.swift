@@ -36,14 +36,17 @@ final class ExpenseCurrencyTests: SpliitUITestCase {
             app.textFields[AccessibilityID.ExpenseForm.conversionRateField].value as? String,
             "0.5"
         )
+        // Typing into a field this far down scrolls the form, and the receipt row above the
+        // total means the first section goes off the top of it — where a `Form` stops rendering
+        // it at all. Bounded, as every scroll in this suite is.
+        let total = app.staticTexts[AccessibilityID.ExpenseForm.amountField]
+        for _ in 0..<6 where !total.exists { app.swipeDown() }
         capture(app, "expense-currency")
 
         // €40.00 at 0.5 is $20.00, and the total is the conversion rather than anything typed.
         // The row reads as one element once the amount stops being a field, which is what a
         // screen reader should hear: the label and the value together.
-        XCTAssertEqual(
-            app.staticTexts[AccessibilityID.ExpenseForm.amountField].label, "Amount, $20.00"
-        )
+        XCTAssertEqual(total.label, "Amount, $20.00")
 
         app.buttons[AccessibilityID.ExpenseForm.saveButton].tap()
         assertExists(app.staticTexts["Dinner"], "The converted expense should save.")

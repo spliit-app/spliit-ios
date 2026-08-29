@@ -73,7 +73,8 @@ struct AnalyticsEventTests {
     @Test("Action names match the ones the dashboard already has")
     func actionNamesAreStable() {
         #expect(
-            AnalyticsEvent.Action.allCases.map(\.rawValue) == ["create-group", "create-expense"]
+            AnalyticsEvent.Action.allCases.map(\.rawValue)
+                == ["create-group", "create-expense", "scan-receipt"]
         )
     }
 }

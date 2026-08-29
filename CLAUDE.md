@@ -172,6 +172,21 @@ rename must not rewrite the line describing the creation — so the log is the o
 app showing a title the expense no longer has. The `expense` sent beside each activity is `null`
 once it has been deleted, and that, not `expenseId`, is what says whether a row can be opened.
 
+**Vision's `transcript` is not the receipt's layout.** `RecognizeDocumentsRequest` reads a
+receipt the way it reads a page — as blocks in reading order — so a two-column till slip comes
+back as a column of labels followed by a column of prices, and `TOTAL` lands nine lines from the
+`15,95` printed beside it. Reading that as text finds the wrong number, or the right one by luck.
+`ReceiptText.rows(of:)` rebuilds the rows from where each run of text actually sits: two runs are
+on the same row when their vertical middles are closer than half the height of the shorter one.
+Its fixture is recorded from real Vision output, not invented.
+
+**Nothing the on-device model says is taken on trust.** A receipt is untrusted text — anything at
+all can be printed on one — so `ReceiptScanner` re-checks every field it answers with: the total
+goes back through the same number parser the receipt's own numbers do, the date through the same
+plausibility window, and the category has to be one `categories.list` actually returned. The model
+is also never the only reader: `ReceiptText` parses the transcript unaided, which is the whole
+feature on a phone without Apple Intelligence and the fallback under the model everywhere else.
+
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`
 sends `createdAt` with no annotation at all, so trusting the metadata would break exactly one

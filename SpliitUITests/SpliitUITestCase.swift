@@ -31,6 +31,9 @@ class SpliitUITestCase: XCTestCase {
     ///     not leak into the next test.
     ///   - openGroup: launch as if `OpenGroupIntent` had just run for this group.
     ///   - addExpense: launch as if `AddExpenseIntent` had just run with these values.
+    ///   - receiptSample: make "Scan receipt" read a receipt the app draws for itself, rather
+    ///     than open a camera the simulator does not have. Vision and the parser are the real
+    ///     ones; only the on-device model is skipped, since its answer is not a fixture.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
@@ -42,7 +45,8 @@ class SpliitUITestCase: XCTestCase {
         openGroup: String? = nil,
         addExpense: (groupID: String, title: String, amount: String)? = nil,
         openURL: String? = nil,
-        exchangeRate: String? = nil
+        exchangeRate: String? = nil,
+        receiptSample: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
@@ -76,6 +80,9 @@ class SpliitUITestCase: XCTestCase {
         }
         if let exchangeRate {
             app.launchArguments += ["-uiTestExchangeRate", exchangeRate]
+        }
+        if receiptSample {
+            app.launchArguments.append("-uiTestReceiptSample")
         }
 
         app.launch()

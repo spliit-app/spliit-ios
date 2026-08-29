@@ -98,6 +98,15 @@ struct ExpenseFormView: View {
     @ViewBuilder
     private func formBody(_ form: Binding<ExpenseFormDraft>) -> some View {
         Form {
+            // Only on a new expense. Scanning a receipt is how an expense gets written down, not
+            // how one gets corrected, and an expense already saved has an amount somebody typed
+            // on purpose.
+            if !mode.isEditing {
+                ReceiptScanSection(categories: categories) { scan in
+                    form.wrappedValue.apply(scan)
+                }
+            }
+
             Section {
                 TextField("What was it for?", text: form.title)
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.titleField)

@@ -138,6 +138,13 @@ enum AccessibilityID {
         static let refreshRateButton = "expenseForm.conversionRate.refresh"
         static let selectAllButton = "expenseForm.paidFor.selectAll"
 
+        /// Reading the expense off a photo of the receipt. One identifier for the row whichever
+        /// it is: a menu where there is a camera to choose with, a plain button where there is
+        /// not. The two menu items have none of their own — an identifier on the menu stamps
+        /// every item inside it regardless, which is the trap at the top of this file.
+        static let scanButton = "expenseForm.scanReceipt"
+        static let scanStatus = "expenseForm.scanReceipt.status"
+
         static func splitModeOption(_ mode: String) -> String { "expenseForm.split.\(mode)" }
         static func participantToggle(_ id: String) -> String { "expenseForm.paidFor.\(id)" }
         static func participantValue(_ id: String) -> String { "expenseForm.share.\(id)" }

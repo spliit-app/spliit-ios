@@ -509,6 +509,16 @@
         }
       }
     },
+    "Choose Photo": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir une photo"
+          }
+        }
+      }
+    },
     "Clear search": {
       "localizations": {
         "fr": {
@@ -625,6 +635,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Serveur injoignable : les détails des groupes ne sont peut-être plus à jour."
+          }
+        }
+      }
+    },
+    "Couldn’t read that photo. Try again with the whole receipt in frame.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire cette photo. Réessayez avec le reçu entier dans le cadre."
           }
         }
       }
@@ -935,6 +955,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dépenses"
+          }
+        }
+      }
+    },
+    "Filled in from the receipt. Check it before saving.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rempli d’après le reçu. Vérifiez avant d’enregistrer."
           }
         }
       }
@@ -1299,6 +1329,16 @@
         }
       }
     },
+    "Nothing on that photo looked like a receipt.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien sur cette photo ne ressemblait à un reçu."
+          }
+        }
+      }
+    },
     "OK": {
       "localizations": {
         "fr": {
@@ -1469,6 +1509,16 @@
         }
       }
     },
+    "Reading the receipt…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture du reçu…"
+          }
+        }
+      }
+    },
     "Recent groups": {
       "localizations": {
         "fr": {
@@ -1535,6 +1585,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dites qui vous êtes"
+          }
+        }
+      }
+    },
+    "Scan receipt": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanner un reçu"
           }
         }
       }
@@ -1725,6 +1785,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Balayez un participant pour le retirer. Une personne qui figure déjà sur une dépense ne peut pas être retirée."
+          }
+        }
+      }
+    },
+    "Take Photo": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre une photo"
+          }
+        }
+      }
+    },
+    "Take a photo of the receipt and Spliit fills in what it can read. It never leaves your iPhone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photographiez le reçu et Spliit remplit ce qu’il arrive à lire. La photo ne quitte jamais votre iPhone."
           }
         }
       }

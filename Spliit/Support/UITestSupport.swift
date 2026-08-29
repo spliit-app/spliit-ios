@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import SpliitCore
+import UIKit
 
 /// Test-only hooks, compiled out of release builds.
 ///
@@ -31,6 +32,45 @@ enum UITestSupport {
         static let openURL = "-uiTestOpenURL"
         /// The rate every currency lookup should answer with, or "none" to make them all fail.
         static let exchangeRate = "-uiTestExchangeRate"
+        /// Scan a receipt the app draws for itself, instead of opening the camera or the
+        /// library. Present with no value.
+        static let receiptSample = "-uiTestReceiptSample"
+    }
+
+    /// Whether this run reads a drawn receipt rather than a photographed one. Asked on every
+    /// pass through the form's body, so it stays a look at the launch arguments.
+    static var usesSampleReceipt: Bool {
+        ProcessInfo.processInfo.arguments.contains(Argument.receiptSample)
+    }
+
+    /// A receipt to scan, for a suite with no camera and an empty photo library.
+    ///
+    /// Drawn rather than stubbed, and fed through the real `RecognizeDocumentsRequest` and the
+    /// real parser: the interesting half of receipt scanning is whether text recognition and the
+    /// rules that read it still agree, and a canned `ReceiptScan` would assert nothing at all.
+    /// The on-device model is skipped for the same run — a generative answer is not a fixture.
+    ///
+    /// Nil unless the launch argument is present, so the app is otherwise untouched.
+    static func sampleReceipt() -> ReceiptPhoto? {
+        guard usesSampleReceipt else { return nil }
+
+        let lines = SampleReceipt.lines
+        // Big, black on white, and monospaced: a photograph is what text recognition is usually
+        // up against, and a drawing that gives it a hard time on top of that would only make the
+        // suite flaky about something it is not testing.
+        let font = UIFont.monospacedSystemFont(ofSize: 44, weight: .regular)
+        let size = CGSize(width: 800, height: CGFloat(lines.count) * 60 + 80)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            for (index, line) in lines.enumerated() {
+                line.draw(
+                    at: CGPoint(x: 40, y: 40 + CGFloat(index) * 60),
+                    withAttributes: [.font: font, .foregroundColor: UIColor.black]
+                )
+            }
+        }
+        return ReceiptPhoto(image)
     }
 
     /// A rates service that answers from a launch argument instead of the network.

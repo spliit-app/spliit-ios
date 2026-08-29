@@ -544,11 +544,25 @@ Ordered by value to a phone user, not by web-app order.
 
 **Wave 3 — media and automation**
 - Expense documents: attach photos, S3 upload, gallery viewer
-- Receipt scanning. The web version calls OpenAI server-side; on iOS 26 this can
-  run **on device** with Vision's document recognition plus Foundation Models —
-  faster, free, private, and works against self-hosted instances that have no
-  OpenAI key configured
-- Category auto-suggestion, same approach
+- ~~Receipt scanning~~ — **done**, and on device as hoped: Vision's document recognition
+  transcribes the photo and the system model reads the transcript, so it costs nothing,
+  sends nobody's receipt anywhere, works offline and works against a self-hosted instance
+  with no OpenAI key. It lives at the top of the new-expense form rather than behind a
+  button of its own, because the form is a better preview of what was found than a dialog
+  showing the same four values before handing them to that form anyway.
+
+  Two things are worth knowing. **The transcript has to be rebuilt from the geometry.**
+  `RecognizeDocumentsRequest` reads a receipt as a page, so the labels come back as one
+  block and the prices as another and "TOTAL" ends up nine lines from its own number;
+  `ReceiptText.rows(of:)` puts the rows back together from where each run of text sits, and
+  the fixture under it is recorded from real Vision output. **And the model is never the
+  only reader.** `ReceiptText` parses the transcript by the rules receipts are printed by —
+  no model, no network, covered by `make test` — and that is the whole feature on a phone
+  without Apple Intelligence, and the safety net under the model everywhere else. Nothing
+  the model answers is taken on trust either: the total goes back through the same number
+  parser, the date through the same plausibility window, and the category has to be one the
+  server actually offers. A receipt is untrusted text; it can have anything printed on it
+- Category auto-suggestion — **done** with the above, from the same two passes
 - Recurring expenses (`NONE` / `DAILY` / `WEEKLY` / `MONTHLY`)
 
 **Wave 4 — localization**
@@ -600,7 +614,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Activity log | ➖ | ✅ | ✅ M3.2 |
 | Export CSV / JSON | ➖ | ✅ | M3.2 |
 | Expense documents | ➖ | ✅ | M3.3 |
-| Receipt scanning | ➖ | ✅ | M3.3 |
+| Receipt scanning | ➖ | ✅ | ✅ M3.3 (on device) |
 | Recurring expenses | ➖ | ✅ | M3.3 |
 | French | ➖ | ✅ | ✅ |
 | The other 34 locales | ➖ | ✅ | M3.4 |

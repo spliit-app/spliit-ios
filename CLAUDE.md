@@ -234,8 +234,16 @@ accepts them.
 `SpliitAPI.Group` needs spelling out in files that also use SwiftUI's `Group`.
 
 **Version numbers come from App Store Connect, not from `../spliit-mobile`.** That checkout
-says 1.1.0; the App Store has 1.2.0 (build 20). `CURRENT_PROJECT_VERSION` must exceed the
-shipped build.
+says 1.1.0 and is years behind; 2.0.0 is approved on the App Store. `CURRENT_PROJECT_VERSION`
+must exceed the shipped build.
+
+**And a bumped build number is only enough while the train is open.** Once a
+`MARKETING_VERSION` is *approved*, App Store Connect closes it: every further build for it is
+refused with 90186, "the train version is closed for new build submissions", alongside 90062
+saying `CFBundleShortVersionString` must exceed the approved version. So the first upload after
+a release bumps both numbers — and, like a duplicate build number, it is rejected only after
+the whole `.ipa` has finished uploading. `make ipa` then `xcrun altool --upload-app` retries the
+upload alone; `make testflight` re-archives from scratch.
 
 **The migration from the React Native app must never throw.** It runs once, unattended, and a
 group is only reachable by its ID — a user who loses their list cannot get it back. It also

@@ -48,13 +48,13 @@ targets:
         # and strand every existing user's local data.
         PRODUCT_BUNDLE_IDENTIFIER: app.spliit.spliitmobile
         PRODUCT_NAME: Spliit
-        MARKETING_VERSION: 2.0.0
+        MARKETING_VERSION: 2.1.0
         # Must exceed every build App Store Connect has already seen, which is not the same
         # as exceeding what shipped: 21 was uploaded once and refused for declaring no
         # orientations, so it is spent whether or not it ever appeared. The store shows
         # 1.2.0 (20) — and note that the ../spliit-mobile checkout says 1.1.0, so the source
         # of truth is App Store Connect, not that repo.
-        CURRENT_PROJECT_VERSION: 22
+        CURRENT_PROJECT_VERSION: 23
         # Orientations are declared under `info:` below, not here. INFOPLIST_KEY_* settings are
         # only merged when Xcode generates the Info.plist itself; this project writes its own,
         # so anything set that way is silently dropped — which is how the app reached App Store

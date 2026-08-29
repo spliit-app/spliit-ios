@@ -867,6 +867,16 @@
         }
       }
     },
+    "Everything that has happened in this group, and who did it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout ce qui s’est passé dans ce groupe, et qui l’a fait."
+          }
+        }
+      }
+    },
     "Exchange rate": {
       "localizations": {
         "fr": {

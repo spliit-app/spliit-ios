@@ -498,13 +498,15 @@ Ordered by value to a phone user, not by web-app order.
   answerable — and it is the only endpoint that knows what anybody actually paid. Note that
   `totalParticipantShare` is not an integer: an evenly split expense divides in the server's
   own floating-point arithmetic, so the DTO cannot be `Int` the way every other amount is
-- ~~Activity log tab~~ — **done**. `groups.activities.list` pages on an offset cursor the way the
+- ~~Activity log~~ — **done**, though not as a tab: it is pushed from the information tab, which
+  is where the things you consult rather than work in already live, and four tabs plus the search
+  capsule already fill the bar. `groups.activities.list` pages on an offset cursor the way the
   expense list does, and its entries are bucketed more finely than expenses are: an expense is
   dated by the day it happened, an activity is stamped to the second, and most of a log is from
-  the last day or two — where "This week" would be the whole screen. The tab is also what made
-  the app start sending `participantId`, which all four mutating procedures accept and none
-  requires. Without it every line of every log reads "Someone", including lines about expenses
-  this app wrote itself
+  the last day or two — where "This week" would be the whole screen. It is also what made the app
+  start sending `participantId`, which all four mutating procedures accept and none requires.
+  Without it every line of every log reads "Someone", including lines about expenses this app
+  wrote itself
 - Export to CSV / JSON via the share sheet
 
 **Wave 3 — media and automation**

@@ -84,6 +84,8 @@ enum AccessibilityID {
         static let editButton = "information.edit"
         static let retryButton = "information.retry"
         static let currency = "information.currency"
+        /// The way to the activity log, which is pushed from this tab rather than being one.
+        static let activityButton = "information.activity"
 
         static func participant(_ id: String) -> String { "information.participant.\(id)" }
     }

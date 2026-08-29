@@ -1,6 +1,9 @@
 import XCTest
 
-/// The activity tab: what happened to a group, who did it, and which lines lead anywhere.
+/// The activity log: what happened to a group, who did it, and which lines lead anywhere.
+///
+/// Reached from the information tab rather than from a tab of its own, so every test here goes
+/// through it — which also keeps the route itself covered.
 final class ActivityLogTests: SpliitUITestCase {
 
     @MainActor
@@ -125,8 +128,8 @@ final class ActivityLogTests: SpliitUITestCase {
         )
     }
 
-    /// Opens the group and then its activity tab. The group is optional because half of these
-    /// are already inside it by the time they want the log.
+    /// Opens the group, its information tab, and then the log. The group is optional because
+    /// half of these are already inside it by the time they want the log.
     @MainActor
     private func openActivity(
         _ app: XCUIApplication,
@@ -135,8 +138,12 @@ final class ActivityLogTests: SpliitUITestCase {
         if let group {
             app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
         }
-        let tab = app.buttons["Activity"]
-        assertExists(tab, "The group should have an activity tab.")
+        let tab = app.buttons["Information"]
+        assertExists(tab, "The group should have an information tab.")
         tab.tap()
+
+        let link = app.buttons[AccessibilityID.GroupInformation.activityButton]
+        assertExists(link, "The information tab should lead to the activity log.")
+        link.tap()
     }
 }

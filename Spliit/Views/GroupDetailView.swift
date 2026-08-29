@@ -20,7 +20,7 @@ struct GroupDetailView: View {
 
     /// Named to stay clear of SwiftUI's own `Tab`, which `TabView` needs below.
     private enum GroupTab: Hashable {
-        case expenses, balances, information, activity, search
+        case expenses, balances, information, search
     }
 
     private enum Sheet: Identifiable {
@@ -68,14 +68,6 @@ struct GroupDetailView: View {
                     onIdentify: { sheet = .identity }
                 )
                 .trackScreen(.groupInformation)
-            }
-
-            Tab("Activity", systemImage: "clock.arrow.circlepath", value: GroupTab.activity) {
-                ActivityLogView(
-                    model: model,
-                    onEdit: { sheet = .editExpense($0) }
-                )
-                .trackScreen(.groupActivity)
             }
 
             // The search role is what puts the magnifying glass in its own capsule beside the

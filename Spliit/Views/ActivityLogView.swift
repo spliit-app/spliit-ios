@@ -5,9 +5,14 @@ import SwiftUI
 /// What has happened to a group and when: expenses created, edited and deleted, and the times
 /// the group's own settings changed.
 ///
-/// The only tab that reads history rather than state, and so the only one that shows lines about
-/// things which no longer exist. A deleted expense keeps its row, under the title it had at the
-/// time, and simply has nowhere to lead — which is the whole reason to keep a log.
+/// The only screen that reads history rather than state, and so the only one that shows lines
+/// about things which no longer exist. A deleted expense keeps its row, under the title it had
+/// at the time, and simply has nowhere to lead — which is the whole reason to keep a log.
+///
+/// Pushed from the information tab rather than being a tab of its own. Four tabs and a search
+/// capsule already fill the bar, and of the group's screens this is the one you consult rather
+/// than work in — the information tab is where the other things you look up but do not edit
+/// already live.
 ///
 /// Who did what is the server's to know and it only knows what a client told it. Every mutating
 /// procedure takes an optional `participantId` and nothing requires one, so a group edited from
@@ -16,15 +21,37 @@ struct ActivityLogView: View {
 
     @Environment(AppModel.self) private var app
     let model: GroupDetailModel
-    /// Opens the expense a row refers to, for the rows whose expense is still there.
-    let onEdit: (String) -> Void
+
+    /// The expense a row opened, if any. Held here rather than handed up to `GroupDetailView`:
+    /// this screen is pushed over that one, and a sheet presented from a view that is no longer
+    /// the visible one is a sheet that may never appear.
+    @State private var editingExpense: EditedExpense?
+
+    /// `sheet(item:)` needs something `Identifiable`, and an expense ID is a bare `String`.
+    private struct EditedExpense: Identifiable {
+        let id: String
+    }
 
     var body: some View {
         content
+            .navigationTitle("Activity")
+            .navigationBarTitleDisplayMode(.inline)
             // The log is fetched here rather than with the rest of the group: it is the one
-            // thing on this screen no other tab needs. `.task` runs when the tab is first
-            // built, and the model ignores every call after the first that succeeded.
+            // thing no other screen needs. `.task` runs when this is first built, and the model
+            // ignores every call after the first that succeeded.
             .task { await model.loadActivitiesIfNeeded(using: app.client) }
+            .sheet(item: $editingExpense) { edited in
+                if let group = model.group {
+                    ExpenseFormView(
+                        mode: .edit(edited.id),
+                        group: group,
+                        categories: model.categories,
+                        draft: nil,
+                        onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                    )
+                }
+            }
+            .trackScreen(.groupActivity)
     }
 
     @ViewBuilder
@@ -102,7 +129,7 @@ struct ActivityLogView: View {
         )
 
         if opensExpense, let expenseID = activity.expenseId {
-            Button { onEdit(expenseID) } label: { content }
+            Button { editingExpense = EditedExpense(id: expenseID) } label: { content }
                 .buttonStyle(.plain)
         } else {
             content

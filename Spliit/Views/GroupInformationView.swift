@@ -14,6 +14,10 @@ import SwiftUI
 ///
 /// The note has no editor of its own and should not grow one: it is a field on the group, and the
 /// group form is where the group's fields are edited.
+///
+/// It is also the way to the activity log, which is pushed from here rather than being a tab.
+/// This tab is where the things you look up rather than work in already live, and the tab bar
+/// has no room for a fifth.
 struct GroupInformationView: View {
 
     @Environment(AppModel.self) private var app
@@ -52,6 +56,7 @@ struct GroupInformationView: View {
                 noteSection(for: group)
                 participantsSection(for: group)
                 detailsSection(for: group)
+                activitySection
                 youSection(for: group)
             }
             // `reload` rather than the other tabs' `reloadAfterExpenseChange`: the group itself
@@ -108,6 +113,29 @@ struct GroupInformationView: View {
             Text("Participants")
         } footer: {
             Text("Add or remove participants in the group settings.")
+        }
+    }
+
+    /// The way to the activity log, which is a screen rather than a tab.
+    ///
+    /// It belongs here for the same reason the rest of this tab does: it is something you look
+    /// up rather than work in. And it is pushed rather than given a tab of its own because four
+    /// tabs and the search capsule already fill the bar — a fifth would squeeze every label,
+    /// for the screen people open least.
+    ///
+    /// A plain `NavigationLink` with no stack of its own, deliberately: this tab's content sits
+    /// inside the `TabView` of a screen that was itself pushed, and a `NavigationStack` here
+    /// would swallow the push rather than perform it. See CLAUDE.md.
+    private var activitySection: some View {
+        Section {
+            NavigationLink {
+                ActivityLogView(model: model)
+            } label: {
+                Label("Activity", systemImage: "clock.arrow.circlepath")
+            }
+            .accessibilityIdentifier(AccessibilityID.GroupInformation.activityButton)
+        } footer: {
+            Text("Everything that has happened in this group, and who did it.")
         }
     }
 

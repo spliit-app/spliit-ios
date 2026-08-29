@@ -181,6 +181,15 @@ public final class RecentGroupsStore {
         groups.first { $0.groupId == groupId }?.activeParticipant
     }
 
+    /// Who to credit for a change made from this phone, as the server's activity log wants it.
+    ///
+    /// Nil is the honest answer twice over: for a phone that has never been asked, and for one
+    /// that answered "nobody". The log then says "Someone", which is exactly what is known.
+    public func actorID(inGroup groupId: String, participants: [Participant]) -> String? {
+        ActiveParticipant.resolve(activeParticipant(inGroup: groupId), in: participants)?
+            .participantID
+    }
+
     /// Records the answer. A group the list has never heard of is not one anybody can be
     /// standing in — every way into a group screen remembers it first — so this is a no-op
     /// rather than a reason to invent a row with no name.

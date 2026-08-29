@@ -67,13 +67,21 @@ public enum Spliit {
     public struct UpdateGroupInput: Encodable, Sendable {
         public let groupId: String
         public let groupFormValues: GroupFormValues
+        /// Who to credit in the activity log. See `Spliit.createExpense(groupId:_:by:)`.
+        public let participantId: String?
     }
 
     public static func updateGroup(
         id: String,
-        values: GroupFormValues
+        values: GroupFormValues,
+        by participantId: String? = nil
     ) -> TRPCProcedure<UpdateGroupInput, TRPCVoid> {
-        .mutation("groups.update", UpdateGroupInput(groupId: id, groupFormValues: values))
+        .mutation(
+            "groups.update",
+            UpdateGroupInput(
+                groupId: id, groupFormValues: values, participantId: participantId
+            )
+        )
     }
 
     // MARK: - Expenses
@@ -123,19 +131,26 @@ public enum Spliit {
     public struct CreateExpenseInput: Encodable, Sendable {
         public let groupId: String
         public let expenseFormValues: ExpenseFormValues
+        public let participantId: String?
     }
 
     public struct ExpenseIDResponse: Decodable, Sendable {
         public let expenseId: String
     }
 
+    /// - Parameter participantId: who the activity log should say did this. Optional on the
+    ///   server and nil by default here, which records the change as having been made by
+    ///   "someone" — an honest answer for a phone whose owner has not said who they are.
     public static func createExpense(
         groupId: String,
-        _ values: ExpenseFormValues
+        _ values: ExpenseFormValues,
+        by participantId: String? = nil
     ) -> TRPCProcedure<CreateExpenseInput, ExpenseIDResponse> {
         .mutation(
             "groups.expenses.create",
-            CreateExpenseInput(groupId: groupId, expenseFormValues: values)
+            CreateExpenseInput(
+                groupId: groupId, expenseFormValues: values, participantId: participantId
+            )
         )
     }
 
@@ -143,28 +158,45 @@ public enum Spliit {
         public let groupId: String
         public let expenseId: String
         public let expenseFormValues: ExpenseFormValues
+        public let participantId: String?
     }
 
     public static func updateExpense(
         groupId: String,
         expenseId: String,
-        _ values: ExpenseFormValues
+        _ values: ExpenseFormValues,
+        by participantId: String? = nil
     ) -> TRPCProcedure<UpdateExpenseInput, ExpenseIDResponse> {
         .mutation(
             "groups.expenses.update",
             UpdateExpenseInput(
-                groupId: groupId, expenseId: expenseId, expenseFormValues: values
+                groupId: groupId,
+                expenseId: expenseId,
+                expenseFormValues: values,
+                participantId: participantId
             )
         )
     }
 
+    /// Deliberately not `ExpenseIDInput`: `groups.expenses.get` is a query and has no
+    /// `participantId` to give, and one input shared by a read and a write would carry a field
+    /// that means nothing on half its call sites.
+    public struct DeleteExpenseInput: Encodable, Sendable {
+        public let groupId: String
+        public let expenseId: String
+        public let participantId: String?
+    }
+
     public static func deleteExpense(
         groupId: String,
-        expenseId: String
-    ) -> TRPCProcedure<ExpenseIDInput, TRPCVoid> {
+        expenseId: String,
+        by participantId: String? = nil
+    ) -> TRPCProcedure<DeleteExpenseInput, TRPCVoid> {
         .mutation(
             "groups.expenses.delete",
-            ExpenseIDInput(groupId: groupId, expenseId: expenseId)
+            DeleteExpenseInput(
+                groupId: groupId, expenseId: expenseId, participantId: participantId
+            )
         )
     }
 
@@ -180,6 +212,33 @@ public enum Spliit {
         groupId: String
     ) -> TRPCProcedure<GroupIDInput, BalancesResponse> {
         .query("groups.balances.list", GroupIDInput(groupId: groupId))
+    }
+
+    // MARK: - Activity
+
+    public struct ActivitiesListInput: Encodable, Sendable {
+        public let groupId: String
+        public let cursor: Int?
+        public let limit: Int?
+    }
+
+    public struct ActivitiesListResponse: Decodable, Sendable {
+        public let activities: [Activity]
+        public let hasMore: Bool
+        public let nextCursor: Int
+    }
+
+    /// The group's activity log, newest first. Paged the same way the expense list is — an
+    /// offset cursor rather than a key, which is what the server offers.
+    public static func activities(
+        groupId: String,
+        cursor: Int = 0,
+        limit: Int = 20
+    ) -> TRPCProcedure<ActivitiesListInput, ActivitiesListResponse> {
+        .query(
+            "groups.activities.list",
+            ActivitiesListInput(groupId: groupId, cursor: cursor, limit: limit)
+        )
     }
 
     // MARK: - Categories

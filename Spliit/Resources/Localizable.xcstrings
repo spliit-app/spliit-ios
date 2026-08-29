@@ -19,12 +19,42 @@
         }
       }
     },
+    "%@ added “%@”.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ a ajouté « %2$@ »."
+          }
+        }
+      }
+    },
     "%@ appears on at least one expense, so they can’t be removed. Delete or reassign those expenses first.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ figure sur au moins une dépense et ne peut donc pas être retiré. Supprimez ou réattribuez ces dépenses d’abord."
+          }
+        }
+      }
+    },
+    "%@ changed the group settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ a modifié les paramètres du groupe."
+          }
+        }
+      }
+    },
+    "%@ deleted “%@”.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ a supprimé « %2$@ »."
           }
         }
       }
@@ -61,6 +91,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ encore à répartir."
+          }
+        }
+      }
+    },
+    "%@ updated “%@”.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ a mis à jour « %2$@ »."
           }
         }
       }
@@ -177,6 +217,16 @@
         }
       }
     },
+    "Activity": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activité"
+          }
+        }
+      }
+    },
     "Add": {
       "localizations": {
         "fr": {
@@ -273,6 +323,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajoutez une première dépense et Spliit calculera qui doit quoi."
+          }
+        }
+      }
+    },
+    "Adding, editing or deleting an expense is recorded here, and so is a change to the group itself.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’ajout, la modification et la suppression d’une dépense sont consignés ici, tout comme les changements apportés au groupe lui-même."
           }
         }
       }
@@ -443,6 +503,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossible de créer le groupe"
+          }
+        }
+      }
+    },
+    "Couldn’t load the activity": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger l’activité"
           }
         }
       }
@@ -717,6 +787,16 @@
         }
       }
     },
+    "Earlier this week": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tôt cette semaine"
+          }
+        }
+      }
+    },
     "Earlier this year": {
       "localizations": {
         "fr": {
@@ -783,6 +863,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chaque personne sélectionnée paie une part égale."
+          }
+        }
+      }
+    },
+    "Everything that has happened in this group, and who did it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout ce qui s’est passé dans ce groupe, et qui l’a fait."
           }
         }
       }
@@ -927,12 +1017,32 @@
         }
       }
     },
+    "Last week": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La semaine dernière"
+          }
+        }
+      }
+    },
     "Last year": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "L’an dernier"
+          }
+        }
+      }
+    },
+    "Loading more activity": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement de la suite de l’activité"
           }
         }
       }
@@ -1003,6 +1113,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nouvelle dépense"
+          }
+        }
+      }
+    },
+    "No activity yet": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune activité pour le moment"
           }
         }
       }
@@ -1437,6 +1557,16 @@
         }
       }
     },
+    "Someone": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelqu’un"
+          }
+        }
+      }
+    },
     "Spliit is an open source project by Sebastien Castiel, with help from many contributors.": {
       "localizations": {
         "fr": {
@@ -1633,6 +1763,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cette semaine"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aujourd’hui"
           }
         }
       }
@@ -1843,6 +1983,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Qui est en positif et qui est en négatif, une fois toutes les dépenses comptées."
+          }
+        }
+      }
+    },
+    "Yesterday": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier"
           }
         }
       }

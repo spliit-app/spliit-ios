@@ -27,6 +27,7 @@ public struct AnalyticsEvent: Equatable, Sendable {
         // can be read side by side even though they are separate Plausible sites.
         case groupSearch = "group-search"
         case groupInformation = "group-information"
+        case groupActivity = "group-activity"
         case groupSettings = "group-settings"
         case groupCreateExpense = "group-create-expense"
         case groupEditExpense = "group-edit-expense"

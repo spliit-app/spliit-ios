@@ -80,7 +80,11 @@ struct SpliitTestAPI {
         /// mode's: a raw minor-unit amount for `BY_AMOUNT`, the share value ×100 for the rest.
         /// Whoever appears here is who the expense was paid for, so `paidFor` is not needed too.
         shares: [String: Int]? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        /// Who the activity log should say added this, by participant ID. Left out, the write
+        /// still succeeds and the log reads "Someone" for good — nothing backfills it. Most
+        /// suites are happy with that; the ones photographing the log are not.
+        by participantId: String? = nil
     ) async throws {
         let payer = try require(group.participants[paidBy], "unknown participant \(paidBy)")
         let date = Calendar(identifier: .gregorian).date(
@@ -114,10 +118,9 @@ struct SpliitTestAPI {
         ]
         if let notes { values["notes"] = notes }
 
-        _ = try await mutate(
-            "groups.expenses.create",
-            ["groupId": group.id, "expenseFormValues": values]
-        )
+        var input: [String: Any] = ["groupId": group.id, "expenseFormValues": values]
+        if let participantId { input["participantId"] = participantId }
+        _ = try await mutate("groups.expenses.create", input)
     }
 
     /// An expense the app wrote, read back from the server.

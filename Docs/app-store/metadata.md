@@ -293,6 +293,10 @@ By default the app talks to the public instance at https://spliit.app. Settings 
 
 A group is addressed by an unguessable ID and shared as a link. There are no user accounts, no public feed, and no way to browse anyone else's group.
 
+Receipt scanning, new in this version: open a group, add an expense, and choose "Scan receipt". The camera permission is requested there and nowhere else, and a photo already in the library works just as well as a new one — any till receipt will do. The picture is read entirely on the device: Vision recognises the text, and Apple's on-device model reads the layout where the hardware supports it. Nothing about the image is sent anywhere to be recognised. On a device without Apple Intelligence the same screen works from the text recognition alone, so the feature can be exercised on any supported device. Whatever it finds is filled into the form for the tester to correct before anything is saved.
+
+Attaching the receipt to the expense is a separate and optional step. That step, and only that step, uploads the image — to the same instance the group is on.
+
 Source: https://github.com/spliit-app
 ```
 
@@ -305,7 +309,7 @@ over it; the link simply opens the website instead of the app until that file is
 
 ## 6. App Privacy
 
-Three answers. File exactly these, because they are what
+Four answers. File exactly these, because they are what
 [`Spliit/PrivacyInfo.xcprivacy`](../../Spliit/PrivacyInfo.xcprivacy) now declares, and the
 questionnaire and the manifest are supposed to be two statements of the same fact.
 
@@ -313,6 +317,7 @@ questionnaire and the manifest are supposed to be two statements of the same fac
 |---|---|---|---|---|
 | Contact Info | Name | App Functionality | No | No |
 | User Content | Other User Content | App Functionality | No | No |
+| User Content | Photos or Videos | App Functionality | No | No |
 | Usage Data | Product Interaction | Analytics | No | No |
 
 **Why group data is "collected" at all.** Apple counts data as collected once it leaves the
@@ -330,7 +335,16 @@ amount of every expense. Deliberately *not* filed as financial information: Appl
 assets and debts by that, and putting "Financial Info" on the privacy label for what a dinner
 cost would say something untrue about the app.
 
-**Nothing is linked to identity**, in all three cases, because there is nothing to link it to.
+**Photos or Videos** is receipts, and any other document attached to an expense. The picture is
+uploaded to the instance's object storage and the expense keeps only the address it landed at,
+so it leaves the device and is kept — which is what makes it collected, on the same reasoning as
+the group itself.
+
+*Reading* a receipt is not what puts it on this list. Vision and the on-device model both run on
+the phone, and a scan the user abandons rather than attaches uploads nothing at all. Attaching is
+what transmits, and the two are separate actions in the app.
+
+**Nothing is linked to identity**, in all four cases, because there is nothing to link it to.
 Spliit has no accounts, no user identifier, and no way to list the groups a person belongs to —
 a group is reachable by its link and by nothing else.
 
@@ -347,8 +361,16 @@ because a request leaving the device is worth saying out loud, not because it co
 
 Everything else is a clean no: no tracking, no advertising identifier, no data brokers, no data
 shared with third parties, no email address or phone number, no location, no identifiers, no
-health, financial-account or purchase data. The app asks for no system permissions at all — it
-shows no permission prompt of any kind.
+health, financial-account or purchase data.
+
+**One system permission, as of 2.1.0.** The camera, asked for the first time a receipt is
+photographed, with `NSCameraUsageDescription` — "Spliit reads receipts you photograph, on your
+iPhone" — declared in `project.yml` and translated in `Spliit/Resources/InfoPlist.xcstrings`.
+That string is one of the few `make strings` cannot check, because the compiler never extracts
+it, so its French goes in by hand and stays that way. There is deliberately no photo-library
+counterpart: `PhotosPicker` runs out of process and hands back only what was chosen, and nothing
+in the app writes to the library, so neither `NSPhotoLibraryUsageDescription` nor
+`NSPhotoLibraryAddUsageDescription` applies.
 
 **Required-reason APIs.** One: `UserDefaults`, under `CA92.1` — read and write only this app's
 own data, never another app's. That is `SettingsStore` keeping the instance address. The app
@@ -379,6 +401,15 @@ expenses in them — are stored on the Spliit server the app is pointed at. By d
 spliit.app. A group is reachable by its link and by nothing else: there is no directory, no
 search across groups, and no way to list them.
 
+Receipts and documents. If you attach a receipt or another document to an expense, the file is
+uploaded to the storage belonging to the server you are using, and the expense records where it
+was put. Anyone with the group's link can open it, as they can the rest of the group.
+
+Reading a receipt is not the same as attaching one. When you scan a receipt, the picture is read
+on your device — the text recognition and the model that interprets it both run on your iPhone,
+and the image is not sent anywhere to be read. If you do not attach it, it is never uploaded at
+all.
+
 What stays on your device. The list of groups you have opened, and the address of the server
 you use. Neither leaves the device.
 
@@ -398,6 +429,11 @@ groups are stored on your server and nothing about them reaches spliit.app.
 Deleting your data. A group can be removed from the list on your device at any time. To have a
 group deleted from the spliit.app server, write to <contact address>.
 
+Removing a document from an expense removes the link to it, but does not delete the stored file:
+the app has no permission to delete from the server's storage, and neither has the website. A
+file you have uploaded can only be removed by whoever runs the server, so write to the address
+below if you need one taken down.
+
 Contact. <contact address>
 ```
 
@@ -412,8 +448,14 @@ follows the decision about where the page lives, so it is not drafted here.
 ## 8. Before you submit
 
 - [ ] Publish a privacy policy and put its URL in App Store Connect (§7)
-- [ ] File the three App Privacy answers in §6. The manifest declares them and build 23 carries
-      it, so this is filling in the questionnaire to match — not a decision
+- [ ] File the four App Privacy answers in §6 — **Photos or Videos is new in 2.1.0**, and the
+      questionnaire is filed per version. The manifest declares all four and build 23 carries it,
+      so this is filling in the questionnaire to match, not a decision
+- [ ] Answer the age-rating questionnaire's AI questions honestly rather than by reflex. Spliit's
+      only model use is reading a receipt you photographed, on the device, into four fields you
+      then correct — it generates nothing, shows the user no free-form text, and is not a
+      chatbot. Apple has been revising these questions, so read what is actually asked at the
+      time rather than trusting this line
 - [ ] Look at the iPad screenshots. SwiftUI does adapt: the tabs become a pill in the navigation
       bar and the rows go full width, so it is a real iPad layout rather than a blown-up phone.
       But nothing has been *designed* for the size — the roadmap defers that to M4 — and it

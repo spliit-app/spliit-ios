@@ -54,6 +54,28 @@
 			</array>
 		</dict>
 
+		<!-- Receipts and other documents attached to an expense. The picture is uploaded to
+		     the instance's object storage and the expense keeps the address it landed at, so
+		     it leaves the device and stays gone — declared for the same reason the group is.
+
+		     Reading a receipt is not what puts it here: Vision and the on-device model both
+		     run on the phone, and a scan that is never attached uploads nothing. Attaching is
+		     what transmits. Note also that removing a document from an expense only forgets
+		     its URL — neither this app nor the web app holds credentials to delete from the
+		     bucket — which is why the privacy policy has to say so. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhotosorVideos</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
 		<!-- Plausible screen views and two events (a group created, an expense created).
 		     Plausible is cookieless and stores no per-person identifier, so this is not
 		     linked to identity and is not used for tracking. The screen name is the whole

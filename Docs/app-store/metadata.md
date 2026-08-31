@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.0.0
+# App Store Connect — Spliit 2.1.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,7 +9,9 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.0.0, build 21 (the store has 1.2.0 (20); the build number must exceed it)
+- **Version**: 2.1.0, build 23. 2.0.0 is approved, which *closes* that train — a further build
+  for it is refused with 90186, and 90062 beside it asking for a higher marketing version. So
+  the first upload after a release moves both numbers, not just the build
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
 - **Minimum iOS**: 26.0. Everyone below it keeps 1.2.0 through the App Store's
@@ -55,21 +57,24 @@ descriptive half belongs in the subtitle, which is what the subtitle is for.
 Split expenses with friends
 ```
 
-### Promotional text — 161 / 170
+### Promotional text — 166 / 170
 
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-Rewritten from the ground up for iOS 26: native navigation, dark mode, search, Siri, and every currency counted properly. Now in French. Still no account needed.
+Scan a receipt and the expense fills itself in — total, date and category, read on your phone. Keep the photo with it. See what the group has spent, and who did what.
 ```
 
-### Keywords — 91 / 100
+### Keywords — 93 / 100
 
 Commas, no spaces — a space costs a character and buys nothing. The app name is indexed already,
 so "Spliit" is not repeated here, and neither is anything already in the subtitle.
 
+"receipt" and "scan" cost "ledger" and "iou" their places: the two of them together do not fit
+under 100 otherwise, and what people type when they want this feature is the noun on the paper.
+
 ```
-bill,split,shared,cost,expense,group,trip,roommate,travel,settle,debt,budget,ledger,tab,iou
+bill,split,shared,cost,expense,group,trip,roommate,travel,settle,debt,budget,receipt,scan,tab
 ```
 
 ### Description
@@ -83,16 +88,20 @@ WHAT IT DOES
 
 • Groups for anything shared — a weekend away, a flatshare, a running tab at the office
 • Expenses with a payer, a date, a category and a note
+• Point your phone at a receipt and the expense fills itself in — the total, the date and the category are read on the device, and yours to correct before anything is saved
+• Keep receipts and other documents with the expense they belong to
 • Four ways to split: evenly, by shares, by percentage, or by exact amounts
 • Balances showing who is up and who is down, and the fewest payments that settle the group
+• Totals for the group and for you, and where the money actually went, by category
 • Mark a suggested payment as paid and it becomes a reimbursement, in one tap
+• An activity log for every group: what has happened to it, and who did it
 • Search a group's expenses by title instead of scrolling for them
 • Star the groups you are in the middle of; archive the ones that are over
 • Every currency the system knows, each counted the way it is actually counted — yen has no decimals, dinars have three
 
 BUILT FOR iOS
 
-This version is a complete rewrite in SwiftUI. It uses the system's own navigation, materials and typography, and it supports Dark Mode, Dynamic Type at every size, and VoiceOver. Ask Siri to open a group or start an expense in one, and find your groups from Spotlight. A shared spliit.app link opens the app and joins the group.
+Spliit for iOS is a complete rewrite in SwiftUI. It uses the system's own navigation, materials and typography, and it supports Dark Mode, Dynamic Type at every size, and VoiceOver. Receipts are read on the device itself. Ask Siri to open a group or start an expense in one, and find your groups from Spotlight. A shared spliit.app link opens the app and joins the group.
 
 YOUR OWN SERVER, IF YOU WANT ONE
 
@@ -108,19 +117,16 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-Spliit for iOS has been rewritten from scratch in SwiftUI.
+Point your phone at a receipt and let it fill the expense in for you.
 
-• Native navigation, Dark Mode and Dynamic Type at every size
-• Balances redrawn as bars, with the fewest payments that settle the group
-• Search a group's expenses instead of scrolling for them
-• Star the groups you're in the middle of, archive the ones that are over
-• Swipe to delete an expense, with five seconds to change your mind
-• Siri and Spotlight: open a group, or start an expense in one
-• Shared spliit.app links now open the app and join the group
-• Every currency counted properly. Groups kept in yen were previously shown at a hundredth of their value, and are now right
-• The app is now available in French
+• Scan a receipt: the total, the date and the category are read on the device and filled in, ready for you to correct before anything is saved
+• Keep the receipt — and any other document — with the expense it belongs to. Expenses carrying one show a paperclip in the list
+• Totals: what the group has spent, how much of it is yours, and where the money actually went, by category
+• An activity log for every group — what has happened to it, and who did it
+• Record an expense paid in another currency and let the rate do the conversion
+• Select everyone, or nobody, when choosing who an expense was split between
 
-Your groups carry over. Still nothing to sign in to.
+Your groups stay where they are. Still nothing to sign in to.
 ```
 
 ---
@@ -133,16 +139,18 @@ Your groups carry over. Still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 168 / 170
+### Texte promotionnel — 167 / 170
 
 ```
-Entièrement réécrite pour iOS 26 : navigation native, mode sombre, recherche, Siri, et chaque devise comptée comme il faut. Désormais en français. Toujours sans compte.
+Photographiez un reçu et la dépense se remplit d'elle-même : montant, date, catégorie. Gardez la photo avec elle. Voyez ce que le groupe a dépensé, et qui a fait quoi.
 ```
 
-### Mots-clés — 91 / 100
+### Mots-clés — 93 / 100
+
+Comme en anglais, "reçu" et "scanner" prennent la place de deux autres — ici "ami" et "compte".
 
 ```
-addition,partager,dépense,frais,groupe,voyage,coloc,rembourser,dette,budget,ami,note,compte
+addition,partager,dépense,frais,groupe,voyage,coloc,rembourser,dette,budget,reçu,scanner,note
 ```
 
 ### Description
@@ -156,16 +164,20 @@ CE QU'ELLE FAIT
 
 • Un groupe pour tout ce qui se partage : un week-end, une colocation, les déjeuners du bureau
 • Des dépenses avec un payeur, une date, une catégorie et une note
+• Photographiez un reçu et la dépense se remplit d'elle-même : le montant, la date et la catégorie sont lus sur l'appareil, et vous les corrigez avant d'enregistrer quoi que ce soit
+• Gardez les reçus et les autres documents avec la dépense à laquelle ils appartiennent
 • Quatre façons de partager : équitablement, en parts, en pourcentage ou en montants exacts
 • Des soldes qui montrent qui est à découvert et qui est en avance, et le plus petit nombre de paiements pour solder le groupe
+• Des totaux pour le groupe et pour vous, et où l'argent est vraiment passé, par catégorie
 • Un paiement suggéré devient un remboursement d'un seul geste
+• Un journal d'activité pour chaque groupe : ce qui lui est arrivé, et qui l'a fait
 • Une recherche dans les dépenses du groupe, au lieu de les faire défiler
 • Épinglez les groupes en cours, archivez ceux qui sont terminés
 • Toutes les devises que le système connaît, chacune comptée comme elle se compte vraiment : le yen n'a pas de décimales, le dinar en a trois
 
 PENSÉE POUR iOS
 
-Cette version est une réécriture complète en SwiftUI. Elle utilise la navigation, les matières et la typographie du système, et prend en charge le mode sombre, le texte dynamique à toutes les tailles et VoiceOver. Demandez à Siri d'ouvrir un groupe ou d'y commencer une dépense, et retrouvez vos groupes depuis Spotlight. Un lien spliit.app partagé ouvre l'app et rejoint le groupe.
+Spliit pour iOS est une réécriture complète en SwiftUI. Elle utilise la navigation, les matières et la typographie du système, et prend en charge le mode sombre, le texte dynamique à toutes les tailles et VoiceOver. Les reçus sont lus sur l'appareil lui-même. Demandez à Siri d'ouvrir un groupe ou d'y commencer une dépense, et retrouvez vos groupes depuis Spotlight. Un lien spliit.app partagé ouvre l'app et rejoint le groupe.
 
 VOTRE PROPRE SERVEUR, SI VOUS EN VOULEZ UN
 
@@ -181,26 +193,23 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Spliit pour iOS a été entièrement réécrite en SwiftUI.
+Photographiez un reçu et laissez-le remplir la dépense pour vous.
 
-• Navigation native, mode sombre et texte dynamique à toutes les tailles
-• Des soldes redessinés en barres, avec le plus petit nombre de paiements pour solder le groupe
-• Une recherche dans les dépenses du groupe, au lieu de les faire défiler
-• Épinglez les groupes en cours, archivez ceux qui sont terminés
-• Balayez pour supprimer une dépense, avec cinq secondes pour changer d'avis
-• Siri et Spotlight : ouvrez un groupe, ou commencez-y une dépense
-• Les liens spliit.app partagés ouvrent maintenant l'app et rejoignent le groupe
-• Chaque devise comptée correctement. Les groupes tenus en yens étaient jusqu'ici affichés au centième de leur valeur, c'est corrigé
-• L'application est maintenant disponible en français
+• Scannez un reçu : le montant, la date et la catégorie sont lus sur l'appareil et remplis pour vous — à vous de les corriger avant d'enregistrer
+• Gardez le reçu — et tout autre document — avec la dépense à laquelle il appartient. Celles qui en portent un affichent un trombone dans la liste
+• Des totaux : ce que le groupe a dépensé, votre part, et où l'argent est vraiment passé, par catégorie
+• Un journal d'activité pour chaque groupe : ce qui lui est arrivé, et qui l'a fait
+• Enregistrez une dépense payée dans une autre devise et laissez le taux faire la conversion
+• Sélectionnez tout le monde, ou personne, quand vous choisissez qui partage la dépense
 
-Vos groupes vous suivent. Toujours rien à quoi se connecter.
+Vos groupes restent où ils sont. Toujours rien à quoi se connecter.
 ```
 
 ---
 
 ## 4. Screenshots
 
-Six per language, per device size, in this order. The file names carry the order, so uploading
+Eight per language, per device size, in this order. The file names carry the order, so uploading
 them sorted is enough.
 
 | # | File | Shows |
@@ -209,8 +218,16 @@ them sorted is enough.
 | 2 | `02-expenses` | A group's expenses in date buckets, each with its category and payer |
 | 3 | `03-split` | One expense divided by exact amounts, with the four split modes above it |
 | 4 | `04-balances` | Who is up, who is down, and the fewest payments that settle it |
-| 5 | `05-information` | What the group is: its note, its participants, its currency |
-| 6 | `06-search` | Searching the group's expenses, field docked above the keyboard |
+| 5 | `05-totals` | What the group spent, how much of it is yours, and the breakdown by category |
+| 6 | `06-information` | What the group is: its note, its participants, its currency |
+| 7 | `07-activity` | What has happened to the group, and who did it |
+| 8 | `08-search` | Searching the group's expenses, field docked above the keyboard |
+
+Receipt scanning is the one headline feature with no picture, and there is no honest way to take
+one: a simulator has no camera, and the stand-in the suite uses is the OCR fixture — monospaced
+black on white, drawn to be easy to recognise rather than to be looked at. A shot of it would
+read as a bug. Photographing it properly needs receipt artwork made for the purpose, which is a
+design decision rather than a mechanical one.
 
 ```
 Docs/app-store/screenshots/
@@ -276,6 +293,10 @@ By default the app talks to the public instance at https://spliit.app. Settings 
 
 A group is addressed by an unguessable ID and shared as a link. There are no user accounts, no public feed, and no way to browse anyone else's group.
 
+Receipt scanning, new in this version: open a group, add an expense, and choose "Scan receipt". The camera permission is requested there and nowhere else, and a photo already in the library works just as well as a new one — any till receipt will do. The picture is read entirely on the device: Vision recognises the text, and Apple's on-device model reads the layout where the hardware supports it. Nothing about the image is sent anywhere to be recognised. On a device without Apple Intelligence the same screen works from the text recognition alone, so the feature can be exercised on any supported device. Whatever it finds is filled into the form for the tester to correct before anything is saved.
+
+Attaching the receipt to the expense is a separate and optional step. That step, and only that step, uploads the image — to the same instance the group is on.
+
 Source: https://github.com/spliit-app
 ```
 
@@ -288,7 +309,7 @@ over it; the link simply opens the website instead of the app until that file is
 
 ## 6. App Privacy
 
-Three answers. File exactly these, because they are what
+Four answers. File exactly these, because they are what
 [`Spliit/PrivacyInfo.xcprivacy`](../../Spliit/PrivacyInfo.xcprivacy) now declares, and the
 questionnaire and the manifest are supposed to be two statements of the same fact.
 
@@ -296,6 +317,7 @@ questionnaire and the manifest are supposed to be two statements of the same fac
 |---|---|---|---|---|
 | Contact Info | Name | App Functionality | No | No |
 | User Content | Other User Content | App Functionality | No | No |
+| User Content | Photos or Videos | App Functionality | No | No |
 | Usage Data | Product Interaction | Analytics | No | No |
 
 **Why group data is "collected" at all.** Apple counts data as collected once it leaves the
@@ -313,7 +335,16 @@ amount of every expense. Deliberately *not* filed as financial information: Appl
 assets and debts by that, and putting "Financial Info" on the privacy label for what a dinner
 cost would say something untrue about the app.
 
-**Nothing is linked to identity**, in all three cases, because there is nothing to link it to.
+**Photos or Videos** is receipts, and any other document attached to an expense. The picture is
+uploaded to the instance's object storage and the expense keeps only the address it landed at,
+so it leaves the device and is kept — which is what makes it collected, on the same reasoning as
+the group itself.
+
+*Reading* a receipt is not what puts it on this list. Vision and the on-device model both run on
+the phone, and a scan the user abandons rather than attaches uploads nothing at all. Attaching is
+what transmits, and the two are separate actions in the app.
+
+**Nothing is linked to identity**, in all four cases, because there is nothing to link it to.
 Spliit has no accounts, no user identifier, and no way to list the groups a person belongs to —
 a group is reachable by its link and by nothing else.
 
@@ -330,8 +361,16 @@ because a request leaving the device is worth saying out loud, not because it co
 
 Everything else is a clean no: no tracking, no advertising identifier, no data brokers, no data
 shared with third parties, no email address or phone number, no location, no identifiers, no
-health, financial-account or purchase data. The app asks for no system permissions at all — it
-shows no permission prompt of any kind.
+health, financial-account or purchase data.
+
+**One system permission, as of 2.1.0.** The camera, asked for the first time a receipt is
+photographed, with `NSCameraUsageDescription` — "Spliit reads receipts you photograph, on your
+iPhone" — declared in `project.yml` and translated in `Spliit/Resources/InfoPlist.xcstrings`.
+That string is one of the few `make strings` cannot check, because the compiler never extracts
+it, so its French goes in by hand and stays that way. There is deliberately no photo-library
+counterpart: `PhotosPicker` runs out of process and hands back only what was chosen, and nothing
+in the app writes to the library, so neither `NSPhotoLibraryUsageDescription` nor
+`NSPhotoLibraryAddUsageDescription` applies.
 
 **Required-reason APIs.** One: `UserDefaults`, under `CA92.1` — read and write only this app's
 own data, never another app's. That is `SettingsStore` keeping the instance address. The app
@@ -362,6 +401,15 @@ expenses in them — are stored on the Spliit server the app is pointed at. By d
 spliit.app. A group is reachable by its link and by nothing else: there is no directory, no
 search across groups, and no way to list them.
 
+Receipts and documents. If you attach a receipt or another document to an expense, the file is
+uploaded to the storage belonging to the server you are using, and the expense records where it
+was put. Anyone with the group's link can open it, as they can the rest of the group.
+
+Reading a receipt is not the same as attaching one. When you scan a receipt, the picture is read
+on your device — the text recognition and the model that interprets it both run on your iPhone,
+and the image is not sent anywhere to be read. If you do not attach it, it is never uploaded at
+all.
+
 What stays on your device. The list of groups you have opened, and the address of the server
 you use. Neither leaves the device.
 
@@ -381,6 +429,11 @@ groups are stored on your server and nothing about them reaches spliit.app.
 Deleting your data. A group can be removed from the list on your device at any time. To have a
 group deleted from the spliit.app server, write to <contact address>.
 
+Removing a document from an expense removes the link to it, but does not delete the stored file:
+the app has no permission to delete from the server's storage, and neither has the website. A
+file you have uploaded can only be removed by whoever runs the server, so write to the address
+below if you need one taken down.
+
 Contact. <contact address>
 ```
 
@@ -395,8 +448,14 @@ follows the decision about where the page lives, so it is not drafted here.
 ## 8. Before you submit
 
 - [ ] Publish a privacy policy and put its URL in App Store Connect (§7)
-- [ ] File the three App Privacy answers in §6. The manifest declares them and build 22 carries
-      it, so this is filling in the questionnaire to match — not a decision
+- [ ] File the four App Privacy answers in §6 — **Photos or Videos is new in 2.1.0**, and the
+      questionnaire is filed per version. The manifest declares all four and build 23 carries it,
+      so this is filling in the questionnaire to match, not a decision
+- [ ] Answer the age-rating questionnaire's AI questions honestly rather than by reflex. Spliit's
+      only model use is reading a receipt you photographed, on the device, into four fields you
+      then correct — it generates nothing, shows the user no free-form text, and is not a
+      chatbot. Apple has been revising these questions, so read what is actually asked at the
+      time rather than trusting this line
 - [ ] Look at the iPad screenshots. SwiftUI does adapt: the tabs become a pill in the navigation
       bar and the rows go full width, so it is a real iPad layout rather than a blown-up phone.
       But nothing has been *designed* for the size — the roadmap defers that to M4 — and it
@@ -405,10 +464,12 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [x] ~~Upload a build.~~ **2.0.0 (22) is uploaded** — with the privacy manifest, the French
-      split-mode fix and the orientations that got 21 refused. 21 is spent: a build number is
-      consumed by the attempt, not by the acceptance. Apple mails you if processing fails after
-      an upload that reported success
+- [x] ~~Upload a build.~~ **2.1.0 (23) is uploaded** — receipt scanning, expense documents, the
+      totals tab and the activity log. It took two attempts: the first moved only the build
+      number, and 2.0.0 being approved had closed that train. A build number is spent by the
+      attempt rather than by the acceptance, so the refused upload did not cost one here only
+      because the whole version changed with it. Apple mails you if processing fails after an
+      upload that reported success
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0
 - [ ] Serve `apple-app-site-association` from spliit.app if Universal Links should work on day
       one ([Docs/universal-links.md](../universal-links.md))

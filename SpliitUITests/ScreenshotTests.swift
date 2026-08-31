@@ -24,6 +24,7 @@ final class ScreenshotTests: SpliitUITestCase {
     private enum GroupTab: String {
         case expenses = "list.bullet"
         case balances = "arrow.left.arrow.right"
+        case stats = "chart.pie"
         case information = "info.circle"
         case search = "magnifyingglass"
     }
@@ -122,15 +123,50 @@ final class ScreenshotTests: SpliitUITestCase {
         )
         try await photograph("04-balances")
 
-        // 5 — what the group is, beside what it cost.
+        // 5 — what the group actually spent, and how much of it is yours. Beside the balances
+        // for the reason the tab sits beside them: that screen says where the group will end
+        // up, this one says where it has been.
+        open(.stats, in: app)
+        assertExists(
+            app.staticTexts[AccessibilityID.Stats.groupTotal],
+            "The totals tab should show what the group spent."
+        )
+        assertExists(
+            app.staticTexts[AccessibilityID.Stats.yourShare],
+            "And the share belonging to whoever the screenshots are taken as."
+        )
+        try await photograph("05-totals")
+
+        // 6 — what the group is, beside what it cost.
         open(.information, in: app)
         assertExists(
             app.staticTexts[AccessibilityID.GroupInformation.note],
             "The information tab should show the group's note."
         )
-        try await photograph("05-information")
+        try await photograph("06-information")
 
-        // 6 — searching a long list, with the field where the thumb already is.
+        // 7 — what has happened to the group, and who did it. Pushed from the information tab
+        // rather than being a tab, so this is the one shot that leaves the tab bar behind.
+        let activityLink = app.buttons[AccessibilityID.GroupInformation.activityButton]
+        assertExists(activityLink, "The information tab should lead to the activity log.")
+        activityLink.tap()
+        // By identifier prefix rather than by row: the rows are keyed by the activity's own ID,
+        // which the server assigns and this test never sees. The prefix is enough to say the log
+        // drew something, and it is the same in both languages.
+        assertExists(
+            app.staticTexts.matching(
+                NSPredicate(format: "identifier BEGINSWITH %@", "activity.row.")
+            ).firstMatch,
+            "The activity log should have listed what happened to the group."
+        )
+        try await photograph("07-activity")
+        goBack(in: app)
+        assertExists(
+            app.staticTexts[AccessibilityID.GroupInformation.note],
+            "Leaving the log should come back to the information tab."
+        )
+
+        // 8 — searching a long list, with the field where the thumb already is.
         open(.search, in: app)
         let field = app.textFields[AccessibilityID.ExpenseSearch.field]
         assertExists(field, "The search tab should open its field.")
@@ -145,7 +181,7 @@ final class ScreenshotTests: SpliitUITestCase {
         // this waits out the debounce and the request instead, and the picture is checked by
         // eye, which is what a screenshot is for.
         try await settle(seconds: 2.5)
-        try await photograph("06-search")
+        try await photograph("08-search")
     }
 
     // MARK: - Seeding
@@ -180,7 +216,11 @@ final class ScreenshotTests: SpliitUITestCase {
                     category: expense.category,
                     splitMode: expense.splitMode,
                     shares: expense.shares,
-                    notes: expense.notes
+                    notes: expense.notes,
+                    // Credited to whoever paid, so the activity log photographs as a group of
+                    // people rather than as a column of "Someone" — which is what an
+                    // unattributed write leaves behind, permanently.
+                    by: group.participants[expense.paidBy]
                 )
             }
             seeded.append(Seeded(spec: spec, group: group))
@@ -206,6 +246,18 @@ final class ScreenshotTests: SpliitUITestCase {
             return
         }
         button.tap()
+    }
+
+    /// Pops whatever was pushed, by the leading navigation-bar button.
+    ///
+    /// Positional rather than by label: that button says "Back" in English and "Retour" in
+    /// French, and this suite runs in both. It is the first button in the bar on the iPhone and
+    /// on the iPad alike, the pushed screen having no others on that side.
+    @MainActor
+    private func goBack(in app: XCUIApplication) {
+        let back = app.navigationBars.buttons.element(boundBy: 0)
+        assertExists(back, "A pushed screen should have a way back.")
+        back.tap()
     }
 
     /// Sends the keyboard's "slide to type" introduction away, if it is up.

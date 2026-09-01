@@ -209,14 +209,23 @@ is an environment value**, so uppercasing the heading also uppercased its access
 and passing a `Text` to `accessibilityLabel` does *not* fix it, because that `Text` gets
 uppercased too. It has to be a plain `String`, which is why `ExpenseDateGroup.title` is one.
 
+**The home screen's title is the wordmark, not the word "Groups".** It sits in a `.principal`
+toolbar item with the title display mode forced inline, and `.navigationTitle("Groups")` stays
+put underneath it: the title string is what names the back button on every group screen, and
+what VoiceOver falls back to. The mark is 24pt tall and does not scale with Dynamic Type — the
+navigation bar is 44pt whatever the text size, so a mark that grew would only be clipped by it,
+and 24pt puts the wordmark's cap height alongside the inline title it replaces. The welcome
+screen keeps no title at all, because it already draws the mark at full size.
+
 **`EmptyState`** replaced all of the app's `ContentUnavailableView`s. Those did the job correctly
 and anonymously — a grey SF Symbol, a title, a line of text, identical in every app that ships
 one. This keeps the shape and gives it the app's voice: the rounded display face for the title,
 and art that is either the brand mark or an SF Symbol in a 64pt tile tinted `BrandAccentSoft`.
 
-- **The logo appears on the welcome screen only.** `Logo.imageset` had shipped since the first
-  commit and been referenced from nowhere. An error is not an occasion for branding, so errors
-  get an icon.
+- **The logo appears on the welcome screen and in the home screen's navigation bar.** Nowhere
+  else: an error is not an occasion for branding, so errors get an icon. The home screen is the
+  one place in the app that is the product rather than a group, an expense or a form, which is
+  why the wordmark stands in for the title there — see §5's note on it.
 - **The art does not scale with Dynamic Type.** It is decoration; growing it alongside the text
   only pushes the button further out of reach while saying nothing extra.
 - **It centres when it fits and scrolls when it does not.** At the largest accessibility sizes a

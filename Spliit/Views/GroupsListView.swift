@@ -166,9 +166,29 @@ struct GroupsListView: View {
             emptyState
                 .navigationTitle(Text(verbatim: ""))
         } else {
+            // The title stays "Groups" even though the wordmark is what's drawn: it is what the
+            // back button on every group screen is named after, and what VoiceOver reads when the
+            // mark is skipped over.
             groupList
                 .navigationTitle("Groups")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .principal) { wordmark } }
         }
+    }
+
+    /// The brand mark in place of the title, on the one screen that is the app rather than a
+    /// group, an expense or a form.
+    ///
+    /// Fixed height, like the welcome screen's: the navigation bar is 44pt whatever the text
+    /// size, so a mark that grew with Dynamic Type would only be clipped by it. 24pt puts the
+    /// wordmark's cap height alongside the inline title it replaces.
+    private var wordmark: some View {
+        Image("Logo")
+            .resizable()
+            .scaledToFit()
+            .frame(height: 24)
+            .accessibilityLabel(Text(verbatim: "Spliit"))
+            .accessibilityAddTraits(.isHeader)
     }
 
     private var emptyState: some View {

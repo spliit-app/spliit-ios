@@ -1501,16 +1501,6 @@
         }
       }
     },
-    "On %@": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sur %@"
-          }
-        }
-      }
-    },
     "Open Group": {
       "localizations": {
         "fr": {

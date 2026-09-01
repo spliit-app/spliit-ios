@@ -206,12 +206,6 @@ struct GroupsListView: View {
         }
     }
 
-    /// Whether the list holds groups from more than one instance, which is the only time saying
-    /// so on a row helps.
-    private var showsInstances: Bool {
-        app.recentGroups.instancesInUse(fallback: app.settings.defaultInstanceURL).count > 1
-    }
-
     private var groupList: some View {
         List {
             if let message = model.errorMessage {
@@ -258,15 +252,7 @@ struct GroupsListView: View {
     /// removes: removing is the one thing here with no way back but the original link.
     private func row(for group: RecentGroup) -> some View {
         NavigationLink(value: group.groupId) {
-            GroupRow(
-                group: group,
-                summary: model.summaries[group.groupId],
-                // Only worth the line when there is something to tell apart: on the one instance
-                // almost everybody has, naming it on every row says nothing.
-                instanceName: showsInstances
-                    ? SettingsStore.displayName(for: app.instanceURL(forGroup: group.groupId))
-                    : nil
-            )
+            GroupRow(group: group, summary: model.summaries[group.groupId])
         }
         .swipeActions(edge: .leading) {
             starButton(group)
@@ -330,8 +316,6 @@ struct GroupsListView: View {
 private struct GroupRow: View {
     let group: RecentGroup
     let summary: GroupSummary?
-    /// The instance this group is on, when the list has more than one.
-    let instanceName: String?
 
     var body: some View {
         AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
@@ -354,13 +338,6 @@ private struct GroupRow: View {
                               systemImage: "calendar")
                             .accessibilityLabel(
                                 Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
-                            )
-                    }
-                    if let instanceName {
-                        Label(instanceName, systemImage: "server.rack")
-                            .accessibilityLabel(Text("On \(instanceName)"))
-                            .accessibilityIdentifier(
-                                AccessibilityID.GroupsList.rowServer(group.groupId)
                             )
                     }
                 }

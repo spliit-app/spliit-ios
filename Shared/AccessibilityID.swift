@@ -22,8 +22,6 @@ enum AccessibilityID {
         static func rowParticipants(_ groupID: String) -> String {
             "groups.row.\(groupID).participants"
         }
-        /// Only on the rows of a list that spans more than one instance.
-        static func rowServer(_ groupID: String) -> String { "groups.row.\(groupID).server" }
 
         // The row's three actions. Each appears twice — in a swipe and in the long-press menu —
         // but never at the same time, and the group ID keeps one row's buttons apart from the

@@ -74,12 +74,6 @@ final class MultipleInstanceTests: SpliitUITestCase {
         assertExists(theirs, "The group on the other server should fill in from that one.")
         XCTAssertEqual(mine.label, "2 participants")
         XCTAssertEqual(theirs.label, "3 participants")
-
-        // A list spanning two instances says which is which; a list on one instance doesn't.
-        assertExists(
-            app.staticTexts[AccessibilityID.GroupsList.rowServer(there.id)],
-            "A row should name its server once the list holds more than one."
-        )
         capture(app, "two-instances")
     }
 }

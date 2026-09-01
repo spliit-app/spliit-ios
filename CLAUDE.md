@@ -245,6 +245,26 @@ a release bumps both numbers — and, like a duplicate build number, it is rejec
 the whole `.ipa` has finished uploading. `make ipa` then `xcrun altool --upload-app` retries the
 upload alone; `make testflight` re-archives from scratch.
 
+**The recent-groups list is in iCloud, and that costs an App ID capability.**
+`Spliit.entitlements` claims `com.apple.developer.ubiquity-kvstore-identifier`, so an archive is
+refused until iCloud with *Key-value storage* is enabled on the App ID —
+`make build-device` passes `-allowProvisioningUpdates` and will add it, but `make testflight`
+will not. Simulator builds and CI never notice: they build with `CODE_SIGNING_ALLOWED=NO`, the
+entitlement is not applied, and `NSUbiquitousKeyValueStore` then stores nothing at all. That is
+also the behaviour on a phone signed out of iCloud, and it is deliberate — every path here
+degrades to the local file rather than to an error.
+
+**And a synced list cannot simply be replaced by the newer one.** Two phones with two lists have
+no obvious loser: a group is reachable only by its ID, so dropping one drops it for good.
+`RecentGroupsSnapshot.merging` keeps the union, settles a group both sides have by
+`RecentGroup.updatedAt` — which is why **every mutation has to stamp it**, including the ones
+that don't change the order — and orders by `lastOpenedAt`, which only opening a group touches.
+Deletions are the exception the union can't express, so `forget` leaves a tombstone; without
+one, the other phone puts the group straight back. Tombstones live in the iCloud payload only,
+never in the file, and expire after 90 days. UI tests run with no cloud at all
+(`-uiTestRun`, added on every launch), because a simulator signed into a real account would
+merge somebody's actual groups into a seeded list.
+
 **A review prompt is not something a test can see, and iOS will quietly swallow it.**
 `requestReview()` shows nothing at all once iOS decides the app has asked enough — three times
 in 365 days, counted across the whole install — and the app is never told which happened. There

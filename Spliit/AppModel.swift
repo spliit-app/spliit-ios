@@ -22,12 +22,25 @@ final class AppModel {
 
     init(
         defaults: UserDefaults = .standard,
-        recentGroupsFileURL: URL = RecentGroupsStore.defaultFileURL()
+        recentGroupsFileURL: URL = RecentGroupsStore.defaultFileURL(),
+        cloud: (any RecentGroupsCloudStorage)? = AppModel.cloudStorage()
     ) {
         self.defaults = defaults
         settings = SettingsStore(defaults: defaults)
-        recentGroups = RecentGroupsStore(fileURL: recentGroupsFileURL)
+        recentGroups = RecentGroupsStore(fileURL: recentGroupsFileURL, cloud: cloud)
         reviewPrompt = ReviewPromptStore(defaults: defaults)
+    }
+
+    /// Where the recent-groups list is mirrored, or nil to keep it on this device.
+    ///
+    /// A UI test gets nil: it seeds the list it wants and asserts on what it seeded, and a
+    /// simulator signed into somebody's iCloud account would otherwise hand it a second list
+    /// nobody asked for.
+    static func cloudStorage() -> (any RecentGroupsCloudStorage)? {
+        #if DEBUG
+        if UITestSupport.isRunningUITests { return nil }
+        #endif
+        return UbiquitousRecentGroupsCloudStorage()
     }
 
     /// A client for the currently configured instance. Cheap to build, so it is not cached —
@@ -68,8 +81,11 @@ final class AppModel {
         )
         let result = LegacyDataMigration.read(from: storage)
 
-        if !result.recentGroups.isEmpty, recentGroups.groups.isEmpty {
-            recentGroups.replaceAll(with: result.recentGroups)
+        // Not "only when the list is empty" any more: iCloud may have restored a list from
+        // another phone before this ran, and the legacy one can hold groups it doesn't.
+        // `addMissing` leaves everything already here alone, which is the same promise.
+        if !result.recentGroups.isEmpty {
+            recentGroups.addMissing(result.recentGroups)
         }
         if let baseURL = result.baseURL, settings.isUsingOfficialInstance {
             settings.baseURL = baseURL

@@ -16,6 +16,11 @@ private struct ReviewPromptModifier: ViewModifier {
     /// whatever the suite was doing, and nothing in the test's reach can dismiss it. The gates
     /// in the store would already keep a fresh simulator from qualifying; this makes it a
     /// guarantee rather than an arithmetic coincidence.
+    ///
+    /// `-uiTestRun` is on every launch the suite makes, so the prefix is exact rather than
+    /// hopeful. It is read here rather than through `UITestSupport.isRunningUITests`, which is
+    /// compiled out of release builds — and a release build under test is precisely the run
+    /// this must still refuse.
     private static let isUITesting = ProcessInfo.processInfo.arguments.contains {
         $0.hasPrefix("-uiTest")
     }

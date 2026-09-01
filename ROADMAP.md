@@ -162,7 +162,8 @@ fast, CI simple, and the App Store review surface small.
 - Settings → `UserDefaults`, so XCUITest can override them with launch
   arguments for free (`-baseURL http://localhost:3000/`)
 - Recent groups → a small JSON file in Application Support, seedable in tests
-  via a launch argument
+  via a launch argument, mirrored into iCloud's key-value store so a new phone
+  or a reinstall doesn't start from nothing
 
 **Design language:** brand `#059669` as the accent (secondary `#be185d`),
 system materials everywhere else. Three of the specifics guessed at here did not

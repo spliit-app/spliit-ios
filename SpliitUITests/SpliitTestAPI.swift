@@ -81,6 +81,10 @@ struct SpliitTestAPI {
         /// Whoever appears here is who the expense was paid for, so `paidFor` is not needed too.
         shares: [String: Int]? = nil,
         notes: String? = nil,
+        /// One of `NONE`, `DAILY`, `WEEKLY` or `MONTHLY`. Anything but `NONE` also gives the
+        /// expense a schedule, which the server acts on the next time the group's expenses are
+        /// listed — so a recurring expense dated in the past seeds a whole run of them.
+        recurrenceRule: String = "NONE",
         /// Who the activity log should say added this, by participant ID. Left out, the write
         /// still succeeds and the log reads "Someone" for good — nothing backfills it. Most
         /// suites are happy with that; the ones photographing the log are not.
@@ -114,7 +118,7 @@ struct SpliitTestAPI {
             "saveDefaultSplittingOptions": false,
             "isReimbursement": isReimbursement,
             "documents": [],
-            "recurrenceRule": "NONE",
+            "recurrenceRule": recurrenceRule,
         ]
         if let notes { values["notes"] = notes }
 

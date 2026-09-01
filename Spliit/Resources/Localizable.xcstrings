@@ -884,6 +884,17 @@
         }
       }
     },
+    "Daily": {
+      "comment": "One of the recurrence frequencies, under the “Repeats” label.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quotidienne"
+          }
+        }
+      }
+    },
     "Date": {
       "localizations": {
         "fr": {
@@ -1301,6 +1312,17 @@
         }
       }
     },
+    "Monthly": {
+      "comment": "One of the recurrence frequencies, under the “Repeats” label.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mensuelle"
+          }
+        }
+      }
+    },
     "Name": {
       "localizations": {
         "fr": {
@@ -1317,6 +1339,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nom ou code"
+          }
+        }
+      }
+    },
+    "Never": {
+      "comment": "One of the recurrence frequencies, under the “Repeats” label.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune"
           }
         }
       }
@@ -1717,6 +1750,47 @@
         }
       }
     },
+    "Repeats": {
+      "comment": "How often an expense makes another of itself. The row label above the four frequencies below.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récurrence"
+          }
+        }
+      }
+    },
+    "Repeats daily": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récurrence quotidienne"
+          }
+        }
+      }
+    },
+    "Repeats monthly": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récurrence mensuelle"
+          }
+        }
+      }
+    },
+    "Repeats weekly": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récurrence hebdomadaire"
+          }
+        }
+      }
+    },
     "Save": {
       "localizations": {
         "fr": {
@@ -2067,6 +2141,17 @@
         }
       }
     },
+    "The next one is added on %@.": {
+      "comment": "%@ is a date. The next expense in a recurring series.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La prochaine sera ajoutée le %@."
+          }
+        }
+      }
+    },
     "The server didn’t respond.": {
       "localizations": {
         "fr": {
@@ -2136,6 +2221,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "C’est un remboursement"
+          }
+        }
+      }
+    },
+    "This one has already repeated. The series follows the newest expense now, so that is the one to change to move it or stop it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Celle-ci s’est déjà répétée. La série suit désormais la dépense la plus récente : c’est donc celle-là qu’il faut modifier pour la décaler ou l’arrêter."
           }
         }
       }
@@ -2390,6 +2485,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Visiter spliit.app"
+          }
+        }
+      }
+    },
+    "Weekly": {
+      "comment": "One of the recurrence frequencies, under the “Repeats” label.",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebdomadaire"
           }
         }
       }

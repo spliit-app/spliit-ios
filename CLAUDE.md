@@ -140,6 +140,32 @@ with nothing reading them — the currency is what says an expense was paid in a
 `ExpenseFormDraft(editing:)` ignores the other two without it. `make test-live` is what found
 this; nothing local would have.
 
+**A recurrence you switch off does not always switch off.** Nothing repeats on a timer: the
+server makes the next expense in a series lazily, inside `groups.expenses.list`, and stamps
+`nextExpenseCreatedAt` on the `RecurringExpenseLink` it just acted on. From that moment the link
+is frozen. `groups.expenses.update` will only create, move or delete a schedule while the link is
+*unstamped* — against a stamped one it writes the `recurrenceRule` column and changes nothing
+that is scheduled. So setting last month's rent to "Never" succeeds, looks right, and next
+month's rent still arrives, because the series is being carried by the newest expense and its own
+pending link. `ExpenseFormDraft.hasAlreadyRepeated` is that distinction, and the form says it out
+loud rather than letting somebody find out in four weeks.
+
+**And the next date is not simply the rule applied to the date on screen.** Three different
+answers, all from `calculateNextDate`. Creating an expense, or giving one a recurrence it never
+had, counts from the date being saved. Changing the *rule* on a pending link recounts from the
+date the expense **already had** — `existingExpense.expenseDate`, not the one in the same
+request. And changing only the date, leaving the rule alone, does not move the schedule at all,
+because the update is gated on the rule having changed. `nextRecurrenceDate` reproduces all
+three; `make test` pins them.
+
+**A monthly series gives up a day it cannot fit, and never gets it back.** Each step is measured
+from the expense before it rather than from the first one, so the 31st of January comes round on
+the 28th of February — and then the 28th of March, not the 31st. `RecurrenceRule.nextDate(after:)`
+mirrors it with `Calendar.date(byAdding: .month)`, which clamps identically, **in UTC**, which is
+where the server counts. The web app records the drift as a limitation of its own arithmetic
+rather than a decision, but it is the behaviour, and `make test-live` is what proved the two
+agree — nothing local would have.
+
 **`groups.balances.list` does not tell you what anyone paid.** It returns the web app's
 *public* balances — derived from the suggested payments, not from the expenses — so `paid` is
 what a participant will be handed when the group settles and `paidFor` is what they will hand

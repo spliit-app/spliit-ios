@@ -110,6 +110,11 @@ enum AccessibilityID {
         static func rowTitle(_ expenseID: String) -> String { "expenses.row.\(expenseID).title" }
         static func rowAmount(_ expenseID: String) -> String { "expenses.row.\(expenseID).amount" }
         static func rowPaidBy(_ expenseID: String) -> String { "expenses.row.\(expenseID).paidBy" }
+        /// The glyph saying an expense repeats. Present only when one does, which is what a
+        /// suite asserting a recurrence was saved actually looks for.
+        static func rowRecurrence(_ expenseID: String) -> String {
+            "expenses.row.\(expenseID).recurrence"
+        }
     }
 
     enum ExpenseSearch {
@@ -122,6 +127,10 @@ enum AccessibilityID {
         static let titleField = "expenseForm.title"
         static let amountField = "expenseForm.amount"
         static let dateField = "expenseForm.date"
+        static let recurrencePicker = "expenseForm.recurrence"
+        /// The sentence under the picker: when the next one lands, or why changing this one
+        /// will not move it. Absent when the expense does not repeat.
+        static let recurrenceFooter = "expenseForm.recurrence.footer"
         static let categoryPicker = "expenseForm.category"
         static let paidByPicker = "expenseForm.paidBy"
         static let notesField = "expenseForm.notes"

@@ -62,6 +62,16 @@ struct ExpenseRow: View {
                                 Text("\(expense.documentCount) documents attached")
                             )
                     }
+                    // Every expense in a series carries the rule, copies included, so this marks
+                    // the whole run rather than only the one somebody set up. That is the useful
+                    // reading: it says this line arrived by itself and will again.
+                    if let repeats = expense.recurrenceRule.flatMap(\.repeatDescription) {
+                        Image(systemName: "repeat")
+                            .accessibilityLabel(Text(repeats))
+                            .accessibilityIdentifier(
+                                AccessibilityID.ExpenseList.rowRecurrence(expense.id)
+                            )
+                    }
                     Text(expense.expenseDate.formatted(date: .abbreviated, time: .omitted))
                 }
                 .font(.caption)

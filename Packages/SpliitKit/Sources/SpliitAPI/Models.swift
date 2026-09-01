@@ -103,6 +103,40 @@ public enum RecurrenceRule: String, Codable, Sendable, CaseIterable {
     case daily = "DAILY"
     case weekly = "WEEKLY"
     case monthly = "MONTHLY"
+
+    /// Whether this rule actually schedules anything.
+    public var repeats: Bool { self != .never }
+}
+
+/// Where the server has got to with a recurring expense: when the next one in the series is
+/// due, and whether it has been made yet.
+///
+/// Exactly one of these hangs off each expense in a series. When the server creates the next
+/// expense it stamps `nextExpenseCreatedAt` on this one and gives the new expense a fresh,
+/// unstamped link of its own — so a stamped link means the series has moved on and this expense
+/// no longer steers it.
+///
+/// That distinction is not cosmetic. `groups.expenses.update` will only create, move or remove
+/// a schedule while the link is unstamped; against a stamped one it writes the `recurrenceRule`
+/// column and changes nothing that is actually scheduled. Turning recurrence off on last
+/// month's rent does not stop next month's.
+public struct RecurringExpenseLink: Decodable, Sendable, Hashable {
+    public let id: String
+    /// The date the next expense in the series will carry. The server creates it lazily — the
+    /// first time anyone lists the group's expenses on or after this date — so a date in the
+    /// past means one is owed rather than one was missed.
+    public let nextExpenseDate: Date
+    /// When the next expense was actually created, and nil while it is still pending.
+    public let nextExpenseCreatedAt: Date?
+
+    public init(id: String, nextExpenseDate: Date, nextExpenseCreatedAt: Date? = nil) {
+        self.id = id
+        self.nextExpenseDate = nextExpenseDate
+        self.nextExpenseCreatedAt = nextExpenseCreatedAt
+    }
+
+    /// Whether this expense is still the one deciding what the series does next.
+    public var isPending: Bool { nextExpenseCreatedAt == nil }
 }
 
 public struct ExpenseDocument: Codable, Sendable, Identifiable, Hashable {
@@ -259,6 +293,9 @@ public struct ExpenseDetails: Decodable, Sendable, Identifiable, Hashable {
     public let notes: String?
     public let documents: [ExpenseDocument]
     public let recurrenceRule: RecurrenceRule?
+    /// Where the series this expense belongs to has got to, when it is in one. Nil for an
+    /// expense that has never had a recurrence.
+    public let recurringExpenseLink: RecurringExpenseLink?
     public let originalAmount: Int?
     public let originalCurrency: String?
     public let conversionRate: LenientDecimal?
@@ -280,6 +317,7 @@ public struct ExpenseDetails: Decodable, Sendable, Identifiable, Hashable {
         notes: String?,
         documents: [ExpenseDocument],
         recurrenceRule: RecurrenceRule?,
+        recurringExpenseLink: RecurringExpenseLink? = nil,
         originalAmount: Int?,
         originalCurrency: String?,
         conversionRate: LenientDecimal?
@@ -300,6 +338,7 @@ public struct ExpenseDetails: Decodable, Sendable, Identifiable, Hashable {
         self.notes = notes
         self.documents = documents
         self.recurrenceRule = recurrenceRule
+        self.recurringExpenseLink = recurringExpenseLink
         self.originalAmount = originalAmount
         self.originalCurrency = originalCurrency
         self.conversionRate = conversionRate

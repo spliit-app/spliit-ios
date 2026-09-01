@@ -159,6 +159,8 @@ struct ExpenseFormView: View {
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.dateField)
             }
 
+            recurrenceSection(form)
+
             currencySection(form)
 
             Section {
@@ -211,6 +213,45 @@ struct ExpenseFormView: View {
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.deleteButton)
                 }
             }
+        }
+    }
+
+    // MARK: - Recurrence
+
+    /// How often the expense makes another of itself.
+    ///
+    /// Directly under the date, because that is what it repeats from, and the footer is half the
+    /// point of the row. "Monthly" says nothing about the 31st of January coming round to the
+    /// 28th of February and staying there, and nothing about an expense that has already copied
+    /// itself no longer being the one in charge of the series — and both are things you would
+    /// otherwise learn a month late.
+    @ViewBuilder
+    private func recurrenceSection(_ form: Binding<ExpenseFormDraft>) -> some View {
+        Section {
+            Picker("Repeats", selection: form.recurrenceRule) {
+                ForEach(RecurrenceRule.allCases, id: \.self) { rule in
+                    Text(rule.title).tag(rule)
+                }
+            }
+            .accessibilityIdentifier(AccessibilityID.ExpenseForm.recurrencePicker)
+        } footer: {
+            recurrenceFooter(form.wrappedValue)
+        }
+    }
+
+    @ViewBuilder
+    private func recurrenceFooter(_ form: ExpenseFormDraft) -> some View {
+        if form.hasAlreadyRepeated {
+            Text(
+                """
+                This one has already repeated. The series follows the newest expense now, \
+                so that is the one to change to move it or stop it.
+                """
+            )
+            .accessibilityIdentifier(AccessibilityID.ExpenseForm.recurrenceFooter)
+        } else if let next = form.nextRecurrenceDate {
+            Text("The next one is added on \(next.formatted(date: .long, time: .omitted)).")
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.recurrenceFooter)
         }
     }
 

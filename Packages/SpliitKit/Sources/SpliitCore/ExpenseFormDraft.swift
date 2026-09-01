@@ -25,6 +25,20 @@ public struct ParticipantShareDraft: Identifiable, Equatable, Sendable {
 /// easiest thing to get subtly wrong.
 public struct ExpenseFormDraft: Equatable, Sendable {
 
+    /// An expense's recurrence as it arrived from the server, which is not always what the
+    /// server will reckon the next occurrence from. See `nextRecurrenceDate`.
+    public struct LoadedRecurrence: Equatable, Sendable {
+        public var rule: RecurrenceRule
+        public var expenseDate: Date
+        public var link: RecurringExpenseLink?
+
+        public init(rule: RecurrenceRule, expenseDate: Date, link: RecurringExpenseLink?) {
+            self.rule = rule
+            self.expenseDate = expenseDate
+            self.link = link
+        }
+    }
+
     public var title: String
     public var expenseDate: Date
     /// The total, as typed.
@@ -42,8 +56,15 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     /// shares scale with it; share counts and percentages are ×100 whatever the currency.
     public var minorUnitDigits: Int
 
-    /// Preserved across an edit so saving from the app doesn't drop what the web app set.
+    /// How often this expense makes another of itself. The copies are the server's work, and
+    /// it does them lazily: one falls due on its date and appears the next time anybody lists
+    /// the group's expenses.
     public var recurrenceRule: RecurrenceRule
+
+    /// The recurrence as it was when this expense was loaded, and how far the server had got
+    /// with it. Nil while creating one, which has no history to reckon against.
+    public var loadedRecurrence: LoadedRecurrence?
+
     public var documents: [ExpenseDocument]
 
     // MARK: Currency of the expense
@@ -73,6 +94,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         locale: Locale = .autoupdatingCurrent,
         minorUnitDigits: Int = 2,
         recurrenceRule: RecurrenceRule = .never,
+        loadedRecurrence: LoadedRecurrence? = nil,
         documents: [ExpenseDocument] = [],
         groupCurrencyCode: String? = nil,
         originalCurrencyCode: String? = nil,
@@ -91,6 +113,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         self.locale = locale
         self.minorUnitDigits = minorUnitDigits
         self.recurrenceRule = recurrenceRule
+        self.loadedRecurrence = loadedRecurrence
         self.documents = documents
         self.groupCurrencyCode = groupCurrencyCode
         self.originalCurrencyCode = originalCurrencyCode
@@ -171,6 +194,11 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             locale: locale,
             minorUnitDigits: digits,
             recurrenceRule: expense.recurrenceRule ?? .never,
+            loadedRecurrence: LoadedRecurrence(
+                rule: expense.recurrenceRule ?? .never,
+                expenseDate: expense.expenseDate,
+                link: expense.recurringExpenseLink
+            ),
             documents: expense.documents,
             groupCurrencyCode: group.currencyCode,
             originalCurrencyCode: originalCode,
@@ -297,6 +325,42 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     /// Takes a looked-up rate as the one to use.
     public mutating func use(rate: Decimal) {
         conversionRateText = Self.text(forRate: rate, locale: locale)
+    }
+
+    // MARK: Recurrence
+
+    /// Whether this expense has already made its successor, and so no longer decides anything
+    /// about the series it started.
+    ///
+    /// The server will only create, move or drop a schedule while the link it made is still
+    /// unstamped. Against a stamped one, saving writes the `recurrenceRule` column and changes
+    /// nothing that is scheduled — so switching this expense to "Never" does not stop next
+    /// month's, and switching it back on does not start anything either. The newest expense in
+    /// the series is the one still being asked.
+    public var hasAlreadyRepeated: Bool {
+        guard let link = loadedRecurrence?.link else { return false }
+        return !link.isPending
+    }
+
+    /// The date the next expense in the series will carry, worked out the way the server will —
+    /// and nil when nothing is scheduled.
+    ///
+    /// Which date it counts from depends on what is being changed, because
+    /// `groups.expenses.update` touches the schedule only when the *rule* changes, and then
+    /// recomputes it from the date the expense already had rather than the one being saved.
+    /// Moving a recurring expense without touching how often it repeats therefore leaves the
+    /// next one exactly where it was, which is worth showing rather than guessing at.
+    public var nextRecurrenceDate: Date? {
+        guard recurrenceRule.repeats else { return nil }
+
+        guard let loaded = loadedRecurrence, let link = loaded.link else {
+            // Nothing scheduled yet: a new expense, or one being given a recurrence it never
+            // had. Both start counting from the date on the form.
+            return recurrenceRule.nextDate(after: expenseDate)
+        }
+        guard link.isPending else { return nil }
+        guard loaded.rule != recurrenceRule else { return link.nextExpenseDate }
+        return recurrenceRule.nextDate(after: loaded.expenseDate)
     }
 
     public var includedParticipants: [ParticipantShareDraft] {

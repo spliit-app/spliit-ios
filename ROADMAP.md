@@ -579,7 +579,22 @@ Ordered by value to a phone user, not by web-app order.
   parser, the date through the same plausibility window, and the category has to be one the
   server actually offers. A receipt is untrusted text; it can have anything printed on it
 - Category auto-suggestion — **done** with the above, from the same two passes
-- Recurring expenses (`NONE` / `DAILY` / `WEEKLY` / `MONTHLY`)
+- ~~Recurring expenses~~ — **done**, as a *Repeats* row under the date, which is what a
+  recurrence is measured from. The four frequencies are the server's, and the whole of the
+  feature on the wire was already there: `recurrenceRule` has round-tripped through the form
+  since M1 without anything being able to set it
+
+  What the row costs is a footer, and the footer is most of the work. "Monthly" is not a
+  promise anybody can check, so the form names the date instead — and to name it truthfully it
+  has to reproduce the server's own arithmetic, quirks and all. Two of those are worth knowing.
+  A **monthly series gives up a day it cannot fit and never gets it back**: rent set up on the
+  31st of January comes round on the 28th of February and stays on the 28th, because each step
+  counts from the expense before it rather than from the first one. And **an expense that has
+  already copied itself no longer decides anything** — the server moves a schedule only while
+  the link it made is unstamped, so switching last month's rent to "Never" writes the column,
+  changes nothing that is scheduled, and next month's rent arrives anyway. The footer says so
+  rather than letting somebody find out in four weeks. `make test-live` is what confirmed both
+  against a real server
 
 **Wave 4 — localization**
 - French shipped; import the rest of the web repo's `messages/*.json` into the
@@ -631,7 +646,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Export CSV / JSON | ➖ | ✅ | M3.2 |
 | Expense documents | ➖ | ✅ | ✅ M3.3 |
 | Receipt scanning | ➖ | ✅ | ✅ M3.3 (on device) |
-| Recurring expenses | ➖ | ✅ | M3.3 |
+| Recurring expenses | ➖ | ✅ | ✅ M3.3 |
 | French | ➖ | ✅ | ✅ |
 | The other 34 locales | ➖ | ✅ | M3.4 |
 | Delete a group | ➖ | ➖ | — (no API) |

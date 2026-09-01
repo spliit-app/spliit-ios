@@ -617,6 +617,128 @@ struct LiveServerTests {
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
         #expect(data == contents)
     }
+
+    // MARK: - Recurring expenses
+
+    /// A UTC Gregorian calendar, which is what the server counts recurrences in.
+    private var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        return calendar
+    }
+
+    private func date(_ year: Int, _ month: Int, _ day: Int) throws -> Date {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        return try #require(utc.date(from: components))
+    }
+
+    /// Makes a group with two participants and returns it with the pair.
+    private func makeGroup(_ name: String) async throws -> (Group, String, String) {
+        let client = try client
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "\(name) \(UUID().uuidString.prefix(8))",
+                    currency: "$",
+                    participants: [.init(name: "Dana"), .init(name: "Eli")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first { $0.name == "Dana" })
+        let eli = try #require(group.participants.first { $0.name == "Eli" })
+        return (group, dana.id, eli.id)
+    }
+
+    /// The whole point of mirroring `calculateNextDate` on the client: the date this app shows
+    /// has to be the date the server will actually use.
+    ///
+    /// The 31st of January is the case worth spending a round trip on. A month later is not the
+    /// 31st of February, and what the server does about that — clamp down to the 28th, and keep
+    /// the 28th from then on — is not something a reasonable person would guess. Dated a year
+    /// ahead so nothing is due and the link stays as it was written.
+    @Test("The server schedules a monthly recurrence where the client says it will")
+    func schedulesAMonthlyRecurrence() async throws {
+        let client = try client
+        let (group, dana, eli) = try await makeGroup("Recurrence")
+
+        let january = try date(utc.component(.year, from: .now) + 1, 1, 31)
+        let created = try await client.call(
+            Spliit.createExpense(
+                groupId: group.id,
+                ExpenseFormValues(
+                    title: "Rent",
+                    expenseDate: january,
+                    amount: 90000,
+                    paidBy: dana,
+                    paidFor: [
+                        .init(participant: dana, shares: 100),
+                        .init(participant: eli, shares: 100),
+                    ],
+                    recurrenceRule: .monthly
+                )
+            )
+        )
+
+        // Read the expense rather than the list: listing is what makes the server catch up on
+        // anything due, and this assertion is about the schedule as written.
+        let expense = try await client.call(
+            Spliit.expense(groupId: group.id, expenseId: created.expenseId)
+        ).expense
+
+        #expect(expense.recurrenceRule == .monthly)
+
+        let link = try #require(
+            expense.recurringExpenseLink,
+            "A recurring expense should come back with the schedule the server made for it."
+        )
+        #expect(link.isPending)
+        #expect(link.nextExpenseDate == (try date(utc.component(.year, from: .now) + 1, 2, 28)))
+    }
+
+    /// Nothing runs on a timer: an expense that has fallen due is created the next time somebody
+    /// lists the group's expenses, and the link that was waiting for it is stamped. That stamp is
+    /// what the form reads to tell somebody the series has moved past this expense — after it,
+    /// changing this one changes nothing that is scheduled.
+    @Test("A recurrence that has fallen due is caught up on the next listing, and its link stamped")
+    func catchesUpOnDueRecurrences() async throws {
+        let client = try client
+        let (group, dana, eli) = try await makeGroup("Catch-up")
+
+        let threeDaysAgo = try #require(utc.date(byAdding: .day, value: -3, to: .now))
+        let created = try await client.call(
+            Spliit.createExpense(
+                groupId: group.id,
+                ExpenseFormValues(
+                    title: "Coffee",
+                    expenseDate: threeDaysAgo,
+                    amount: 350,
+                    paidBy: dana,
+                    paidFor: [
+                        .init(participant: dana, shares: 100),
+                        .init(participant: eli, shares: 100),
+                    ],
+                    recurrenceRule: .daily
+                )
+            )
+        )
+
+        let listed = try await client.call(Spliit.expenses(groupId: group.id)).expenses
+        #expect(
+            listed.count > 1,
+            "Listing should have made the days that fell due since the expense was dated."
+        )
+        #expect(listed.allSatisfy { $0.recurrenceRule == .daily })
+
+        let original = try await client.call(
+            Spliit.expense(groupId: group.id, expenseId: created.expenseId)
+        ).expense
+        let link = try #require(original.recurringExpenseLink)
+        #expect(!link.isPending, "The link the catch-up acted on should be stamped.")
+    }
 }
 
 enum LiveServer {

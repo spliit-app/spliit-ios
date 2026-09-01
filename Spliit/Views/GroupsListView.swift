@@ -13,6 +13,10 @@ struct GroupsListView: View {
     @State private var model = GroupsListModel()
     @State private var path: [String] = []
     @State private var sheet: Sheet?
+    /// Not one of the sheets: the camera takes the whole screen, and the cover is attached to
+    /// the stack rather than to `content` — which swaps identity the moment the list stops
+    /// being empty, taking any presentation hanging off it with it.
+    @State private var isScanningQRCode = false
     @State private var linkFailure: String?
     private var router: Router { Router.shared }
 
@@ -47,6 +51,9 @@ struct GroupsListView: View {
         }
         .onChange(of: router.destination) { openRoutedGroup() }
         .onOpenURL { open($0) }
+        .fullScreenCover(isPresented: $isScanningQRCode) {
+            ScanGroupQRCodeView { app.recentGroups.remember($0) }
+        }
         .alert(
             "Couldn’t open that link",
             isPresented: .constant(linkFailure != nil)
@@ -134,6 +141,10 @@ struct GroupsListView: View {
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
                 Button("Add by link", systemImage: "link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+                Button("Scan QR code", systemImage: "qrcode.viewfinder") {
+                    isScanningQRCode = true
+                }
+                .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
             } label: {
                 Label("Add group", systemImage: "plus")
             }
@@ -184,6 +195,9 @@ struct GroupsListView: View {
 
                 Button("Add group by link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+
+                Button("Scan QR code") { isScanningQRCode = true }
+                    .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
             }
         }
     }

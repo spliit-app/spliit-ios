@@ -2,12 +2,12 @@
   "sourceLanguage" : "en",
   "strings" : {
     "NSCameraUsageDescription" : {
-      "comment" : "Shown when the expense form first opens the document scanner.",
+      "comment" : "Shown when the expense form first opens the document scanner, and when the groups list first opens the QR scanner.",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spliit lit les reçus que vous photographiez, sur votre iPhone."
+            "value" : "Spliit lit les reçus que vous photographiez et les codes QR des groupes que vous scannez, sur votre iPhone."
           }
         }
       }

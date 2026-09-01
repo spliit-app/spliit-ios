@@ -40,6 +40,15 @@ enum UITestSupport {
         /// scanning one, and attaching one — instead of opening a camera the simulator has not
         /// got or a library with nothing in it. Present with no value.
         static let receiptSample = "-uiTestReceiptSample"
+        /// A QR code payload to take as if the camera had just read it. A simulator has no
+        /// camera at all, so this is the only way in to everything that happens after a scan.
+        static let qrCodeSample = "-uiTestQRCodeSample"
+    }
+
+    /// The code the QR scanner should behave as though it had just read, if this run supplies
+    /// one. Nil otherwise, so the screen asks for the camera exactly as it always does.
+    static func sampleQRCode() -> String? {
+        value(for: Argument.qrCodeSample, in: ProcessInfo.processInfo.arguments)
     }
 
     /// Whether the app is being driven by the end-to-end suite.

@@ -62,7 +62,7 @@ struct AddGroupByURLView: View {
         guard !isChecking else { return }
         problem = nil
 
-        guard let groupID = Self.groupID(fromURL: urlText) else {
+        guard let groupID = GroupLink.groupID(inPastedText: urlText) else {
             problem = String(localized: "That doesn’t look like a Spliit group link.")
             return
         }
@@ -84,27 +84,5 @@ struct AddGroupByURLView: View {
                 problem = error.localizedDescription
             }
         }
-    }
-
-    /// Pulls the ID out of a group URL. Accepts a bare ID too, since that is what people tend
-    /// to paste when they copy from the address bar of a group they already have open.
-    static func groupID(fromURL text: String) -> String? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        if let url = URL(string: trimmed), url.host() != nil {
-            let components = url.pathComponents
-            guard let index = components.firstIndex(of: "groups"),
-                  components.indices.contains(index + 1)
-            else {
-                return nil
-            }
-            let id = components[index + 1]
-            return id.isEmpty ? nil : id
-        }
-
-        // A bare ID: no slashes, no spaces.
-        guard !trimmed.contains("/"), !trimmed.contains(" ") else { return nil }
-        return trimmed
     }
 }

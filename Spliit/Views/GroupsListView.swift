@@ -124,10 +124,6 @@ struct GroupsListView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button("Settings", systemImage: "gearshape") { sheet = .settings }
-                .accessibilityIdentifier(AccessibilityID.GroupsList.settingsButton)
-        }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Create group", systemImage: "plus") { sheet = .createGroup }
@@ -137,6 +133,14 @@ struct GroupsListView: View {
             } label: {
                 Label("Add group", systemImage: "plus")
             }
+        }
+        // Settings sits at the bottom, out of the wordmark's way and within thumb's reach — it
+        // is the one thing here nobody opens twice. The flexible spacer is what pushes it to the
+        // trailing edge; a lone bottom-bar item centres itself.
+        ToolbarSpacer(.flexible, placement: .bottomBar)
+        ToolbarItem(placement: .bottomBar) {
+            Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                .accessibilityIdentifier(AccessibilityID.GroupsList.settingsButton)
         }
     }
 
@@ -172,21 +176,42 @@ struct GroupsListView: View {
             groupList
                 .navigationTitle("Groups")
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .principal) { wordmark } }
+                .toolbar { wordmarkToolbar }
         }
     }
 
     /// The brand mark in place of the title, on the one screen that is the app rather than a
     /// group, an expense or a form.
     ///
-    /// Fixed height, like the welcome screen's: the navigation bar is 44pt whatever the text
-    /// size, so a mark that grew with Dynamic Type would only be clipped by it. 24pt puts the
-    /// wordmark's cap height alongside the inline title it replaces.
+    /// Two items rather than one, and both are load-bearing. The mark is a *leading* item so it
+    /// sits at the edge the title would start from, and `.sharedBackgroundVisibility(.hidden)`
+    /// takes it out of the bar's glass: an unhidden item is drawn as a glass button, which
+    /// rounds a 32pt wordmark into a 44pt circle and makes it smaller than the centred one it
+    /// replaced. The empty principal item is what suppresses "Groups" — a principal view is the
+    /// documented way to replace an inline title, and the title itself has to stay set because
+    /// it is what names the back button on every group screen.
+    @ToolbarContentBuilder
+    private var wordmarkToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) { wordmark }
+            .sharedBackgroundVisibility(.hidden)
+        ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
+            .sharedBackgroundVisibility(.hidden)
+    }
+
+    /// The asset is 522×180, and both numbers are needed here. A height on its own is not enough:
+    /// the toolbar proposes a narrow width to its items, `scaledToFit` honours the proposal, and
+    /// the mark comes out a third of the height asked for — which is how it first shipped smaller
+    /// than the one it replaced.
+    private static let wordmarkHeight: CGFloat = 32
+    private static let wordmarkWidth: CGFloat = wordmarkHeight * 522 / 180
+
+    /// Fixed size, like the welcome screen's: the navigation bar is 44pt whatever the text size,
+    /// so a mark that grew with Dynamic Type would only be clipped by it.
     private var wordmark: some View {
         Image("Logo")
             .resizable()
             .scaledToFit()
-            .frame(height: 24)
+            .frame(width: Self.wordmarkWidth, height: Self.wordmarkHeight)
             .accessibilityLabel(Text(verbatim: "Spliit"))
             .accessibilityAddTraits(.isHeader)
     }

@@ -209,13 +209,18 @@ is an environment value**, so uppercasing the heading also uppercased its access
 and passing a `Text` to `accessibilityLabel` does *not* fix it, because that `Text` gets
 uppercased too. It has to be a plain `String`, which is why `ExpenseDateGroup.title` is one.
 
-**The home screen's title is the wordmark, not the word "Groups".** It sits in a `.principal`
-toolbar item with the title display mode forced inline, and `.navigationTitle("Groups")` stays
-put underneath it: the title string is what names the back button on every group screen, and
-what VoiceOver falls back to. The mark is 24pt tall and does not scale with Dynamic Type — the
-navigation bar is 44pt whatever the text size, so a mark that grew would only be clipped by it,
-and 24pt puts the wordmark's cap height alongside the inline title it replaces. The welcome
-screen keeps no title at all, because it already draws the mark at full size.
+**The home screen's title is the wordmark, not the word "Groups".** It is a *leading* toolbar
+item, at the edge a title would start from, 32pt tall and fixed — the navigation bar is 44pt
+whatever the text size, so a mark that grew with Dynamic Type would only be clipped by it.
+`.navigationTitle("Groups")` stays set underneath it, because the title string is what names the
+back button on every group screen and what VoiceOver falls back to; an empty `.principal` item
+is what stops it being *drawn*, a principal view being the documented way to replace an inline
+title. The welcome screen keeps no title at all, because it already draws the mark at full size.
+
+**Settings moved to the bottom right**, a `.bottomBar` item behind a flexible `ToolbarSpacer`,
+which is what pushes it to the trailing edge — a lone bottom-bar item centres itself. It is out
+of the wordmark's way, and within reach of a thumb, on the one screen with no tab bar to clash
+with.
 
 **`EmptyState`** replaced all of the app's `ContentUnavailableView`s. Those did the job correctly
 and anonymously — a grey SF Symbol, a title, a line of text, identical in every app that ships
@@ -285,6 +290,14 @@ Two things that cost real time here: `.glassEffect` does **not** eat taps (`safe
 `safeAreaBar` is the iOS 26 variant that works), and `.buttonStyle(.glass)` pads so generously
 that a 44pt glyph came out 68×58 beside a 44pt field, which is why the search cancel button is
 `.glassEffect(.regular.interactive(), in: .circle)` on a plain button instead.
+
+**A toolbar item is drawn as a glass button whether or not it is one.** The home screen's
+wordmark went into the bar and came back rounded into a 44pt circle and clipped — *smaller* than
+the centred title it replaced, with nothing anywhere to say why.
+`.sharedBackgroundVisibility(.hidden)` on the `ToolbarItem` is what takes it out of the bar's
+shared glass. Its neighbour trap, hit in the same half hour: **the toolbar proposes a narrow
+width to its items**, and `scaledToFit` honours a proposal, so an image given only a `height`
+comes out a third of the size asked for. State both dimensions.
 
 **Haptics are attached to outcomes, not to gestures** — the moments where something was
 committed, undone or refused, and where the screen alone may not have said so yet. There are

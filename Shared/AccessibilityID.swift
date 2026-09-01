@@ -22,6 +22,8 @@ enum AccessibilityID {
         static func rowParticipants(_ groupID: String) -> String {
             "groups.row.\(groupID).participants"
         }
+        /// Only on the rows of a list that spans more than one instance.
+        static func rowServer(_ groupID: String) -> String { "groups.row.\(groupID).server" }
 
         // The row's three actions. Each appears twice — in a swipe and in the long-press menu —
         // but never at the same time, and the group ID keeps one row's buttons apart from the
@@ -34,8 +36,6 @@ enum AccessibilityID {
     }
 
     enum Settings {
-        static let baseURLField = "settings.baseURL"
-        static let resetButton = "settings.reset"
         static let doneButton = "settings.done"
         static let version = "settings.version"
     }
@@ -54,6 +54,11 @@ enum AccessibilityID {
         static let currencyButton = "groupForm.currencyButton"
         static let currencyField = "groupForm.currency"
         static let informationField = "groupForm.information"
+        /// Which instance a new group goes on. Absent when editing a group: a group cannot move.
+        static let serverPicker = "groupForm.serverPicker"
+        /// The address field, which only exists once "Other server" has been chosen.
+        static let serverField = "groupForm.server"
+        static let serverError = "groupForm.serverError"
         static let addParticipantButton = "groupForm.addParticipant"
         static let saveButton = "groupForm.save"
         static let cancelButton = "groupForm.cancel"
@@ -84,6 +89,7 @@ enum AccessibilityID {
         static let editButton = "information.edit"
         static let retryButton = "information.retry"
         static let currency = "information.currency"
+        static let server = "information.server"
         /// The way to the activity log, which is pushed from this tab rather than being one.
         static let activityButton = "information.activity"
 

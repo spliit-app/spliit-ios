@@ -32,7 +32,7 @@ public struct DocumentUploader: Sendable {
     private let session: URLSession
 
     /// - Parameters:
-    ///   - baseURL: the instance root, as the settings screen stores it.
+    ///   - baseURL: the instance root, as the group the expense belongs to stores it.
     ///   - session: defaults to one shared by every uploader.
     public init(baseURL: URL, session: URLSession? = nil) {
         self.baseURL = baseURL

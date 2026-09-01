@@ -20,6 +20,10 @@ import SwiftUI
 struct StatsView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     let model: GroupDetailModel
     /// Opens the "who are you?" picker, which this screen shares with the balances and
     /// information tabs.
@@ -32,14 +36,14 @@ struct StatsView: View {
             // answer to "who are you?" changes, since two of the three numbers are theirs.
             .task(id: statsKey) {
                 guard statsKey != nil else { return }
-                await model.loadStats(for: activeParticipantID, using: app.client)
+                await model.loadStats(for: activeParticipantID, using: client)
             }
             // Its own task, keyed on the group alone: what the group spent on food does not
             // change with who is asking, so this must not be re-swept every time somebody
             // answers the picker.
             .task(id: model.group?.id) {
                 guard model.group != nil else { return }
-                await model.loadCategorySpending(using: app.client)
+                await model.loadCategorySpending(using: client)
             }
     }
 
@@ -73,10 +77,10 @@ struct StatsView: View {
                 Button("Try again") {
                     Task {
                         if model.didFailToLoad {
-                            await model.retry(using: app.client)
+                            await model.retry(using: client)
                         } else {
                             await model.refreshStats(
-                                for: activeParticipantID, using: app.client
+                                for: activeParticipantID, using: client
                             )
                         }
                     }
@@ -92,9 +96,9 @@ struct StatsView: View {
             }
             .refreshable {
                 async let totals: Void = model.refreshStats(
-                    for: activeParticipantID, using: app.client
+                    for: activeParticipantID, using: client
                 )
-                async let categories: Void = model.refreshCategorySpending(using: app.client)
+                async let categories: Void = model.refreshCategorySpending(using: client)
                 _ = await (totals, categories)
             }
             // The totals move together when an expense is added from another tab, so let them

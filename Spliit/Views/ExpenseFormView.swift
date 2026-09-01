@@ -48,6 +48,12 @@ struct ExpenseFormView: View {
 
     /// Stubbed from a launch argument under UI test, so a run neither depends on reaching an
     /// external service nor gets a different answer every day.
+    /// The instance this group is on. An expense is written to the same server the group is on,
+    /// and so is the receipt attached to it.
+    private var instanceURL: URL { app.instanceURL(forGroup: group.id) }
+
+    private var client: TRPCClient { app.client(on: instanceURL) }
+
     private var rates: ExchangeRates {
         #if DEBUG
         if let stubbed = UITestSupport.stubbedExchangeRates() { return stubbed }
@@ -200,7 +206,9 @@ struct ExpenseFormView: View {
             // that was written down last week — and one attached from the web app has to be
             // visible here whatever this screen is for.
             ExpenseDocumentsSection(
-                documents: form.documents, photoToAttach: $scannedPhoto
+                documents: form.documents,
+                photoToAttach: $scannedPhoto,
+                instanceURL: instanceURL
             )
 
             if case .edit(let expenseID) = mode {
@@ -622,7 +630,7 @@ struct ExpenseFormView: View {
         }
         guard case .edit(let expenseID) = mode else { return }
         do {
-            let response = try await app.client.call(
+            let response = try await client.call(
                 Spliit.expense(groupId: group.id, expenseId: expenseID)
             )
             form = ExpenseFormDraft(editing: response.expense, group: group)
@@ -646,12 +654,12 @@ struct ExpenseFormView: View {
             do {
                 switch mode {
                 case .create:
-                    _ = try await app.client.call(
+                    _ = try await client.call(
                         Spliit.createExpense(groupId: group.id, values, by: actorID)
                     )
                     Analytics.shared.event(.createExpense)
                 case .edit(let expenseID):
-                    _ = try await app.client.call(
+                    _ = try await client.call(
                         Spliit.updateExpense(
                             groupId: group.id, expenseId: expenseID, values, by: actorID
                         )
@@ -679,7 +687,7 @@ struct ExpenseFormView: View {
         Task {
             defer { isSaving = false }
             do {
-                _ = try await app.client.call(
+                _ = try await client.call(
                     Spliit.deleteExpense(
                         groupId: group.id, expenseId: expenseID, by: actorID
                     )

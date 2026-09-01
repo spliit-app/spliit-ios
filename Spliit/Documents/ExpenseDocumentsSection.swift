@@ -22,6 +22,10 @@ struct ExpenseDocumentsSection: View {
     /// section to upload, since this is where the uploading lives. Cleared as it is taken.
     @Binding var photoToAttach: PhotoToAttach?
 
+    /// The instance the expense's group is on. Documents go to the bucket that instance signs
+    /// for, and whether it has one at all is answered per instance.
+    let instanceURL: URL
+
     /// Shared with the gallery, so opening a receipt shows the picture the grid already has.
     @State private var images = DocumentImages()
     @State private var uploads: [Upload] = []
@@ -106,7 +110,7 @@ struct ExpenseDocumentsSection: View {
                     .accessibilityLabel(Text("Uploading"))
             }
 
-            if app.storesDocuments {
+            if app.storesDocuments(on: instanceURL) {
                 addTile
             }
         }
@@ -266,7 +270,7 @@ struct ExpenseDocumentsSection: View {
             }
 
             do {
-                let uploader = DocumentUploader(baseURL: app.settings.baseURL)
+                let uploader = DocumentUploader(baseURL: instanceURL)
                 let url = try await uploader.upload(
                     prepared.data, contentType: prepared.contentType
                 )
@@ -288,7 +292,7 @@ struct ExpenseDocumentsSection: View {
             } catch DocumentUploader.Failure.unsupported {
                 // Remembered for the session, so the next expense doesn't offer an upload this
                 // instance has already said it cannot accept.
-                app.noteDocumentStorageIsUnavailable()
+                app.noteDocumentStorageIsUnavailable(on: instanceURL)
                 status = .unsupported
             } catch {
                 status = .failed(error.localizedDescription)

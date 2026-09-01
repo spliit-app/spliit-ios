@@ -10,7 +10,7 @@ final class AppModel {
     let settings: SettingsStore
     let recentGroups: RecentGroupsStore
 
-    /// What the first-launch migration found, kept for the settings screen and for logging.
+    /// What the first-launch migration found, kept for logging.
     private(set) var migration: LegacyDataMigration.Result?
 
     private let defaults: UserDefaults
@@ -41,10 +41,40 @@ final class AppModel {
         return UbiquitousRecentGroupsCloudStorage()
     }
 
-    /// A client for the currently configured instance. Cheap to build, so it is not cached —
-    /// which also means changing the address in settings takes effect on the next call.
-    var client: TRPCClient {
-        TRPCClient(baseURL: settings.baseURL)
+    /// The instance a group is on: the address stored with it, or the default for a group that
+    /// has not been told one — a list restored from an older version, or seeded by a test.
+    func instanceURL(forGroup groupID: String) -> URL {
+        recentGroups.instanceURL(forGroup: groupID) ?? settings.defaultInstanceURL
+    }
+
+    /// A client for the instance a group is on. Cheap to build, so it is not cached — and there
+    /// is deliberately no client for "the app", because every request belongs to a group and
+    /// sending one to the wrong server is a group that appears not to exist.
+    func client(forGroup groupID: String) -> TRPCClient {
+        client(on: instanceURL(forGroup: groupID))
+    }
+
+    /// A client for an instance named directly: a group being created, or one being added from a
+    /// pasted link, neither of which is in the list yet.
+    func client(on instanceURL: URL) -> TRPCClient {
+        TRPCClient(baseURL: instanceURL)
+    }
+
+    /// Remembers where the last group was deliberately created, so the form opens there next
+    /// time. Only the create form calls this: adding a group somebody else made says nothing
+    /// about where this person makes theirs.
+    func noteInstanceUsedForNewGroup(_ url: URL) {
+        settings.defaultInstanceURL = url
+    }
+
+    /// The instances worth offering in the create form: everywhere this list already has a group,
+    /// the default, and spliit.app — which is where most people are, whatever else is here.
+    var knownInstances: [URL] {
+        var seen: Set<URL> = []
+        return ([settings.defaultInstanceURL]
+            + recentGroups.instancesInUse(fallback: settings.defaultInstanceURL)
+            + [SettingsStore.officialInstanceURL])
+            .filter { seen.insert($0).inserted }
     }
 
     /// Instances that have said they store no documents, for as long as the app is running.
@@ -58,13 +88,22 @@ final class AppModel {
     /// on the next launch rather than after somebody reinstalls the app.
     private var instancesWithoutDocumentStorage: Set<URL> = []
 
-    /// Whether attaching a document to an expense is worth offering on this instance.
-    var storesDocuments: Bool {
-        !instancesWithoutDocumentStorage.contains(settings.baseURL)
+    /// Whether attaching a document to an expense is worth offering on this instance. Asked per
+    /// instance, because one of the servers in the list can have a bucket while another has not.
+    func storesDocuments(on instanceURL: URL) -> Bool {
+        !instancesWithoutDocumentStorage.contains(instanceURL)
     }
 
-    func noteDocumentStorageIsUnavailable() {
-        instancesWithoutDocumentStorage.insert(settings.baseURL)
+    func noteDocumentStorageIsUnavailable(on instanceURL: URL) {
+        instancesWithoutDocumentStorage.insert(instanceURL)
+    }
+
+    /// Everything that has to happen once, before the first screen reads a store.
+    func prepare() {
+        migrateFromReactNativeIfNeeded()
+        // After the migration, which is what can still change the default: a list brought over
+        // from the React Native app is a list of groups on whatever instance *it* was pointed at.
+        recentGroups.stampInstances(with: settings.defaultInstanceURL)
     }
 
     /// Brings the React Native app's data across, once, on the first launch after the update.
@@ -86,7 +125,7 @@ final class AppModel {
             recentGroups.addMissing(result.recentGroups)
         }
         if let baseURL = result.baseURL, settings.isUsingOfficialInstance {
-            settings.baseURL = baseURL
+            settings.defaultInstanceURL = baseURL
         }
 
         defaults.set(true, forKey: Key.didMigrate)

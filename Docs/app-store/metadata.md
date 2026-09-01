@@ -105,7 +105,7 @@ Spliit for iOS is a complete rewrite in SwiftUI. It uses the system's own naviga
 
 YOUR OWN SERVER, IF YOU WANT ONE
 
-Spliit is open source. The app talks to spliit.app out of the box, and Settings will point it at any instance you host yourself — the same app, your data, your machine.
+Spliit is open source. The app talks to spliit.app out of the box, and every group can be on a Spliit instance you host yourself — one list, whichever servers your groups are on.
 
 NOTHING TO SIGN IN TO
 
@@ -181,7 +181,7 @@ Spliit pour iOS est une réécriture complète en SwiftUI. Elle utilise la navig
 
 VOTRE PROPRE SERVEUR, SI VOUS EN VOULEZ UN
 
-Spliit est un logiciel libre. L'app se connecte à spliit.app par défaut, et les réglages permettent de la pointer vers l'instance que vous hébergez vous-même — la même app, vos données, votre machine.
+Spliit est un logiciel libre. L'app se connecte à spliit.app par défaut, et chaque groupe peut vivre sur une instance que vous hébergez vous-même — une seule liste, quels que soient les serveurs de vos groupes.
 
 RIEN À QUOI SE CONNECTER
 
@@ -289,7 +289,7 @@ No demo account is needed, and there is nothing to unlock. Paste this into the r
 ```
 Spliit needs no account and no credentials. Open the app, tap +, create a group, and every screen is reachable from there.
 
-By default the app talks to the public instance at https://spliit.app. Settings → Server can point it at a Spliit instance the user hosts themselves — Spliit is open source and self-hosting is a documented, supported setup. No content is loaded from anywhere the user has not entered.
+By default a group is created on the public instance at https://spliit.app. Each group can instead be on a Spliit instance the user hosts themselves — chosen when the group is created, or taken from the link they paste to add one — and Spliit is open source, with self-hosting a documented, supported setup. No content is loaded from anywhere the user has not entered.
 
 A group is addressed by an unguessable ID and shared as a link. There are no user accounts, no public feed, and no way to browse anyone else's group.
 
@@ -373,8 +373,8 @@ in the app writes to the library, so neither `NSPhotoLibraryUsageDescription` no
 `NSPhotoLibraryAddUsageDescription` applies.
 
 **Required-reason APIs.** One: `UserDefaults`, under `CA92.1` — read and write only this app's
-own data, never another app's. That is `SettingsStore` keeping the instance address. The app
-touches none of the other required-reason categories (file timestamps, disk space, boot time,
+own data, never another app's. That is `SettingsStore` keeping which instance a new group starts
+on. The app touches none of the other required-reason categories (file timestamps, disk space, boot time,
 active keyboards), which is worth knowing because an undeclared one is rejected on **upload**,
 by an automated mail, rather than at review.
 
@@ -423,8 +423,8 @@ Exchange rates. When you record an expense in a currency your group is not count
 asks frankfurter.dev for that day's published rate. The request carries a date and two currency
 codes, and nothing about you or your group. You can type the rate yourself instead.
 
-Self-hosting. Spliit is open source. If you point the app at your own instance in Settings, your
-groups are stored on your server and nothing about them reaches spliit.app.
+Self-hosting. Spliit is open source. A group on an instance you host yourself is stored on your
+server, and nothing about it reaches spliit.app.
 
 Deleting your data. A group can be removed from the list on your device at any time. To have a
 group deleted from the spliit.app server, write to <contact address>.

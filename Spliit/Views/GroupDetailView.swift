@@ -6,6 +6,10 @@ import SwiftUI
 struct GroupDetailView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     @State private var model: GroupDetailModel
     @State private var tab: GroupTab = .expenses
     @State private var sheet: Sheet?
@@ -102,13 +106,13 @@ struct GroupDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         // Leaving the screen closes the undo window rather than dropping the delete: this model
         // goes away with the view, and with it the request that was still waiting.
-        .onDisappear { model.flushPendingDeletion(using: app.client) }
+        .onDisappear { model.flushPendingDeletion(using: client) }
         // Restarting on every keystroke cancels the run before it, which is what makes the wait
         // inside `search` a debounce rather than a delay.
-        .task(id: query) { await model.search(query, using: app.client) }
+        .task(id: query) { await model.search(query, using: client) }
         .toolbar { toolbarContent }
         .sheet(item: $sheet, content: sheetContent)
-        .task { await model.loadIfNeeded(using: app.client) }
+        .task { await model.loadIfNeeded(using: client) }
         // The store belongs to the view layer, so the model is told who the user is rather than
         // asking. It is what attributes the delete that waits out its undo window, and it has to
         // survive both the group arriving — which is what makes an identity resolvable — and the
@@ -177,9 +181,13 @@ struct GroupDetailView: View {
         )
     }
 
-    /// The same link the web app shares, so it opens for anyone regardless of platform.
+    /// The same link the web app shares, so it opens for anyone regardless of platform — and on
+    /// the instance this group is actually on, which is the only one it can be opened from.
     private var shareURL: URL? {
-        URL(string: "groups/\(model.groupID)", relativeTo: app.settings.baseURL)?.absoluteURL
+        URL(
+            string: "groups/\(model.groupID)",
+            relativeTo: app.instanceURL(forGroup: model.groupID)
+        )?.absoluteURL
     }
 
     @ViewBuilder
@@ -192,7 +200,7 @@ struct GroupDetailView: View {
                     group: group,
                     categories: model.categories,
                     draft: prefilledDraft(for: group),
-                    onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                    onFinished: { await model.reloadAfterExpenseChange(using: client) }
                 )
             }
 
@@ -203,7 +211,7 @@ struct GroupDetailView: View {
                     group: group,
                     categories: model.categories,
                     draft: nil,
-                    onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                    onFinished: { await model.reloadAfterExpenseChange(using: client) }
                 )
             }
 
@@ -218,7 +226,7 @@ struct GroupDetailView: View {
                         group: group,
                         title: String(localized: "Reimbursement")
                     ),
-                    onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                    onFinished: { await model.reloadAfterExpenseChange(using: client) }
                 )
             }
 
@@ -239,7 +247,7 @@ struct GroupDetailView: View {
                 app.recentGroups.remember(
                     RecentGroup(groupId: model.groupID, groupName: name)
                 )
-                Task { await model.reload(using: app.client) }
+                Task { await model.reload(using: client) }
             }
         }
     }

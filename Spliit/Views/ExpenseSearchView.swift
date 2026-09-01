@@ -19,6 +19,10 @@ import SwiftUI
 struct ExpenseSearchView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     let model: GroupDetailModel
     @Binding var query: String
     /// Whether the search tab is the one on screen. A `TabView` keeps every tab's content alive,
@@ -204,7 +208,7 @@ struct ExpenseSearchView: View {
                         .buttonStyle(.plain)
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
-                                Task { await model.requestDelete(expense, using: app.client) }
+                                Task { await model.requestDelete(expense, using: client) }
                             }
                         }
                     }
@@ -220,7 +224,7 @@ struct ExpenseSearchView: View {
                         .accessibilityLabel(Text("Loading more results"))
                     Spacer()
                 }
-                .task { await model.loadNextSearchPage(using: app.client) }
+                .task { await model.loadNextSearchPage(using: client) }
             }
         }
         // Typing changes the results under the thumb; letting them cut rather than animate keeps

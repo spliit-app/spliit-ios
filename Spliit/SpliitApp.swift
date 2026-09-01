@@ -12,7 +12,7 @@ struct SpliitApp: App {
         #endif
 
         let model = AppModel()
-        model.migrateFromReactNativeIfNeeded()
+        model.prepare()
         _model = State(initialValue: model)
     }
 

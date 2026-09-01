@@ -7,6 +7,10 @@ import SwiftUI
 struct ExpenseListView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     let model: GroupDetailModel
     let onAdd: () -> Void
     let onEdit: (String) -> Void
@@ -27,7 +31,7 @@ struct ExpenseListView: View {
                 description: Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
             ) {
                 Button("Try again") {
-                    Task { await model.retry(using: app.client) }
+                    Task { await model.retry(using: client) }
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier(AccessibilityID.ExpenseList.retryButton)
@@ -78,7 +82,7 @@ struct ExpenseListView: View {
                         .buttonStyle(.plain)
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
-                                Task { await model.requestDelete(expense, using: app.client) }
+                                Task { await model.requestDelete(expense, using: client) }
                             }
                         }
                     }
@@ -94,10 +98,10 @@ struct ExpenseListView: View {
                         .accessibilityLabel(Text("Loading more expenses"))
                     Spacer()
                 }
-                .task { await model.loadNextPage(using: app.client) }
+                .task { await model.loadNextPage(using: client) }
             }
         }
-        .refreshable { await model.reloadAfterExpenseChange(using: app.client) }
+        .refreshable { await model.reloadAfterExpenseChange(using: client) }
         // A deleted expense should leave rather than vanish. Bound to the count, so editing an
         // expense in place does not animate the whole list along with it.
         .animation(Motion.base, value: model.expenses.count)

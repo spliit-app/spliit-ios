@@ -1,42 +1,47 @@
 import Foundation
 import Observation
 
-/// App settings. Today that's only which Spliit instance to talk to.
+/// App settings. Today that's only which instance a *new* group starts on.
 ///
-/// These live in `UserDefaults` on purpose: a launch argument of the form `-baseURL <value>`
-/// lands in the argument domain automatically, so a UI test can point the app at its own
-/// server without the app needing any test-only code path.
+/// Not which instance the app talks to: that is a property of each group, because one list can
+/// hold groups from spliit.app and from a server at home at the same time. What's left here is
+/// the address the "Create group" form opens on — the last one a group was deliberately created
+/// on, so somebody who self-hosts isn't choosing it again every time.
+///
+/// It lives in `UserDefaults` on purpose: a launch argument of the form `-baseURL <value>` lands
+/// in the argument domain automatically, so a UI test can point the app at its own server
+/// without the app needing any test-only code path.
 @MainActor
 @Observable
 public final class SettingsStore {
 
     public enum Key {
+        /// Still "baseURL": the launch argument, and every install that has one stored, predate
+        /// this being a default rather than the address of everything.
         public static let baseURL = "baseURL"
     }
 
-    public nonisolated static let defaultBaseURL = URL(string: "https://spliit.app/")!
+    public nonisolated static let officialInstanceURL = URL(string: "https://spliit.app/")!
 
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        baseURL = Self.readBaseURL(from: defaults)
+        defaultInstanceURL = Self.readDefaultInstance(from: defaults)
     }
 
-    /// The instance the app talks to. Always ends in a slash, so procedure paths append cleanly.
-    public var baseURL: URL {
+    /// Where a group is created unless the form is told otherwise, and what a group with no
+    /// address of its own is taken to be on. Always ends in a slash, so procedure paths append
+    /// cleanly.
+    public var defaultInstanceURL: URL {
         didSet {
-            guard baseURL != oldValue else { return }
-            defaults.set(baseURL.absoluteString, forKey: Key.baseURL)
+            guard defaultInstanceURL != oldValue else { return }
+            defaults.set(defaultInstanceURL.absoluteString, forKey: Key.baseURL)
         }
     }
 
     public var isUsingOfficialInstance: Bool {
-        baseURL == Self.defaultBaseURL
-    }
-
-    public func resetToOfficialInstance() {
-        baseURL = Self.defaultBaseURL
+        defaultInstanceURL == Self.officialInstanceURL
     }
 
     /// Accepts what a person would type — "spliit.example.com", "https://spliit.example.com" —
@@ -60,11 +65,21 @@ public final class SettingsStore {
         return components.url
     }
 
-    private static func readBaseURL(from defaults: UserDefaults) -> URL {
+    /// What to call an instance on screen: the host, with the port and path when it has them,
+    /// and never the scheme. "spliit.app" is what people call it; a row reading
+    /// "https://spliit.app/" is a URL rather than a name.
+    public nonisolated static func displayName(for url: URL) -> String {
+        guard let host = url.host() else { return url.absoluteString }
+        let port = url.port.map { ":\($0)" } ?? ""
+        let path = url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return path.isEmpty ? "\(host)\(port)" : "\(host)\(port)/\(path)"
+    }
+
+    private static func readDefaultInstance(from defaults: UserDefaults) -> URL {
         guard let stored = defaults.string(forKey: Key.baseURL),
               let url = normalize(stored)
         else {
-            return defaultBaseURL
+            return officialInstanceURL
         }
         return url
     }

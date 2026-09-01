@@ -36,7 +36,7 @@ struct GroupsListView: View {
                 .trackScreen(.home)
         }
         .task(id: reloadToken) {
-            await model.load(ids: app.recentGroups.groups.map(\.groupId), using: app.client)
+            await model.load(summaryRequests)
         }
         // An intent can land before this view exists — a cold launch from Spotlight — or while
         // it is already on screen, so the destination is read on appearance and on every change
@@ -64,32 +64,37 @@ struct GroupsListView: View {
     /// how people are let into a group in the first place, so it is checked against the server
     /// and remembered before opening — the same thing "Add by link" does, without the typing.
     private func open(_ url: URL) {
-        guard case .group(let id)? = IncomingLink.parse(
+        guard case .group(let id, let instanceURL)? = IncomingLink.parse(
             url,
-            knownOrigins: IncomingLink.knownOrigins(baseURL: app.settings.baseURL)
+            knownOrigins: IncomingLink.knownOrigins(instances: app.knownInstances)
         ) else {
             return
         }
 
+        // Already in the list: it is on whatever instance it was added from, and the link's own
+        // address has nothing to add.
         if app.recentGroups.groups.contains(where: { $0.groupId == id }) {
             router.go(to: .group(id: id))
             openRoutedGroup()
             return
         }
 
-        Task { await join(id) }
+        // The link names the server that can answer for the group. Only the custom scheme
+        // doesn't, and there the default is all there is to go on.
+        Task { await join(id, on: instanceURL ?? app.settings.defaultInstanceURL) }
     }
 
-    private func join(_ groupID: String) async {
+    private func join(_ groupID: String, on instanceURL: URL) async {
         do {
-            guard let group = try await app.client.call(Spliit.group(id: groupID)).group else {
+            let client = app.client(on: instanceURL)
+            guard let group = try await client.call(Spliit.group(id: groupID)).group else {
                 linkFailure = String(
-                    localized: "That group isn’t on \(app.settings.baseURL.host() ?? "this instance")."
+                    localized: "That group isn’t on \(SettingsStore.displayName(for: instanceURL))."
                 )
                 return
             }
             app.recentGroups.remember(
-                RecentGroup(groupId: group.id, groupName: group.name)
+                RecentGroup(groupId: group.id, groupName: group.name, instanceURL: instanceURL)
             )
             router.go(to: .group(id: group.id))
             openRoutedGroup()
@@ -116,10 +121,23 @@ struct GroupsListView: View {
         }
     }
 
-    /// Reloads when the remembered groups change, or when the instance is switched.
+    /// Reloads when the remembered groups change — including when one of them turns out to be
+    /// on a different instance than the list thought.
     private var reloadToken: String {
-        app.recentGroups.groups.map(\.groupId).joined(separator: ",")
-            + "@" + app.settings.baseURL.absoluteString
+        app.recentGroups.groups
+            .map { "\($0.groupId)@\($0.instanceURL?.absoluteString ?? "")" }
+            .joined(separator: ",")
+    }
+
+    /// One request per instance. `groups.list` takes a list of IDs, but only ever answers for the
+    /// server it was sent to, so a list spanning two of them is two requests.
+    private var summaryRequests: [GroupsListModel.Request] {
+        app.recentGroups.groupIDsByInstance(fallback: app.settings.defaultInstanceURL)
+            .map {
+                GroupsListModel.Request(
+                    instanceURL: $0.key, client: app.client(on: $0.key), ids: $0.value
+                )
+            }
     }
 
     @ToolbarContentBuilder
@@ -146,7 +164,7 @@ struct GroupsListView: View {
         case .settings:
             SettingsView()
         case .createGroup:
-            CreateGroupView { group in
+            CreateGroupView(instanceURL: app.settings.defaultInstanceURL) { group in
                 app.recentGroups.remember(group)
                 path = [group.groupId]
             }
@@ -188,6 +206,12 @@ struct GroupsListView: View {
         }
     }
 
+    /// Whether the list holds groups from more than one instance, which is the only time saying
+    /// so on a row helps.
+    private var showsInstances: Bool {
+        app.recentGroups.instancesInUse(fallback: app.settings.defaultInstanceURL).count > 1
+    }
+
     private var groupList: some View {
         List {
             if let message = model.errorMessage {
@@ -222,9 +246,7 @@ struct GroupsListView: View {
             }
         }
         .refreshable {
-            await model.load(
-                ids: app.recentGroups.groups.map(\.groupId), using: app.client
-            )
+            await model.load(summaryRequests)
         }
     }
 
@@ -236,7 +258,15 @@ struct GroupsListView: View {
     /// removes: removing is the one thing here with no way back but the original link.
     private func row(for group: RecentGroup) -> some View {
         NavigationLink(value: group.groupId) {
-            GroupRow(group: group, summary: model.summaries[group.groupId])
+            GroupRow(
+                group: group,
+                summary: model.summaries[group.groupId],
+                // Only worth the line when there is something to tell apart: on the one instance
+                // almost everybody has, naming it on every row says nothing.
+                instanceName: showsInstances
+                    ? SettingsStore.displayName(for: app.instanceURL(forGroup: group.groupId))
+                    : nil
+            )
         }
         .swipeActions(edge: .leading) {
             starButton(group)
@@ -300,6 +330,8 @@ struct GroupsListView: View {
 private struct GroupRow: View {
     let group: RecentGroup
     let summary: GroupSummary?
+    /// The instance this group is on, when the list has more than one.
+    let instanceName: String?
 
     var body: some View {
         AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
@@ -322,6 +354,13 @@ private struct GroupRow: View {
                               systemImage: "calendar")
                             .accessibilityLabel(
                                 Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+                            )
+                    }
+                    if let instanceName {
+                        Label(instanceName, systemImage: "server.rack")
+                            .accessibilityLabel(Text("On \(instanceName)"))
+                            .accessibilityIdentifier(
+                                AccessibilityID.GroupsList.rowServer(group.groupId)
                             )
                     }
                 }
@@ -350,23 +389,61 @@ final class GroupsListModel {
     private(set) var summaries: [String: GroupSummary] = [:]
     private(set) var errorMessage: String?
 
-    func load(ids: [String], using client: TRPCClient) async {
-        guard !ids.isEmpty else {
+    /// What one instance is to be asked about: its own groups, and nobody else's.
+    struct Request: Sendable {
+        let instanceURL: URL
+        let client: TRPCClient
+        let ids: [String]
+    }
+
+    /// Fetches every instance's groups at once, and keeps whatever comes back.
+    ///
+    /// A server that is down costs its own groups their detail and nothing else: the rest of the
+    /// list still fills in, and the names are local anyway. The note names the servers that
+    /// didn't answer, because with a list spanning more than one of them "the server" is no
+    /// longer a thing anybody can act on.
+    func load(_ requests: [Request]) async {
+        guard !requests.isEmpty else {
             summaries = [:]
             errorMessage = nil
             return
         }
 
-        do {
-            let response = try await client.call(Spliit.groups(ids: ids))
-            summaries = Dictionary(uniqueKeysWithValues: response.groups.map { ($0.id, $0) })
-            errorMessage = nil
-        } catch {
-            // The names are stored locally, so the list is still usable — say what's missing
-            // rather than replacing everything with an error screen.
-            errorMessage = String(
-                localized: "Couldn’t reach the server, so group details may be out of date."
-            )
+        var found: [String: GroupSummary] = [:]
+        var unreachable: [String] = []
+
+        await withTaskGroup(of: (URL, [GroupSummary]?).self) { tasks in
+            for request in requests {
+                tasks.addTask {
+                    (
+                        request.instanceURL,
+                        try? await request.client.call(Spliit.groups(ids: request.ids)).groups
+                    )
+                }
+            }
+            for await (instanceURL, groups) in tasks {
+                guard let groups else {
+                    unreachable.append(SettingsStore.displayName(for: instanceURL))
+                    continue
+                }
+                for group in groups { found[group.id] = group }
+            }
         }
+
+        summaries = found
+        guard !unreachable.isEmpty else {
+            errorMessage = nil
+            return
+        }
+
+        // The names are stored locally, so the list is still usable — say what's missing rather
+        // than replacing everything with an error screen. The list of servers is Foundation's to
+        // build: how two of them are joined is the translation's business.
+        let names = unreachable
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+            .formatted(.list(type: .and))
+        errorMessage = String(
+            localized: "Couldn’t reach \(names), so group details may be out of date."
+        )
     }
 }

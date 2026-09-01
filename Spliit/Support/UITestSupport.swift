@@ -14,6 +14,10 @@ import UIKit
 enum UITestSupport {
 
     enum Argument {
+        /// Present on every launch a UI test makes, seeding one or not. It is what says the
+        /// recent-groups list must stay on this device: a simulator signed into an iCloud
+        /// account would otherwise merge somebody's real groups into a seeded list.
+        static let uiTestRun = "-uiTestRun"
         /// Wipe local state so the run starts from a known-empty app.
         static let resetState = "-uiTestResetState"
         /// A JSON array of `{groupId, groupName}` to pre-populate recent groups with.
@@ -36,6 +40,11 @@ enum UITestSupport {
         /// scanning one, and attaching one — instead of opening a camera the simulator has not
         /// got or a library with nothing in it. Present with no value.
         static let receiptSample = "-uiTestReceiptSample"
+    }
+
+    /// Whether the app is being driven by the end-to-end suite.
+    static var isRunningUITests: Bool {
+        ProcessInfo.processInfo.arguments.contains(Argument.uiTestRun)
     }
 
     /// Whether this run supplies a drawn receipt rather than a photographed one. Asked on every

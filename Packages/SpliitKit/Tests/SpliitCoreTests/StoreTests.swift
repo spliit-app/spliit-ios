@@ -350,18 +350,36 @@ struct RecentGroupsStoreTests {
         #expect(groups.first?.activeParticipant == nil)
     }
 
-    @Test("A migrated list replaces whatever was there")
+    @Test("A migrated list lands in the order it was written in")
     @MainActor
-    func replacesAll() {
+    func addsAMigratedList() {
         let store = makeStore()
-        store.remember(RecentGroup(groupId: "old", groupName: "Old"))
 
-        store.replaceAll(with: [
+        store.addMissing([
             RecentGroup(groupId: "a", groupName: "Lisbon"),
             RecentGroup(groupId: "b", groupName: "Flat 3B"),
         ])
 
         #expect(store.groups.map(\.groupId) == ["a", "b"])
+    }
+
+    /// The migration's whole contract: it never overwrites what this app already has. Which
+    /// now includes a list iCloud restored from another phone before it ran.
+    @Test("A migrated list is added below what's already there, and changes none of it")
+    @MainActor
+    func addsOnlyWhatIsMissing() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Weekend in Lisbon"))
+        store.setStarred(true, groupId: "a")
+
+        store.addMissing([
+            RecentGroup(groupId: "a", groupName: "Lisbon"),
+            RecentGroup(groupId: "b", groupName: "Flat 3B"),
+        ])
+
+        #expect(store.groups.map(\.groupId) == ["a", "b"])
+        #expect(store.groups.first?.groupName == "Weekend in Lisbon")
+        #expect(store.groups.first?.isStarred == true)
     }
 }
 

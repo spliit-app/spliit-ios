@@ -11,5 +11,15 @@
 	<array>
 		<string>applinks:spliit.app</string>
 	</array>
+	<!--
+	  The recent-groups list in iCloud's key-value store, so a new phone or a reinstall doesn't
+	  start from nothing — without accounts, a forgotten group ID is a group nobody can get back
+	  to. Needs iCloud with Key-value storage enabled on the App ID; `make build-device` passes
+	  -allowProvisioningUpdates and will add it, but an archive fails until it exists. Simulator
+	  builds and CI are unaffected: they build with CODE_SIGNING_ALLOWED=NO, so the entitlement
+	  is never applied and NSUbiquitousKeyValueStore quietly stores nothing.
+	-->
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 </dict>
 </plist>

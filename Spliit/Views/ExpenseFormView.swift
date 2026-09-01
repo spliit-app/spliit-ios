@@ -650,6 +650,7 @@ struct ExpenseFormView: View {
                         Spliit.createExpense(groupId: group.id, values, by: actorID)
                     )
                     Analytics.shared.event(.createExpense)
+                    app.reviewPrompt.record(.expenseRecorded)
                 case .edit(let expenseID):
                     _ = try await app.client.call(
                         Spliit.updateExpense(

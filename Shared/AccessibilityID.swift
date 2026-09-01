@@ -38,6 +38,8 @@ enum AccessibilityID {
         static let resetButton = "settings.reset"
         static let doneButton = "settings.done"
         static let version = "settings.version"
+        static let rateButton = "settings.rate"
+        static let feedbackButton = "settings.feedback"
     }
 
     enum AddByURL {

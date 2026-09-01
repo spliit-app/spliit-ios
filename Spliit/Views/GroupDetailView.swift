@@ -218,7 +218,7 @@ struct GroupDetailView: View {
                         group: group,
                         title: String(localized: "Reimbursement")
                     ),
-                    onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                    onFinished: { await noteSettlement() }
                 )
             }
 
@@ -242,5 +242,19 @@ struct GroupDetailView: View {
                 Task { await model.reload(using: app.client) }
             }
         }
+    }
+
+    /// A payment has just been recorded. Reload as any expense change does, and then see where
+    /// the group stands: nothing left to pay is the app having finished the job it exists for,
+    /// and the one moment in Spliit worth asking a person about.
+    ///
+    /// Read after the reload, and only when the reload worked. A failed balance load leaves the
+    /// previous reimbursements in place rather than clearing them, so this cannot mistake an
+    /// unanswered server for a settled group — but it would happily mistake one for the other
+    /// if it stopped checking.
+    private func noteSettlement() async {
+        await model.reloadAfterExpenseChange(using: app.client)
+        guard !model.didFailToLoadBalances, model.reimbursements.isEmpty else { return }
+        app.reviewPrompt.record(.groupSettledUp)
     }
 }

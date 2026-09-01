@@ -52,6 +52,10 @@ class SpliitUITestCase: XCTestCase {
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
+        // On every launch, including the relaunches that seed nothing: it is what keeps the
+        // recent-groups list off iCloud, so a simulator that happens to be signed into an
+        // account can't add groups this suite never asked for.
+        app.launchArguments.append("-uiTestRun")
 
         if let textSize {
             app.launchArguments += [

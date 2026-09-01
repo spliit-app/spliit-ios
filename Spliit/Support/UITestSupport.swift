@@ -152,7 +152,11 @@ enum UITestSupport {
 
     private static func resetState() {
         let defaults = UserDefaults.standard
-        for key in ["didMigrateFromReactNative", SettingsStore.Key.baseURL] {
+        // Including the review prompt's state: a suite that inherited a launch count or an
+        // armed ask from an earlier run would be one system alert away from a hung run.
+        let keys = ["didMigrateFromReactNative", SettingsStore.Key.baseURL]
+            + ReviewPromptStore.Key.all
+        for key in keys {
             defaults.removeObject(forKey: key)
         }
         try? FileManager.default.removeItem(at: RecentGroupsStore.defaultFileURL())

@@ -9,6 +9,7 @@ final class AppModel {
 
     let settings: SettingsStore
     let recentGroups: RecentGroupsStore
+    let reviewPrompt: ReviewPromptStore
 
     /// What the first-launch migration found, kept for the settings screen and for logging.
     private(set) var migration: LegacyDataMigration.Result?
@@ -26,6 +27,7 @@ final class AppModel {
         self.defaults = defaults
         settings = SettingsStore(defaults: defaults)
         recentGroups = RecentGroupsStore(fileURL: recentGroupsFileURL)
+        reviewPrompt = ReviewPromptStore(defaults: defaults)
     }
 
     /// A client for the currently configured instance. Cheap to build, so it is not cached —

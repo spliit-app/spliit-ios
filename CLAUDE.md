@@ -245,6 +245,27 @@ a release bumps both numbers — and, like a duplicate build number, it is rejec
 the whole `.ipa` has finished uploading. `make ipa` then `xcrun altool --upload-app` retries the
 upload alone; `make testflight` re-archives from scratch.
 
+**A review prompt is not something a test can see, and iOS will quietly swallow it.**
+`requestReview()` shows nothing at all once iOS decides the app has asked enough — three times
+in 365 days, counted across the whole install — and the app is never told which happened. There
+is no assertion to write against the dialog and nothing to retry. What *is* testable is the
+decision, and all of it lives in `ReviewPromptStore` in `SpliitCore`, where `make test` covers
+every gate. To see the real thing, launch with the ask already armed:
+
+```sh
+xcrun simctl launch "Spliit $(basename "$PWD")" app.spliit.spliitmobile -reviewPrompt.isArmed YES
+```
+
+The argument domain overrides the stored value, which is the same trick `-baseURL` uses. Writing
+the key into the container's plist by hand does *not* work — `cfprefsd` has the file cached and
+flushes its own copy over the edit the next time the app writes anything.
+
+**A `ViewModifier` reads the environment from where it sits, not from what it wraps.**
+`GroupsListView().environment(model).reviewPromptOnActivation()` compiles and then traps: the
+modifier is *outside* the `.environment` it needs, so its `@Environment(AppModel.self)` finds
+nothing. The order that works reads backwards — `.reviewPromptOnActivation()` first,
+`.environment(model)` last.
+
 **The migration from the React Native app must never throw.** It runs once, unattended, and a
 group is only reachable by its ID — a user who loses their list cannot get it back. It also
 must never delete the legacy files. `LegacyDataMigration` returns problems rather than

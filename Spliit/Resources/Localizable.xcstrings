@@ -316,6 +316,16 @@
         }
       }
     },
+    "Add by QR code": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter par code QR"
+          }
+        }
+      }
+    },
     "Add by link": {
       "localizations": {
         "fr": {
@@ -342,16 +352,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajouter un groupe"
-          }
-        }
-      }
-    },
-    "Add group by link": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter un groupe par lien"
           }
         }
       }

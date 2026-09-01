@@ -141,7 +141,7 @@ struct GroupsListView: View {
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
                 Button("Add by link", systemImage: "link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
-                Button("Scan QR code", systemImage: "qrcode.viewfinder") {
+                Button("Add by QR code", systemImage: "qrcode.viewfinder") {
                     isScanningQRCode = true
                 }
                 .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
@@ -193,11 +193,31 @@ struct GroupsListView: View {
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
 
-                Button("Add group by link") { sheet = .addByURL }
+                // Side by side, because they are one decision — someone else made the group,
+                // and this is how you get in — taken by whichever route is to hand. Stacked in
+                // a column they read as two more things to choose between, and each was a bare
+                // line of text to aim at.
+                //
+                // They are named the way the toolbar menu names them, which is what lets both
+                // labels sit on one line at half the width: "add group by" is already the
+                // sentence above them. `AdaptiveHStack` puts them back in a column once the
+                // text is large enough that two of them can't share a row.
+                AdaptiveHStack(spacing: 12) {
+                    Button { sheet = .addByURL } label: {
+                        Text("Add by link")
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
 
-                Button("Scan QR code") { isScanningQRCode = true }
+                    Button { isScanningQRCode = true } label: {
+                        Text("Add by QR code")
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

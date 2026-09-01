@@ -201,6 +201,46 @@
       },
       "comment": "Spoken label for the paperclip on an expense row."
     },
+    "%lld new activities.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld new activity."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld new activities."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld nouvelle activité."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld nouvelles activités."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld of %lld": {
       "localizations": {
         "en": {
@@ -1071,6 +1111,16 @@
         }
       }
     },
+    "Everything": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout"
+          }
+        }
+      }
+    },
     "Everything that has happened in this group, and who did it.": {
       "localizations": {
         "fr": {
@@ -1461,6 +1511,16 @@
         }
       }
     },
+    "Nothing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien"
+          }
+        }
+      }
+    },
     "Nothing here matches “%@”.": {
       "localizations": {
         "fr": {
@@ -1481,6 +1541,36 @@
         }
       }
     },
+    "Notifications": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications"
+          }
+        }
+      }
+    },
+    "Notifications are off for Spliit in iOS Settings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les notifications sont désactivées pour Spliit dans les Réglages d’iOS"
+          }
+        }
+      }
+    },
+    "Notify me about": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me prévenir pour"
+          }
+        }
+      }
+    },
     "OK": {
       "localizations": {
         "fr": {
@@ -1497,6 +1587,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plus anciennes"
+          }
+        }
+      }
+    },
+    "Only what involves me": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seulement ce qui me concerne"
           }
         }
       }
@@ -1713,6 +1813,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retirer %@ de cette liste"
+          }
+        }
+      }
+    },
+    "Same as default (%@)": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comme le réglage par défaut (%@)"
           }
         }
       }
@@ -2221,6 +2331,16 @@
         }
       }
     },
+    "Turn on notifications": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer les notifications"
+          }
+        }
+      }
+    },
     "Type your own, for anything not listed": {
       "localizations": {
         "fr": {
@@ -2277,6 +2397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retirer %@ des favoris"
+          }
+        }
+      }
+    },
+    "Until you say which participant you are above, there is nobody to match expenses against — so this group tells you about everything.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tant que vous n’avez pas indiqué ci-dessus quel participant vous êtes, il n’y a personne à qui rattacher les dépenses — ce groupe vous signale donc tout."
           }
         }
       }
@@ -2404,12 +2534,32 @@
         }
       }
     },
+    "What a group tells you about when it hasn’t been given a setting of its own. Archived groups never do. Spliit checks for changes in the background, and iOS decides how often that happens — so a notification can arrive a while after what it describes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce dont un groupe vous informe quand il n’a pas de réglage à lui. Les groupes archivés ne vous informent de rien. Spliit cherche les changements en arrière-plan, et c’est iOS qui décide à quelle fréquence — une notification peut donc arriver un moment après ce qu’elle décrit."
+          }
+        }
+      }
+    },
     "What should participants know?": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Que doivent savoir les participants ?"
+          }
+        }
+      }
+    },
+    "What this group tells you about. Spliit checks for changes in the background, and iOS decides how often that happens — so a notification can arrive a while after what it describes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce dont ce groupe vous informe. Spliit cherche les changements en arrière-plan, et c’est iOS qui décide à quelle fréquence — une notification peut donc arriver un moment après ce qu’elle décrit."
           }
         }
       }

@@ -36,6 +36,17 @@ enum UITestSupport {
         /// scanning one, and attaching one — instead of opening a camera the simulator has not
         /// got or a library with nothing in it. Present with no value.
         static let receiptSample = "-uiTestReceiptSample"
+        /// Never put iOS's notification prompt on screen. It is a system alert, so it belongs to
+        /// Springboard rather than to the app the test is driving, and it blocks every tap until
+        /// somebody answers it. What the suite is here for is on this side of it: whether the
+        /// levels are stored, whether a group's own answer outranks the default, and whether the
+        /// screen says so when there is nobody to filter against. Present with no value.
+        static let noNotificationPrompt = "-uiTestNoNotificationPrompt"
+    }
+
+    /// Whether this run is allowed to ask iOS for permission to notify.
+    static var asksForNotificationPermission: Bool {
+        !ProcessInfo.processInfo.arguments.contains(Argument.noNotificationPrompt)
     }
 
     /// Whether this run supplies a drawn receipt rather than a photographed one. Asked on every
@@ -152,7 +163,11 @@ enum UITestSupport {
 
     private static func resetState() {
         let defaults = UserDefaults.standard
-        for key in ["didMigrateFromReactNative", SettingsStore.Key.baseURL] {
+        for key in [
+            "didMigrateFromReactNative",
+            SettingsStore.Key.baseURL,
+            SettingsStore.Key.notificationLevel,
+        ] {
             defaults.removeObject(forKey: key)
         }
         try? FileManager.default.removeItem(at: RecentGroupsStore.defaultFileURL())

@@ -42,6 +42,8 @@ struct SettingsView: View {
                     Text("Point the app at your own Spliit instance. Leave this alone if you use the official one.")
                 }
 
+                DefaultNotificationSection()
+
                 Section {
                     Link("Visit spliit.app", destination: URL(string: "https://spliit.app/?ref=ios-app")!)
                     Link("View on GitHub", destination: URL(string: "https://github.com/spliit-app")!)

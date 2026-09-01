@@ -71,6 +71,18 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
     /// has forgotten.
     public var activeParticipant: ActiveParticipant?
 
+    /// What this group interrupts for, or nil to follow the app-wide default. Nil rather than a
+    /// fourth case so that changing the default moves every group that never said otherwise,
+    /// which is the whole point of having one.
+    public var notificationLevel: NotificationLevel?
+
+    /// The newest activity this group has already been notified about — or has been told to
+    /// treat as seen, which is what opening the group does.
+    ///
+    /// Nil until something sets it, and that nil is load-bearing: it is what stops the first
+    /// background refresh after notifications are turned on from announcing a year of history.
+    public var lastNotifiedActivity: Date?
+
     public var id: String { groupId }
 
     public init(
@@ -78,17 +90,22 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         groupName: String,
         isStarred: Bool = false,
         isArchived: Bool = false,
-        activeParticipant: ActiveParticipant? = nil
+        activeParticipant: ActiveParticipant? = nil,
+        notificationLevel: NotificationLevel? = nil,
+        lastNotifiedActivity: Date? = nil
     ) {
         self.groupId = groupId
         self.groupName = groupName
         self.isStarred = isStarred
         self.isArchived = isArchived
         self.activeParticipant = activeParticipant
+        self.notificationLevel = notificationLevel
+        self.lastNotifiedActivity = lastNotifiedActivity
     }
 
     private enum CodingKeys: String, CodingKey {
         case groupId, groupName, isStarred, isArchived, activeParticipant
+        case notificationLevel, lastNotifiedActivity
     }
 
     /// Written by hand because the flags arrived after the file did: every list saved before
@@ -103,6 +120,15 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
         activeParticipant = try container.decodeIfPresent(
             ActiveParticipant.self, forKey: .activeParticipant
+        )
+        // A level this build has never heard of reads as "follow the default" rather than
+        // throwing, for the reason the whole initialiser exists: a list that fails to decode is
+        // a list of groups nobody can get back to.
+        notificationLevel = try? container.decodeIfPresent(
+            NotificationLevel.self, forKey: .notificationLevel
+        )
+        lastNotifiedActivity = try container.decodeIfPresent(
+            Date.self, forKey: .lastNotifiedActivity
         )
     }
 }
@@ -195,6 +221,52 @@ public final class RecentGroupsStore {
     /// rather than a reason to invent a row with no name.
     public func setActiveParticipant(_ participant: ActiveParticipant, groupId: String) {
         modify(groupId) { $0.activeParticipant = participant }
+    }
+
+    // MARK: - Notifications
+
+    /// What this group interrupts for, before the app-wide default is applied. Nil means it has
+    /// never been given one of its own.
+    public func notificationLevel(inGroup groupId: String) -> NotificationLevel? {
+        groups.first { $0.groupId == groupId }?.notificationLevel
+    }
+
+    /// Gives this group a level of its own, or takes it back to following the default.
+    public func setNotificationLevel(_ level: NotificationLevel?, groupId: String) {
+        modify(groupId) { $0.notificationLevel = level }
+    }
+
+    /// What this group notifies about, with the default and the "who are you?" answer both
+    /// applied — the one number the background refresh actually acts on.
+    public func effectiveNotificationLevel(
+        inGroup groupId: String,
+        default defaultLevel: NotificationLevel,
+        participants: [Participant]
+    ) -> NotificationLevel {
+        let group = groups.first { $0.groupId == groupId }
+        let knowsYou = ActiveParticipant.resolve(group?.activeParticipant, in: participants)?
+            .participantID != nil
+        return (group?.notificationLevel ?? defaultLevel).resolved(knowingWhoYouAre: knowsYou)
+    }
+
+    /// The newest activity this group has already been notified about, or nil if it never has.
+    public func lastNotifiedActivity(inGroup groupId: String) -> Date? {
+        groups.first { $0.groupId == groupId }?.lastNotifiedActivity
+    }
+
+    /// Moves the group's watermark forward.
+    ///
+    /// Never backwards: two refreshes can overlap, and the later one finishing first must not
+    /// re-open a window the earlier one already closed. And never at all when it would not move,
+    /// because every call that reaches `modify` rewrites the whole list — and a background
+    /// refresh calls this once per group whether or not anything happened in it.
+    public func markActivitySeen(upTo time: Date, groupId: String) {
+        guard let group = groups.first(where: { $0.groupId == groupId }),
+              time > group.lastNotifiedActivity ?? .distantPast
+        else {
+            return
+        }
+        modify(groupId) { $0.lastNotifiedActivity = time }
     }
 
     private func modify(_ groupId: String, _ change: (inout RecentGroup) -> Void) {

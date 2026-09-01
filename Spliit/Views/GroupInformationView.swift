@@ -58,6 +58,13 @@ struct GroupInformationView: View {
                 detailsSection(for: group)
                 activitySection
                 youSection(for: group)
+                // Last, and below "You", because it reads against it: the narrow level is only
+                // narrow once that question has an answer. Both are settings of this phone
+                // rather than facts about the group, which is why they sit together at the
+                // bottom instead of among them.
+                GroupNotificationSection(
+                    groupID: model.groupID, participants: group.participants
+                )
             }
             // `reload` rather than the other tabs' `reloadAfterExpenseChange`: the group itself
             // is what this screen shows, and that is the one thing an expense-shaped refresh

@@ -176,6 +176,42 @@ self-hosted Spliit without a bucket is entirely ordinary. `make e2e-up` brings o
 beside the test server so the suites cover the upload for real; against an instance without one
 they cover the other half, which is that the app says so plainly.
 
+## Being told what changed
+
+Spliit has no accounts, and no server that has ever heard of a phone: there is nothing to
+register a push token with, and nothing that could send one. So notifications here are entirely
+local. The app asks iOS for a background refresh; when it is granted one it reads each remembered
+group's activity log, compares it with how far it had already read, and posts what is new to
+itself. Tapping one opens the group, through the same router an App Intent writes to.
+
+Three levels, set per group, with an app-wide default that a group follows until it says
+otherwise:
+
+| Level | What it interrupts for |
+|---|---|
+| Everything | every line the group's log records, whoever wrote it |
+| Only what involves me | expenses this phone's owner paid, or is splitting |
+| Nothing | nothing |
+
+Your own changes are never news, at any level — being told what you just did is being told what
+you already know. A group you have archived never notifies either: archiving is how a group is
+asked to stop asking for attention.
+
+The narrow level costs one extra request per new expense. `groups.activities.list` sends the
+expense row beside each entry but joins no participants onto it, so `paidFor` — the only thing
+that says whether an expense is yours — has to be fetched. An expense that has been *deleted* can
+never be checked, and those are announced rather than dropped: hearing about the removal of an
+expense that turns out not to have been yours is a smaller harm than never hearing that one which
+was has gone. And "only what involves me" needs an answer to *You* on the group's information tab;
+without one there is nobody to match against, so the group widens to everything and says so on
+that screen rather than going quiet.
+
+**iOS decides when this runs**, and it is stingy with an app that is rarely opened, so a
+notification can arrive a good while after the change it describes. Both screens that offer the
+setting say as much. A background refresh never fires on a simulator at all, which is why the
+end-to-end suite covers the settings and `ActivityNotificationTests` covers the rules — there is
+no third layer that could cover the delivery itself.
+
 ## Languages
 
 English and French. Both come from String Catalogs — `Spliit/Resources/Localizable.xcstrings`

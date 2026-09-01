@@ -85,6 +85,15 @@ targets:
         # `Spliit/Resources/InfoPlist.xcstrings` — `make strings` reads what the compiler
         # extracts and cannot see this one, so its French goes in by hand.
         NSCameraUsageDescription: Spliit reads receipts you photograph, on your iPhone.
+        # Notifications. Spliit has no accounts and no server that has ever heard of a phone, so
+        # there is nothing to push with: the app reads each group's activity log itself, in the
+        # background refreshes iOS grants it, and posts locally. Both keys are needed and both
+        # fail silently — without the background mode nothing is ever scheduled, and
+        # `BGTaskScheduler.register` traps on an identifier missing from the permitted list.
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - app.spliit.spliitmobile.activity-refresh
         UIUserInterfaceStyle: Automatic
         # The app builds universal (UIDeviceFamily 1,2) and iPad layouts are a non-goal rather
         # than unsupported, so it has to satisfy the iPad multitasking rule: an iPad-capable app

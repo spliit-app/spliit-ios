@@ -47,6 +47,20 @@ enum AccessibilityID {
         static let error = "addByURL.error"
     }
 
+    /// What the app interrupts for: the app-wide default on the settings sheet, and one group's
+    /// own answer on its information tab. Two identifiers rather than one because the same test
+    /// has to tell the two rows apart while it checks that the second overrides the first.
+    enum Notifications {
+        static let defaultLevel = "notifications.defaultLevel"
+        static let groupLevel = "notifications.groupLevel"
+        /// The footer that appears when "only what involves me" has nobody to match against.
+        static let identityNeeded = "notifications.identityNeeded"
+        /// The two states of the row about iOS's own permission, which are never both on screen:
+        /// the one that asks for it, and the one that says it was refused.
+        static let permissionButton = "notifications.permissionButton"
+        static let permissionWarning = "notifications.permissionWarning"
+    }
+
     enum GroupForm {
         static let nameField = "groupForm.name"
         /// The row that opens the picker. The free-text symbol field below it only exists once

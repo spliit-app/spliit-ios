@@ -245,6 +245,31 @@ a release bumps both numbers — and, like a duplicate build number, it is rejec
 the whole `.ipa` has finished uploading. `make ipa` then `xcrun altool --upload-app` retries the
 upload alone; `make testflight` re-archives from scratch.
 
+**Notifications are polled, not pushed, and nothing about that is a detail.** Spliit has no
+account to attach a push token to and no server that could send one, so `ActivityNotifier` reads
+every remembered group's activity log during a `BGAppRefreshTask` and posts locally. Three things
+follow. The **two `Info.plist` keys are both silent when missing**: without `UIBackgroundModes:
+fetch` nothing is ever scheduled, and `BGTaskScheduler` refuses an identifier absent from
+`BGTaskSchedulerPermittedIdentifiers`. A **run must ask for the next one before it does any
+work** — a run that ends without submitting is the last one that will ever happen, and the whole
+feature stops with no error anywhere. And **none of it fires on a simulator**, so no UI test can
+cover delivery; the rules live in `SpliitCore` as `ActivityNotificationPlanner` and are covered
+there instead.
+
+**The activity log will not tell you whose expense it was.** `groups.activities.list` sends the
+expense row beside each activity, but it is `prisma.expense.findMany` with nothing joined onto
+it — no `paidFor`, which is the only thing that says whether an expense involves you. So "only
+what involves me" costs a `groups.expenses.get` per candidate, and for a **deleted** expense the
+answer is gone for good. Those are announced rather than dropped, deliberately: never hearing
+that an expense which was yours has gone is the worse of the two mistakes.
+
+**A nil watermark means "never looked", and has to.** `RecentGroup.lastNotifiedActivity` is nil
+until something sets it, and the first refresh sets it while announcing nothing — otherwise
+turning notifications on would post a year of history in one go. Opening a group sets it too, so
+nobody is told about what they have just been looking at. It only ever moves forward: two
+refreshes can overlap, and the later one finishing first must not reopen a window the earlier one
+closed.
+
 **The migration from the React Native app must never throw.** It runs once, unattended, and a
 group is only reachable by its ID — a user who loses their list cannot get it back. It also
 must never delete the legacy files. `LegacyDataMigration` returns problems rather than
@@ -282,6 +307,14 @@ simulator per worker, so a single large class is a long pole no worker count can
 new flow in the suite it belongs to, and split a suite once it grows past five or six tests.
 Override the worker count with `make e2e WORKERS=n`; more workers than cores is slower, not
 faster.
+
+**A row below the fold does not exist to be waited for.** A `List` is a collection view, and
+XCUITest only sees the cells it has actually built — so `waitForExistence` on a row further down
+spends its whole timeout and then fails about something that is merely off screen. Scroll to it
+first (`scrollUntilHittable` copes with an element that does not exist yet), then assert. And a
+`Picker` puts its selection in the element's **`value`**, not its label: assert on `.value`, and
+match its options by their words, since an identifier on the picker is stamped onto every row it
+opens.
 
 **Several worktrees can test at once.** Each drives a simulator named after its directory, so
 runs never share a device — or the clones XCUITest makes from it. They do share the server, and

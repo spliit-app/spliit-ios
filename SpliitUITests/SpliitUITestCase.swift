@@ -59,6 +59,12 @@ class SpliitUITestCase: XCTestCase {
             ]
         }
 
+        // Every run, and not a parameter: iOS's notification prompt is a Springboard alert that
+        // blocks every tap in the app until it is answered, and no suite here wants to be the
+        // one that discovers it. What the notification settings actually store is asserted on
+        // this side of the prompt.
+        app.launchArguments.append("-uiTestNoNotificationPrompt")
+
         if resetState {
             app.launchArguments.append("-uiTestResetState")
         }

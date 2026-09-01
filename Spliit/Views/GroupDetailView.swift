@@ -114,6 +114,12 @@ struct GroupDetailView: View {
         // survive both the group arriving — which is what makes an identity resolvable — and the
         // user answering the picker.
         .onAppear { model.actorID = activeParticipant?.participantID }
+        // Opening a group is being shown what has happened in it, so the background refresh has
+        // nothing left to announce from before this moment. The phone's clock rather than the
+        // server's, which is the one thing here that is approximate: the only window it can miss
+        // is the few seconds either side of now, and whatever is in it is on the screen in front
+        // of you.
+        .onAppear { app.recentGroups.markActivitySeen(upTo: .now, groupId: model.groupID) }
         .onChange(of: activeParticipant) { model.actorID = activeParticipant?.participantID }
         // The list pushed this screen because an intent asked for it; whatever else that intent
         // wanted is still waiting to be collected.

@@ -197,23 +197,10 @@ private struct ActivityRow: View {
         }
     }
 
-    /// The whole sentence, interpolated rather than assembled: word order and the place a name
-    /// sits in it are the translation's business.
+    /// The whole sentence, and the same one the notification about this event carries — a
+    /// notification that reads differently from the row it opens is one you have to read twice.
     private var summary: String {
-        let who = participantName ?? String(localized: "Someone")
-        // The title as it was when this was recorded, which is the point — renaming an expense
-        // leaves the old name on the line describing its creation.
-        let what = activity.title ?? ""
-
-        return switch activity.activityType {
-        case .createExpense: String(localized: "\(who) added “\(what)”.")
-        case .updateExpense: String(localized: "\(who) updated “\(what)”.")
-        case .deleteExpense: String(localized: "\(who) deleted “\(what)”.")
-        case .updateGroup: String(localized: "\(who) changed the group settings.")
-        // Never drawn: `GroupDetailModel.activitySections` leaves out the kinds this version
-        // has no sentence for, rather than inventing one for them here.
-        case .unknown: ""
-        }
+        ActivitySentence.text(for: activity, participantName: participantName)
     }
 
     /// The time, plus the date when the heading above has not already given it. Both are left

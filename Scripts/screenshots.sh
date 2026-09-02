@@ -22,6 +22,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 LANGUAGES=(en fr)
 DEVICES=(iphone-6.9 ipad-13)
 OUTPUT="Docs/app-store/screenshots"
+# What the listing actually uploads: the same captures, wrapped in the gradient, the headline
+# and the device. The raw tree stays beside it as the source of truth, so restyling the set is
+# `make frames` and a few seconds rather than a simulator per language per device.
+FRAMED="Docs/app-store/marketing"
+CAPTIONS="Docs/app-store/captions.json"
 PROJECT="Spliit.xcodeproj"
 SCHEME="Spliit"
 DERIVED="build"
@@ -69,6 +74,7 @@ while [[ $# -gt 0 ]]; do
     --languages) IFS=' ' read -r -a LANGUAGES <<< "$2"; shift 2 ;;
     --devices)   IFS=' ' read -r -a DEVICES <<< "$2"; shift 2 ;;
     --output)    OUTPUT="$2"; shift 2 ;;
+    --framed)    FRAMED="$2"; shift 2 ;;
     -h|--help)   sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 1 ;;
   esac
@@ -126,11 +132,6 @@ for device in "${DEVICES[@]}"; do
     # and whether the machine happened to be in dark mode that evening.
     xcrun simctl ui "$udid" appearance light > /dev/null
 
-    # The keyboard's "slide to type" introduction is not suppressed here. It looks like a
-    # preference — `DidShowContinuousPathIntroduction` — but that one belongs to Settings, and
-    # writing it changes nothing: the splash still comes up the first time a keyboard does, on
-    # every fresh device, and this run makes a fresh device every time. `ScreenshotTests`
-    # dismisses it instead, which is the only thing that actually works.
     xcrun simctl status_bar "$udid" override \
       --time "9:41" \
       --dataNetwork wifi --wifiMode active --wifiBars 3 \
@@ -174,5 +175,9 @@ for device in "${DEVICES[@]}"; do
 done
 
 echo
-echo "Screenshots in $OUTPUT:"
-find "$OUTPUT" -name '*.png' | sort
+echo "==> Framing for the listing"
+swift Scripts/frame-screenshots.swift "$OUTPUT" "$FRAMED" "$CAPTIONS"
+
+echo
+echo "Captures in $OUTPUT, and the images to upload in $FRAMED."
+

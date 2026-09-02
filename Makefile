@@ -8,6 +8,7 @@
 #   make run          install and launch the app on this worktree's simulator
 #   make shot         screenshot that simulator
 #   make screenshots  regenerate the App Store screenshots, in every language
+#   make frames       re-wrap those captures for the listing, without recapturing
 #   make testflight   archive, export and upload a build to TestFlight
 #
 # Several worktrees can run all of this at once. Two things make that work: each worktree
@@ -55,7 +56,7 @@ ASC_KEY_ID    ?= 3NJ328MR4F
 ASC_ISSUER_ID ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots run shot sim sim-clean clean lint archive ipa testflight
+.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots frames run shot sim sim-clean clean lint archive ipa testflight
 
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -146,6 +147,12 @@ e2e: $(PROJECT) sim ## Full end-to-end run: the UI suite against the shared serv
 
 screenshots: $(PROJECT) ## Regenerate the App Store screenshots, in every language
 	@Scripts/screenshots.sh
+
+# The framing is a second pass over the captures, so a headline or a colour can be changed
+# without photographing the app again — seconds instead of half an hour.
+frames: ## Re-wrap the existing captures for the listing
+	@swift Scripts/frame-screenshots.swift \
+		Docs/app-store/screenshots Docs/app-store/marketing Docs/app-store/captions.json
 
 build-device: $(PROJECT) ## Build a signed build for a physical device
 	@xcodebuild build \

@@ -209,19 +209,21 @@ Vos groupes restent où ils sont. Toujours rien à quoi se connecter.
 
 ## 4. Screenshots
 
-Eight per language, per device size, in this order. The file names carry the order, so uploading
+Five per language, per device size, in this order. The file names carry the order, so uploading
 them sorted is enough.
 
-| # | File | Shows |
-|---|---|---|
-| 1 | `01-groups` | The home screen: starred, recent and archived groups, with participant counts |
-| 2 | `02-expenses` | A group's expenses in date buckets, each with its category and payer |
-| 3 | `03-split` | One expense divided by exact amounts, with the four split modes above it |
-| 4 | `04-balances` | Who is up, who is down, and the fewest payments that settle it |
-| 5 | `05-totals` | What the group spent, how much of it is yours, and the breakdown by category |
-| 6 | `06-information` | What the group is: its note, its participants, its currency |
-| 7 | `07-activity` | What has happened to the group, and who did it |
-| 8 | `08-search` | Searching the group's expenses, field docked above the keyboard |
+| # | File | Shows | Headline |
+|---|---|---|---|
+| 1 | `01-groups` | The home screen: starred, recent and archived groups, with participant counts | Every trip, every flatshare, in one place |
+| 2 | `02-expenses` | A group's expenses in date buckets, each with its category and payer | Add what you spent, in seconds |
+| 3 | `03-split` | One expense divided by exact amounts, with the four split modes above it | Split it the way it actually happened |
+| 4 | `04-balances` | Who is up, who is down, and the fewest payments that settle it | Know exactly who owes whom |
+| 5 | `05-totals` | What the group spent, how much of it is yours, and the breakdown by category | See what it really cost |
+
+Five rather than every screen the app has: the group information tab, the activity log and the
+search field are all real features and none of them is why anybody installs an expense splitter.
+The first two or three appear in search results at thumbnail size, which is the whole argument
+for a short set with a large headline on each.
 
 Receipt scanning is the one headline feature with no picture, and there is no honest way to take
 one: a simulator has no camera, and the stand-in the suite uses is the OCR fixture — monospaced
@@ -229,15 +231,34 @@ black on white, drawn to be easy to recognise rather than to be looked at. A sho
 read as a bug. Photographing it properly needs receipt artwork made for the purpose, which is a
 design decision rather than a mechanical one.
 
+The pictures exist twice. `screenshots/` is what the simulator photographed — the app, and
+nothing else. `marketing/` is the same picture wrapped in the listing's artwork, and **that is
+the tree to upload**.
+
 ```
-Docs/app-store/screenshots/
-├── en-US/
-│   ├── iphone-6.9/   1320 × 2868   (iPhone 17 Pro Max)
-│   └── ipad-13/      2064 × 2752   (iPad Pro 13-inch)
-└── fr-FR/
-    ├── iphone-6.9/
-    └── ipad-13/
+Docs/app-store/
+├── captions.json                     the headline on each shot, per locale
+├── screenshots/                      raw captures — the source of truth
+│   ├── en-US/
+│   │   ├── iphone-6.9/   1320 × 2868   (iPhone 17 Pro Max)
+│   │   └── ipad-13/      2064 × 2752   (iPad Pro 13-inch)
+│   └── fr-FR/…
+└── marketing/                        the same, framed — upload these
+    ├── en-US/…
+    └── fr-FR/…
 ```
+
+Keeping both is what makes the artwork cheap to change: `Scripts/frame-screenshots.swift` draws
+the gradient, the headline and the device over a capture in about three seconds for the whole
+set, so a new headline or a different green never means photographing the app again. It is
+AppKit and nothing else — no dependency, and the same SF the screenshots inside the frame were
+drawn with.
+
+Two details in there that are not arbitrary. The gradient runs *dark at the top* because white
+display type on `#10B981` is about 2.5:1, under the 3:1 floor for large text, and the headline
+sits at the top. And a headline whose longest line would run past the margin shrinks to fit,
+which French needs on three of the five — but the grid it sits on stays the size English uses,
+so the device below starts at the same height in both languages.
 
 Both sizes are required: the app builds for `TARGETED_DEVICE_FAMILY = 1,2`, so App Store Connect
 asks for a 6.9" iPhone set *and* a 13" iPad set. Apple derives every smaller size from these.
@@ -245,17 +266,21 @@ asks for a 6.9" iPhone set *and* a 13" iPad set. Apple derives every smaller siz
 ### Regenerating them
 
 ```sh
-make screenshots                                    # every language, both sizes, ~6 min
+make screenshots                                    # capture and frame everything, ~25 min
+make frames                                         # re-frame what is already captured, ~3 s
 Scripts/screenshots.sh --languages fr               # just French
 Scripts/screenshots.sh --devices iphone-6.9         # just the iPhone set
 ```
+
+`make frames` is the one to reach for nine times out of ten: the headlines in `captions.json`
+and everything about how a shot is dressed are its input, and none of it needs the simulator.
 
 The script drives `SpliitUITests/ScreenshotTests` against the throwaway instance from
 `make e2e-up`, once per language, with `-testLanguage` so that both the interface *and* the
 seeded data are in that language — the demo group is called "Weekend in Lisbon" in one and
 "Week-end à Lisbonne" in the other. It boots a simulator of its own, sets **the device** to that
 language too, pins it to light appearance and a 9:41 status bar, and exports the pictures out of
-the result bundle into the tree above.
+the result bundle into the tree above, then frames the lot.
 
 Two things it refuses to ship rather than warn about: a picture that is not the size App Store
 Connect accepts, and a device that did not come up in the language that was asked for. The

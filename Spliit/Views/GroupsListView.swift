@@ -195,7 +195,7 @@ struct GroupsListView: View {
                 // size, so it grows with Dynamic Type like everything else.
                 Button { sheet = .createGroup } label: {
                     Text("Create group")
-                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .font(.system(.headline, design: .rounded))
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)

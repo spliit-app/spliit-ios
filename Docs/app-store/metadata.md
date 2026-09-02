@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.1.0
+# App Store Connect — Spliit 2.2.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,9 +9,13 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.1.0, build 23. 2.0.0 is approved, which *closes* that train — a further build
-  for it is refused with 90186, and 90062 beside it asking for a higher marketing version. So
-  the first upload after a release moves both numbers, not just the build
+- **Version**: 2.2.0, build 24, uploaded and attached to the 2.2 record. 2.1.0 is approved,
+  which *closes* that train — a further build for it is refused with 90186, and 90062 beside it
+  asking for a higher marketing version. So the first upload after a release moves both numbers,
+  not just the build
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.2 record, and the
+  framed screenshots from §4 are uploaded against both device sizes in both languages. What is
+  left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
 - **Minimum iOS**: 26.0. Everyone below it keeps 1.2.0 through the App Store's
@@ -57,13 +61,17 @@ descriptive half belongs in the subtitle, which is what the subtitle is for.
 Split expenses with friends
 ```
 
-### Promotional text — 166 / 170
+### Promotional text — 160 / 170
 
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-Scan a receipt and the expense fills itself in — total, date and category, read on your phone. Keep the photo with it. See what the group has spent, and who did what.
+Your groups follow you to a new phone, kept in iCloud. Join one by scanning its QR code. Split what you spent, see who owes whom, settle up — no account needed.
 ```
+
+It does not survive a new version: App Store Connect carries the description and the keywords
+forward when a version record is created and leaves this one empty, so a release that does not
+rewrite it drops it from the live page instead of keeping the old one.
 
 ### Keywords — 93 / 100
 
@@ -117,16 +125,14 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-Point your phone at a receipt and let it fill the expense in for you.
+Your list of groups now follows you to a new phone.
 
-• Scan a receipt: the total, the date and the category are read on the device and filled in, ready for you to correct before anything is saved
-• Keep the receipt — and any other document — with the expense it belongs to. Expenses carrying one show a paperclip in the list
-• Totals: what the group has spent, how much of it is yours, and where the money actually went, by category
-• An activity log for every group — what has happened to it, and who did it
-• Record an expense paid in another currency and let the rate do the conversion
-• Select everyone, or nobody, when choosing who an expense was split between
+• The groups you have opened are kept in iCloud, so a new phone opens on the same list as the old one — nothing to export, and nothing to set up again
+• Join a group by holding up its QR code, and show yours from the group's information tab
+• Groups can now live on different Spliit servers — the public one and your own — side by side in the same list
+• A clearer home screen, with settings moved down within reach of your thumb
 
-Your groups stay where they are. Still nothing to sign in to.
+Still no account, and still nothing to sign in to.
 ```
 
 ---
@@ -139,10 +145,10 @@ Your groups stay where they are. Still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 167 / 170
+### Texte promotionnel — 162 / 170
 
 ```
-Photographiez un reçu et la dépense se remplit d'elle-même : montant, date, catégorie. Gardez la photo avec elle. Voyez ce que le groupe a dépensé, et qui a fait quoi.
+Vos groupes vous suivent sur un nouveau téléphone, gardés dans iCloud. Rejoignez-en un avec son QR code. Partagez les dépenses, voyez qui doit quoi — sans compte.
 ```
 
 ### Mots-clés — 93 / 100
@@ -193,35 +199,35 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Photographiez un reçu et laissez-le remplir la dépense pour vous.
+Votre liste de groupes vous suit désormais sur un nouveau téléphone.
 
-• Scannez un reçu : le montant, la date et la catégorie sont lus sur l'appareil et remplis pour vous — à vous de les corriger avant d'enregistrer
-• Gardez le reçu — et tout autre document — avec la dépense à laquelle il appartient. Celles qui en portent un affichent un trombone dans la liste
-• Des totaux : ce que le groupe a dépensé, votre part, et où l'argent est vraiment passé, par catégorie
-• Un journal d'activité pour chaque groupe : ce qui lui est arrivé, et qui l'a fait
-• Enregistrez une dépense payée dans une autre devise et laissez le taux faire la conversion
-• Sélectionnez tout le monde, ou personne, quand vous choisissez qui partage la dépense
+• Les groupes que vous avez ouverts sont conservés dans iCloud : un nouveau téléphone retrouve la même liste que l'ancien — rien à exporter, rien à reconfigurer
+• Rejoignez un groupe en scannant son QR code, et affichez le vôtre depuis l'onglet Informations du groupe
+• Les groupes peuvent maintenant vivre sur différents serveurs Spliit — le public et le vôtre — côte à côte dans la même liste
+• Un écran d'accueil plus clair, avec les réglages à portée de pouce
 
-Vos groupes restent où ils sont. Toujours rien à quoi se connecter.
+Toujours pas de compte, et toujours rien à quoi se connecter.
 ```
 
 ---
 
 ## 4. Screenshots
 
-Eight per language, per device size, in this order. The file names carry the order, so uploading
+Five per language, per device size, in this order. The file names carry the order, so uploading
 them sorted is enough.
 
-| # | File | Shows |
-|---|---|---|
-| 1 | `01-groups` | The home screen: starred, recent and archived groups, with participant counts |
-| 2 | `02-expenses` | A group's expenses in date buckets, each with its category and payer |
-| 3 | `03-split` | One expense divided by exact amounts, with the four split modes above it |
-| 4 | `04-balances` | Who is up, who is down, and the fewest payments that settle it |
-| 5 | `05-totals` | What the group spent, how much of it is yours, and the breakdown by category |
-| 6 | `06-information` | What the group is: its note, its participants, its currency |
-| 7 | `07-activity` | What has happened to the group, and who did it |
-| 8 | `08-search` | Searching the group's expenses, field docked above the keyboard |
+| # | File | Shows | Headline |
+|---|---|---|---|
+| 1 | `01-groups` | The home screen: starred, recent and archived groups, with participant counts | Every trip, every flatshare, in one place |
+| 2 | `02-expenses` | A group's expenses in date buckets, each with its category and payer | Add what you spent, in seconds |
+| 3 | `03-split` | One expense divided by exact amounts, with the four split modes above it | Split it the way it actually happened |
+| 4 | `04-balances` | Who is up, who is down, and the fewest payments that settle it | Know exactly who owes whom |
+| 5 | `05-totals` | What the group spent, how much of it is yours, and the breakdown by category | See what it really cost |
+
+Five rather than every screen the app has: the group information tab, the activity log and the
+search field are all real features and none of them is why anybody installs an expense splitter.
+The first two or three appear in search results at thumbnail size, which is the whole argument
+for a short set with a large headline on each.
 
 Receipt scanning is the one headline feature with no picture, and there is no honest way to take
 one: a simulator has no camera, and the stand-in the suite uses is the OCR fixture — monospaced
@@ -229,15 +235,34 @@ black on white, drawn to be easy to recognise rather than to be looked at. A sho
 read as a bug. Photographing it properly needs receipt artwork made for the purpose, which is a
 design decision rather than a mechanical one.
 
+The pictures exist twice. `screenshots/` is what the simulator photographed — the app, and
+nothing else. `marketing/` is the same picture wrapped in the listing's artwork, and **that is
+the tree to upload**.
+
 ```
-Docs/app-store/screenshots/
-├── en-US/
-│   ├── iphone-6.9/   1320 × 2868   (iPhone 17 Pro Max)
-│   └── ipad-13/      2064 × 2752   (iPad Pro 13-inch)
-└── fr-FR/
-    ├── iphone-6.9/
-    └── ipad-13/
+Docs/app-store/
+├── captions.json                     the headline on each shot, per locale
+├── screenshots/                      raw captures — the source of truth
+│   ├── en-US/
+│   │   ├── iphone-6.9/   1320 × 2868   (iPhone 17 Pro Max)
+│   │   └── ipad-13/      2064 × 2752   (iPad Pro 13-inch)
+│   └── fr-FR/…
+└── marketing/                        the same, framed — upload these
+    ├── en-US/…
+    └── fr-FR/…
 ```
+
+Keeping both is what makes the artwork cheap to change: `Scripts/frame-screenshots.swift` draws
+the gradient, the headline and the device over a capture in about three seconds for the whole
+set, so a new headline or a different green never means photographing the app again. It is
+AppKit and nothing else — no dependency, and the same SF the screenshots inside the frame were
+drawn with.
+
+Two details in there that are not arbitrary. The gradient runs *dark at the top* because white
+display type on `#10B981` is about 2.5:1, under the 3:1 floor for large text, and the headline
+sits at the top. And a headline whose longest line would run past the margin shrinks to fit,
+which French needs on three of the five — but the grid it sits on stays the size English uses,
+so the device below starts at the same height in both languages.
 
 Both sizes are required: the app builds for `TARGETED_DEVICE_FAMILY = 1,2`, so App Store Connect
 asks for a 6.9" iPhone set *and* a 13" iPad set. Apple derives every smaller size from these.
@@ -245,17 +270,21 @@ asks for a 6.9" iPhone set *and* a 13" iPad set. Apple derives every smaller siz
 ### Regenerating them
 
 ```sh
-make screenshots                                    # every language, both sizes, ~6 min
+make screenshots                                    # capture and frame everything, ~25 min
+make frames                                         # re-frame what is already captured, ~3 s
 Scripts/screenshots.sh --languages fr               # just French
 Scripts/screenshots.sh --devices iphone-6.9         # just the iPhone set
 ```
+
+`make frames` is the one to reach for nine times out of ten: the headlines in `captions.json`
+and everything about how a shot is dressed are its input, and none of it needs the simulator.
 
 The script drives `SpliitUITests/ScreenshotTests` against the throwaway instance from
 `make e2e-up`, once per language, with `-testLanguage` so that both the interface *and* the
 seeded data are in that language — the demo group is called "Weekend in Lisbon" in one and
 "Week-end à Lisbonne" in the other. It boots a simulator of its own, sets **the device** to that
 language too, pins it to light appearance and a 9:41 status bar, and exports the pictures out of
-the result bundle into the tree above.
+the result bundle into the tree above, then frames the lot.
 
 Two things it refuses to ship rather than warn about: a picture that is not the size App Store
 Connect accepts, and a device that did not come up in the language that was asked for. The
@@ -447,10 +476,11 @@ follows the decision about where the page lives, so it is not drafted here.
 
 ## 8. Before you submit
 
-- [ ] Publish a privacy policy and put its URL in App Store Connect (§7)
-- [ ] File the four App Privacy answers in §6 — **Photos or Videos is new in 2.1.0**, and the
-      questionnaire is filed per version. The manifest declares all four and build 23 carries it,
-      so this is filling in the questionnaire to match, not a decision
+- [x] ~~Publish a privacy policy and put its URL in App Store Connect (§7).~~ `https://spliit.app/privacy-policy` is live and set on both localizations
+- [ ] File the four App Privacy answers in §6. The questionnaire is filed per version, so 2.2.0
+      needs it again even though nothing about the answers changed since 2.1.0 — the manifest
+      declares all four and build 24 carries it, so this is filling the questionnaire in to
+      match, not a decision
 - [ ] Answer the age-rating questionnaire's AI questions honestly rather than by reflex. Spliit's
       only model use is reading a receipt you photographed, on the device, into four fields you
       then correct — it generates nothing, shows the user no free-form text, and is not a
@@ -464,12 +494,13 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [x] ~~Upload a build.~~ **2.1.0 (23) is uploaded** — receipt scanning, expense documents, the
-      totals tab and the activity log. It took two attempts: the first moved only the build
-      number, and 2.0.0 being approved had closed that train. A build number is spent by the
-      attempt rather than by the acceptance, so the refused upload did not cost one here only
-      because the whole version changed with it. Apple mails you if processing fails after an
-      upload that reported success
+- [x] ~~Upload a build.~~ **2.2.0 (24) is uploaded, processed and attached to the 2.2 record** —
+      the groups list in iCloud, joining by QR code, a server address per group and the reworked
+      home screen. Both numbers moved together, 2.1.0 being approved having closed that train.
+      Apple mails you if processing fails after an upload that reported success
+- [x] ~~Fill in the listing.~~ Release notes, promotional text and the five framed screenshots
+      are on the 2.2 record in both languages, and the description and keywords carried forward
+      from 2.1.0 untouched
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0
 - [ ] Serve `apple-app-site-association` from spliit.app if Universal Links should work on day
       one ([Docs/universal-links.md](../universal-links.md))

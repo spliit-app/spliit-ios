@@ -25,8 +25,6 @@ final class ScreenshotTests: SpliitUITestCase {
         case expenses = "list.bullet"
         case balances = "arrow.left.arrow.right"
         case stats = "chart.pie"
-        case information = "info.circle"
-        case search = "magnifyingglass"
     }
 
     @MainActor
@@ -136,52 +134,6 @@ final class ScreenshotTests: SpliitUITestCase {
             "And the share belonging to whoever the screenshots are taken as."
         )
         try await photograph("05-totals")
-
-        // 6 — what the group is, beside what it cost.
-        open(.information, in: app)
-        assertExists(
-            app.staticTexts[AccessibilityID.GroupInformation.note],
-            "The information tab should show the group's note."
-        )
-        try await photograph("06-information")
-
-        // 7 — what has happened to the group, and who did it. Pushed from the information tab
-        // rather than being a tab, so this is the one shot that leaves the tab bar behind.
-        let activityLink = app.buttons[AccessibilityID.GroupInformation.activityButton]
-        assertExists(activityLink, "The information tab should lead to the activity log.")
-        activityLink.tap()
-        // By identifier prefix rather than by row: the rows are keyed by the activity's own ID,
-        // which the server assigns and this test never sees. The prefix is enough to say the log
-        // drew something, and it is the same in both languages.
-        assertExists(
-            app.staticTexts.matching(
-                NSPredicate(format: "identifier BEGINSWITH %@", "activity.row.")
-            ).firstMatch,
-            "The activity log should have listed what happened to the group."
-        )
-        try await photograph("07-activity")
-        goBack(in: app)
-        assertExists(
-            app.staticTexts[AccessibilityID.GroupInformation.note],
-            "Leaving the log should come back to the information tab."
-        )
-
-        // 8 — searching a long list, with the field where the thumb already is.
-        open(.search, in: app)
-        let field = app.textFields[AccessibilityID.ExpenseSearch.field]
-        assertExists(field, "The search tab should open its field.")
-        replaceText(in: field, with: content.searchTerm)
-        dismissKeyboardIntroduction(in: app)
-        XCTAssertEqual(
-            field.value as? String, content.searchTerm,
-            "The search term should have landed in the field."
-        )
-        // The results are the same rows the expenses tab draws, and that tab is still alive
-        // behind this one — there is nothing on screen to wait for that isn't also off it. So
-        // this waits out the debounce and the request instead, and the picture is checked by
-        // eye, which is what a screenshot is for.
-        try await settle(seconds: 2.5)
-        try await photograph("08-search")
     }
 
     // MARK: - Seeding
@@ -248,46 +200,23 @@ final class ScreenshotTests: SpliitUITestCase {
         button.tap()
     }
 
-    /// Pops whatever was pushed, by the leading navigation-bar button.
-    ///
-    /// Positional rather than by label: that button says "Back" in English and "Retour" in
-    /// French, and this suite runs in both. It is the first button in the bar on the iPhone and
-    /// on the iPad alike, the pushed screen having no others on that side.
-    @MainActor
-    private func goBack(in app: XCUIApplication) {
-        let back = app.navigationBars.buttons.element(boundBy: 0)
-        assertExists(back, "A pushed screen should have a way back.")
-        back.tap()
-    }
-
-    /// Sends the keyboard's "slide to type" introduction away, if it is up.
-    ///
-    /// It is shown the first time a keyboard appears on a device, it covers the keyboard
-    /// completely, and the keyboard is exactly what the search screenshot is of. "First time on
-    /// a device" means *every* run here, because the run creates its simulator and deletes it
-    /// again. Nothing the app or the script sets can suppress it — the keyboard is out of
-    /// process, and the preference that looks like it should turn it off belongs to Settings
-    /// rather than to the keyboard. So it is dismissed rather than prevented.
-    ///
-    /// The container's identifier is UIKit's own, and the same in every language. The button
-    /// inside it says "Continue" in English and something else elsewhere, so it is reached by
-    /// being the only button there.
-    @MainActor
-    private func dismissKeyboardIntroduction(in app: XCUIApplication) {
-        let introduction = app.otherElements["UIContinuousPathIntroductionView"]
-        guard introduction.waitForExistence(timeout: 3) else { return }
-        introduction.buttons.firstMatch.tap()
-    }
-
     /// Scrolls until the element is on screen, or gives up and says so.
     ///
     /// Bounded, deliberately: an unbounded `while !element.isHittable { swipeUp() }` is what once
     /// turned a missing element into a CI job that swiped for forty minutes.
+    ///
+    /// A short drag rather than `swipeUp`, which throws the list a whole screen at a time and
+    /// overshoots whatever it was aiming for. That is not a nicety here: on the iPad, where the
+    /// expense form is a sheet in the middle of the screen rather than the whole of it, one
+    /// swipe carried the unevenly split share off the top, and the shot meant to show a split
+    /// that isn't equal showed three identical numbers.
     @MainActor
     private func scroll(_ app: XCUIApplication, until element: XCUIElement) async throws {
-        for _ in 0..<4 {
+        let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
+        let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.50))
+        for _ in 0..<8 {
             if element.exists, element.isHittable { return }
-            app.swipeUp()
+            from.press(forDuration: 0.05, thenDragTo: to)
             try await settle(seconds: 0.4)
         }
         XCTAssertTrue(element.isHittable, "Scrolling never brought the element into view.")

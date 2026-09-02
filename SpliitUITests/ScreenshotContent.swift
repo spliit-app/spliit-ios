@@ -66,9 +66,6 @@ struct ScreenshotContent {
     /// The expense the split screenshot opens. Divided unevenly, which is the thing that screen
     /// is there to show.
     let showcaseExpense: String
-    /// Typed into the search field. Chosen to match more than one expense — a single result
-    /// photographs as a coincidence rather than as a search.
-    let searchTerm: String
 
     var groups: [GroupSpec] { [hero] + others }
 
@@ -158,8 +155,7 @@ struct ScreenshotContent {
                 participants: ["Ana", "Bruno", "Chloé", "Dan"]
             ),
         ],
-        showcaseExpense: "Airbnb in Alfama",
-        searchTerm: "tickets"
+        showcaseExpense: "Airbnb in Alfama"
     )
 
     // MARK: - French
@@ -234,7 +230,6 @@ struct ScreenshotContent {
                 participants: ["Anaïs", "Baptiste", "Chloé", "Malik"]
             ),
         ],
-        showcaseExpense: "Airbnb à Alfama",
-        searchTerm: "billets"
+        showcaseExpense: "Airbnb à Alfama"
     )
 }

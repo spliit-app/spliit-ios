@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "The headline written across the top of each App Store screenshot, per locale.",
+    "Scripts/frame-screenshots.swift draws these over the raw captures; the keys are the",
+    "screenshot file names, so a shot added to ScreenshotTests needs a line here in every",
+    "locale or the framing step stops. A newline is a deliberate line break: the wrap is",
+    "part of the typography, and letting it fall where it likes reads as an accident."
+  ],
+  "en-US": {
+    "01-groups": "Every trip, every flatshare,\nin one place",
+    "02-expenses": "Add what you spent,\nin seconds",
+    "03-split": "Split it the way\nit actually happened",
+    "04-balances": "Know exactly\nwho owes whom",
+    "05-totals": "See what it\nreally cost"
+  },
+  "fr-FR": {
+    "01-groups": "Chaque voyage, chaque coloc,\nau même endroit",
+    "02-expenses": "Ajoutez vos dépenses\nen quelques secondes",
+    "03-split": "Partagez comme\nça s'est vraiment passé",
+    "04-balances": "Sachez qui doit\nquoi, et à qui",
+    "05-totals": "Voyez ce que ça\na vraiment coûté"
+  }
+}

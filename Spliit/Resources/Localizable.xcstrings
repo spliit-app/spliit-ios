@@ -276,6 +276,16 @@
         }
       }
     },
+    "A review is how people find an app nobody advertises. Anything that is wrong with this one is better raised on GitHub, where it can be fixed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les avis sont ce qui permet de découvrir une application que personne n’annonce. Et ce qui ne va pas dans celle-ci, mieux vaut le signaler sur GitHub, là où ça peut être corrigé."
+          }
+        }
+      }
+    },
     "About": {
       "localizations": {
         "fr": {
@@ -1121,6 +1131,16 @@
         }
       }
     },
+    "Feedback": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre avis"
+          }
+        }
+      }
+    },
     "Filled in from the receipt. Check it before saving.": {
       "localizations": {
         "fr": {
@@ -1717,6 +1737,16 @@
         }
       }
     },
+    "Rate Spliit on the App Store": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noter Spliit sur l’App Store"
+          }
+        }
+      }
+    },
     "Reading the receipt…": {
       "localizations": {
         "fr": {
@@ -1763,6 +1793,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retirer %@ de cette liste"
+          }
+        }
+      }
+    },
+    "Report a problem": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signaler un problème"
           }
         }
       }

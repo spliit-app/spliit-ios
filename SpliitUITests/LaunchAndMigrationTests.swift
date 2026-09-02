@@ -93,4 +93,20 @@ final class LaunchAndMigrationTests: SpliitUITestCase {
             "Dismissing settings should return to the group list."
         )
     }
+
+    /// Both of these leave the app, so this asserts they are there and stops. What is being
+    /// covered is that the way to say something exists without waiting to be asked — the prompt
+    /// itself is gated on a fortnight of use, so no run will ever see it.
+    @MainActor
+    func testSettingsOffersAWayToReviewAndToReport() {
+        let app = launchApp()
+
+        app.buttons[AccessibilityID.GroupsList.settingsButton].tap()
+
+        assertExists(
+            app.buttons[AccessibilityID.Settings.rateButton],
+            "Settings should link to the App Store listing."
+        )
+        XCTAssertTrue(app.buttons[AccessibilityID.Settings.feedbackButton].exists)
+    }
 }

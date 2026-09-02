@@ -5,7 +5,12 @@ import Testing
 
 /// Stands in for the network so failure paths can be exercised deterministically. Without
 /// this, the only way a transport failure ever got tested was by unplugging something.
-final class StubURLProtocol: URLProtocol, @unchecked Sendable {
+///
+/// Subclass it to answer one request differently from the next — a call that asks a second
+/// procedure when the first turns out not to exist cannot be told apart by a stub with one
+/// answer for everything. Each subclass brings its own storage, because suites run in parallel
+/// and two of them writing one static would be a race rather than a test.
+class StubURLProtocol: URLProtocol, @unchecked Sendable {
 
     /// What the next request should do. Set before building a session.
     nonisolated(unsafe) static var outcome: Outcome = .failure(URLError(.timedOut))
@@ -15,9 +20,12 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
         case response(status: Int, body: String)
     }
 
-    static func session() -> URLSession {
+    /// Which outcome answers this particular request.
+    class func outcome(for request: URLRequest) -> Outcome { Self.outcome }
+
+    class func session() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [StubURLProtocol.self]
+        configuration.protocolClasses = [self]
         return URLSession(configuration: configuration)
     }
 
@@ -26,7 +34,7 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 
     override func startLoading() {
-        switch Self.outcome {
+        switch Self.outcome(for: request) {
         case .failure(let error):
             client?.urlProtocol(self, didFailWithError: error)
         case .response(let status, let body):

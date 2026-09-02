@@ -258,10 +258,34 @@ public enum Spliit {
         }
     }
 
-    /// - Note: the web app's `main` has since folded this into a wider `groups.stats.overview`
-    ///   that also returns spending by month, participant and category. Nothing serves it yet —
-    ///   neither `spliit.app` nor the published image — so calling it today would 404 for every
-    ///   user. `upstream-drift` is what will say when that changes.
+    /// The totals from an instance that has folded the whole stats page into one loader.
+    ///
+    /// That change — spending by month, by participant and by category, plus the recurring
+    /// subscriptions, all from a single query — **removed `groups.stats.get`** rather than
+    /// leaving it beside the new name. `spliit.app` has served this since, and answers the old
+    /// name with a 404.
+    ///
+    /// The three figures this app reads are still at the top level, under the names they always
+    /// had and summed by the same helpers, so `GroupStatsResponse` reads those and ignores the
+    /// rest rather than misreading it. The overview also takes a `from`/`to` date range; leaving
+    /// it out is the whole history, which is the only question `groups.stats.get` could answer
+    /// and the only one this screen asks.
+    public static func statsOverview(
+        groupId: String,
+        participantId: String? = nil
+    ) -> TRPCProcedure<GroupStatsInput, GroupStatsResponse> {
+        .query(
+            "groups.stats.overview",
+            GroupStatsInput(groupId: groupId, participantId: participantId)
+        )
+    }
+
+    /// The same totals from an instance that predates `groups.stats.overview`.
+    ///
+    /// Every published image is still one of those — `spliit.app` runs ahead of the release the
+    /// self-hosted world installs — so this is not dead code and will not be for a while. Ask
+    /// through ``TRPCClient/groupStats(groupId:participantId:)``, which knows both names, rather
+    /// than reaching for either directly.
     public static func stats(
         groupId: String,
         participantId: String? = nil
@@ -307,5 +331,34 @@ public enum Spliit {
 
     public static func categories() -> TRPCProcedure<NoInput, CategoriesResponse> {
         .query("categories.list", NoInput())
+    }
+}
+
+extension TRPCClient {
+
+    /// The group's totals, from whichever of the two stats procedures this instance answers.
+    ///
+    /// `groups.stats.overview` first, because the instance most people are on no longer has the
+    /// other one. An instance that predates the change answers `NOT_FOUND`, which is the signal
+    /// to ask the old name — and one that answers neither throws that second `NOT_FOUND` on to
+    /// the caller, which is how the totals tab knows to say the server has none.
+    ///
+    /// Which name an instance answers is deliberately not remembered. A client is built per
+    /// request, so the answer would have to be cached by instance and invalidated when a server
+    /// is upgraded underneath it; what that buys is one 404, and only on the instances that are
+    /// behind.
+    public func groupStats(
+        groupId: String,
+        participantId: String? = nil
+    ) async throws -> Spliit.GroupStatsResponse {
+        do {
+            return try await call(
+                Spliit.statsOverview(groupId: groupId, participantId: participantId)
+            )
+        } catch let error as TRPCServerError where error.isUnknownProcedure {
+            return try await call(
+                Spliit.stats(groupId: groupId, participantId: participantId)
+            )
+        }
     }
 }

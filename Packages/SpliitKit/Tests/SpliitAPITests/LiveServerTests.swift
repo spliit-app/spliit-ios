@@ -235,6 +235,11 @@ struct LiveServerTests {
     /// The fixtures prove the three numbers decode. Only a live instance proves that leaving
     /// `participantId` out is a question the server accepts — a null there is a 400 — and that
     /// it answers a different one from naming somebody who spent nothing.
+    ///
+    /// Asked through `groupStats` rather than either procedure by name, because which one an
+    /// instance has is exactly what this cannot assume: the published image still answers
+    /// `groups.stats.get` and `spliit.app` no longer does. Run against either kind of server,
+    /// this proves the app gets its totals from it.
     @Test("Stats count the expenses and not the settling up")
     func readsStats() async throws {
         let client = try client
@@ -284,19 +289,17 @@ struct LiveServerTests {
             )
         )
 
-        let group_ = try await client.call(Spliit.stats(groupId: group.id))
+        let group_ = try await client.groupStats(groupId: group.id)
         #expect(group_.totalGroupSpendings == 5000)
         #expect(group_.totalParticipantSpendings == nil)
         #expect(group_.totalParticipantShare == nil)
 
-        let hers = try await client.call(
-            Spliit.stats(groupId: group.id, participantId: dana.id)
-        )
+        let hers = try await client.groupStats(groupId: group.id, participantId: dana.id)
         #expect(hers.totalGroupSpendings == 5000)
         #expect(hers.totalParticipantSpendings == 5000)
         #expect(hers.totalParticipantShare == 2500)
 
-        let his = try await client.call(Spliit.stats(groupId: group.id, participantId: eli.id))
+        let his = try await client.groupStats(groupId: group.id, participantId: eli.id)
         #expect(his.totalParticipantSpendings == 0, "The 2500 Eli handed over was settling up.")
         #expect(his.totalParticipantShare == 2500)
     }

@@ -324,6 +324,19 @@ async function dumpFixtures(result) {
         }),
     ],
     ['groups-stats-get-anonymous', () => query('groups.stats.get', { groupId: lisbon })],
+    // And both names, because an instance has one or the other and never both: `spliit.app`
+    // replaced `groups.stats.get` with the overview, while every published image so far still
+    // has only the old one. A capture that fails is skipped with the file left as it was, so
+    // recording against either kind of server keeps the other kind's fixtures intact.
+    [
+      'groups-stats-overview',
+      () =>
+        query('groups.stats.overview', {
+          groupId: lisbon,
+          participantId: result.groups.lisbon.participants['Ana'],
+        }),
+    ],
+    ['groups-stats-overview-anonymous', () => query('groups.stats.overview', { groupId: lisbon })],
     [
       'activities-list',
       () => query('groups.activities.list', { groupId: lisbon, limit: 20, cursor: 0 }),

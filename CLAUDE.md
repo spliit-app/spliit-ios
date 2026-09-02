@@ -145,7 +145,7 @@ this; nothing local would have.
 what a participant will be handed when the group settles and `paidFor` is what they will hand
 over. One of the two is always zero and the other is `abs(total)`; the recorded fixture shows
 it. Only `total` means anything. What was actually paid, and what was actually spent on
-someone, comes from `groups.stats.get` with a `participantId`.
+someone, comes from the stats procedure with a `participantId`.
 
 **`totalParticipantShare` is the one amount that is not an `Int`, and has to stay that way.**
 Today's server sends a whole number of minor units — the web app's *Shares* change apportions
@@ -156,10 +156,25 @@ rounding happens on the way to the display. `Int(exactly:)` on the way, never `I
 one traps rather than returning nil.
 
 **A procedure the instance has never heard of is not a failure to report.** `TRPCServerError`
-has `isUnknownProcedure` for it, and the totals tab is what uses it: a self-hosted instance too
-old for `groups.stats.get` — or, when upstream deploys what its `main` already has, too new for
-it — gets a screen that says so, rather than an error with a "Try again" that can never work.
-Any new endpoint should degrade the same way.
+has `isUnknownProcedure` for it, and the totals tab is what uses it: an instance with no stats
+procedure at all gets a screen that says so, rather than an error with a "Try again" that can
+never work. Any new endpoint should degrade the same way.
+
+**But degrading gracefully is not the same as being right, and a rename looks exactly like a
+missing feature.** The totals shipped in 2.2.0 asking only for `groups.stats.get`. Upstream had
+by then folded the whole stats page into `groups.stats.overview` and *removed* the old name;
+`spliit.app` deployed it, and every group on the instance almost everybody uses answered the
+only question the app knew how to ask with a 404 — so the tab said, politely and wrongly, that
+the server had no totals. **An endpoint that may be renamed has to be asked for under every name
+it goes by.** `TRPCClient.groupStats` asks for the overview first and falls back to the old name,
+and only an instance answering neither has none. The two generations are both live and will be
+for a while: `spliit.app` runs ahead of the published image, which still has only the old one, so
+`make test-live` covers whichever the server it is pointed at happens to be.
+
+Note also what did *not* catch this. CI pins `SPLIIT_SERVER_REF` to a commit, deliberately, so
+the build is reproducible; `upstream-drift` is the nightly job that runs against the latest
+server, and it is the only thing watching. A change upstream can otherwise reach users before it
+reaches a test.
 **Who did it is something you have to tell the server.** `groups.update` and all three
 `groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the
 activity log has to name anybody with. Leave it out and the call still succeeds, the expense is

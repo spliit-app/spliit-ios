@@ -4,14 +4,14 @@ import SpliitAPI
 /// What a group spent, broken down by the category each expense was filed under.
 ///
 /// Folded on the client, from the expenses themselves. `groups.stats.get` answers three totals
-/// and no more; the wider `groups.stats.overview` that the web app's `main` has does return a
-/// category breakdown, but nothing serves it yet — not `spliit.app`, not the published image —
-/// so a tab that asked for it would show nothing to everybody.
+/// and no more, and every published image still serves that one — so a tab that only read a
+/// breakdown off the wire would have nothing to show on a self-hosted instance.
 ///
-/// This is deliberately the *same* fold as that endpoint's `getSpendingByCategory`, down to the
-/// zero-total filter and the descending sort, so the day `overview` is worth taking the numbers
-/// do not move: the section stops being computed and starts being read, and agrees with itself
-/// across the change.
+/// `groups.stats.overview`, which `spliit.app` has replaced it with, does return one. This is
+/// deliberately the *same* fold as that endpoint's `getSpendingByCategory`, down to the
+/// zero-total filter and the descending sort, so reading it from there instead — on the
+/// instances that have it, once that is most of them — moves no numbers: the section stops being
+/// computed and starts being read, and agrees with itself across the change.
 public struct CategorySpending: Identifiable, Sendable, Hashable {
 
     /// The server's category ID. Zero stands for both the "General" category and an expense

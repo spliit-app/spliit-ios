@@ -526,14 +526,18 @@ Ordered by value to a phone user, not by web-app order.
     instance older than that sums floating-point thirds and sends `1416.67`, which `Int` cannot
     decode — it throws, and takes the screen with it. The rounding happens on the way to the
     display instead
-  - **the procedure is on its way out upstream.** `groups.stats.get` was folded into a wider
-    `groups.stats.overview` on 2026-08-16, which also returns spending by month, participant and
-    category. Nothing serves it yet — not `spliit.app`, not the published image, both checked —
-    so building against it today would 404 for every user. The tab degrades to a plain "no
-    totals on this server" rather than an error with a retry that cannot work, which is the
-    first use of `TRPCServerError.isUnknownProcedure`. `upstream-drift` is what will say when
-    the shape moves, and `overview` is worth taking then: it is the wave-3 stats tab already
-    written
+  - **the procedure went out upstream, and the tab went with it.** `groups.stats.get` was folded
+    into a wider `groups.stats.overview` on 2026-08-16 — spending by month, participant and
+    category as well — and the old name was *removed*, not kept beside it. When `spliit.app`
+    deployed that, 2.2.0 was in the App Store asking for the old name only, and every group on
+    it reported "no totals on this server": the graceful degradation for an instance without the
+    feature, shown to everyone, for a rename. Fixed by asking for both names —
+    `TRPCClient.groupStats` tries the overview and falls back — and the degradation now means
+    what it says. Both generations are live: the published image still has only the old name
+  - **the overview's category breakdown is still not read.** `CategorySpending` folds it on the
+    client from the expense list, which is what an instance with only `groups.stats.get` needs.
+    The fold is deliberately the same one as the server's, so the section can stop being
+    computed and start being read once the published image has caught up
   - **reimbursements are excluded from all three figures**, which the tab's footer now says.
     `make test-live` is what confirmed it rather than a reading of the web app
 - ~~Activity log~~ — **done**, though not as a tab: it is pushed from the information tab, which

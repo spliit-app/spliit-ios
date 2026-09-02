@@ -151,9 +151,14 @@ final class GroupDetailModel {
         statsLoad.failedWithNothingToShow && !statsUnavailable
     }
 
-    /// This instance has no `groups.stats.get` — an older self-hosted deployment, or a newer one
-    /// that has moved the procedure. Kept apart from a failure because there is nothing to retry
-    /// and nothing the user did wrong: the screen says so once and offers no button.
+    /// This instance answers neither name the totals go by — neither `groups.stats.overview` nor
+    /// the `groups.stats.get` it replaced. Kept apart from a failure because there is nothing to
+    /// retry and nothing the user did wrong: the screen says so once and offers no button.
+    ///
+    /// It took shipping 2.2.0 to learn how narrow this really is. The app asked only for
+    /// `groups.stats.get`, `spliit.app` had by then dropped it for the overview, and every group
+    /// on the instance almost everybody uses said it had no totals. Asking for one name is what
+    /// made a routine upstream rename look like a missing feature.
     private(set) var statsUnavailable = false
 
     /// The group counts here as it does for the expenses: the log names participants, and until
@@ -337,8 +342,8 @@ final class GroupDetailModel {
         statsLoad.begin()
 
         do {
-            let response = try await client.call(
-                Spliit.stats(groupId: groupID, participantId: participantID)
+            let response = try await client.groupStats(
+                groupId: groupID, participantId: participantID
             )
             // The picker may have moved on while this was in flight; somebody else's share must
             // not become the answer under your name.

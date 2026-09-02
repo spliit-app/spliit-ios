@@ -54,7 +54,7 @@ targets:
         # orientations, so it is spent whether or not it ever appeared. The store shows
         # 1.2.0 (20) — and note that the ../spliit-mobile checkout says 1.1.0, so the source
         # of truth is App Store Connect, not that repo.
-        CURRENT_PROJECT_VERSION: 24
+        CURRENT_PROJECT_VERSION: 25
         # Orientations are declared under `info:` below, not here. INFOPLIST_KEY_* settings are
         # only merged when Xcode generates the Info.plist itself; this project writes its own,
         # so anything set that way is silently dropped — which is how the app reached App Store

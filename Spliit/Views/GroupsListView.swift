@@ -197,9 +197,12 @@ struct GroupsListView: View {
                     Text("Create group")
                         .font(.system(.headline, design: .rounded))
                         .frame(maxWidth: .infinity)
+                        // Between the default height and `.controlSize(.large)`, which is a
+                        // step too far: enough to stand off the pair below without becoming
+                        // the tallest thing on the screen.
+                        .padding(.vertical, 4)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
                 .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
 
                 // Side by side, because they are one decision — someone else made the group,

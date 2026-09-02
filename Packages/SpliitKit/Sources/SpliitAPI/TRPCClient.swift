@@ -11,8 +11,8 @@ public struct TRPCClient: Sendable {
     private let session: URLSession
 
     /// - Parameters:
-    ///   - baseURL: the instance root, with or without a trailing slash — the settings screen
-    ///     stores it as `https://spliit.app/`.
+    ///   - baseURL: the instance root, with or without a trailing slash — a group stores it as
+    ///     `https://spliit.app/`.
     ///   - session: defaults to a session shared by every client, so switching instances does
     ///     not leak a connection pool per call.
     public init(baseURL: URL, session: URLSession? = nil) {

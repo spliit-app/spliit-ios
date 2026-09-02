@@ -21,6 +21,10 @@ import SwiftUI
 struct GroupInformationView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     let model: GroupDetailModel
     /// Opens group settings, where the note actually lives.
     let onEdit: () -> Void
@@ -46,7 +50,7 @@ struct GroupInformationView: View {
                 )
             ) {
                 Button("Try again") {
-                    Task { await model.retry(using: app.client) }
+                    Task { await model.retry(using: client) }
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier(AccessibilityID.GroupInformation.retryButton)
@@ -62,7 +66,7 @@ struct GroupInformationView: View {
             // `reload` rather than the other tabs' `reloadAfterExpenseChange`: the group itself
             // is what this screen shows, and that is the one thing an expense-shaped refresh
             // deliberately leaves alone.
-            .refreshable { await model.reload(using: app.client) }
+            .refreshable { await model.reload(using: client) }
         }
     }
 
@@ -184,6 +188,13 @@ struct GroupInformationView: View {
 
             LabeledContent("Created") {
                 Text(group.createdAt.formatted(date: .abbreviated, time: .omitted))
+            }
+
+            // Which server this group is on. It is a fact about the group rather than about the
+            // app now, and this tab is where the group's facts are.
+            LabeledContent("Server") {
+                Text(SettingsStore.displayName(for: app.instanceURL(forGroup: model.groupID)))
+                    .accessibilityIdentifier(AccessibilityID.GroupInformation.server)
             }
         }
     }

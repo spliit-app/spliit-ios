@@ -46,8 +46,9 @@ final class GroupQRCodeTests: SpliitUITestCase {
         capture(app, "qr-code-not-a-group-link")
     }
 
-    /// A well-formed link to a group this instance has never heard of is answered with the
-    /// camera still up, so the next code is one movement away rather than a screen away.
+    /// A well-formed link to a group that server has never heard of is answered with the camera
+    /// still up, so the next code is one movement away rather than a screen away — and it names
+    /// the server it asked, which is the code's own rather than whichever this app defaults to.
     @MainActor
     func testACodeForAGroupTheServerDoesNotHaveSaysSo() {
         let app = launchApp(
@@ -58,8 +59,16 @@ final class GroupQRCodeTests: SpliitUITestCase {
         app.buttons[AccessibilityID.GroupsList.scanQRCodeButton].tap()
 
         let status = app.staticTexts[AccessibilityID.ScanQRCode.status]
-        assertExists(status, "The scanner should say the group is not on this server.")
-        XCTAssertEqual(status.label, "No group with that link exists on this server.")
+        assertExists(status, "The scanner should say the group is not on that server.")
+        let host = URL(string: baseURL)?.host() ?? ""
+        XCTAssertTrue(
+            status.label.hasPrefix("No group with that link exists on"),
+            "The scanner should say the group isn’t there. It said “\(status.label)”."
+        )
+        XCTAssertTrue(
+            status.label.contains(host),
+            "It should name the server the code pointed at. It said “\(status.label)”."
+        )
 
         // And the screen is still the scanner, rather than having been dismissed onto a list
         // that gained nothing.

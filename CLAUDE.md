@@ -265,6 +265,22 @@ never in the file, and expire after 90 days. UI tests run with no cloud at all
 (`-uiTestRun`, added on every launch), because a simulator signed into a real account would
 merge somebody's actual groups into a seeded list.
 
+**Which instance a group is on belongs to the group, not to the app.** `RecentGroup.instanceURL`
+is the address, `AppModel.client(forGroup:)` is the only way to a client for it, and there is
+deliberately no client for "the app" — a request sent to the wrong server comes back as a group
+that does not exist. What is left in `SettingsStore` is `defaultInstanceURL`, which is only where
+the *next* group is created; the create form chooses per group, and a pasted or shared link is
+taken to mean the server it names. The home screen therefore makes one `groups.list` request per
+instance, because that procedure only ever answers for the server it was sent to.
+
+**A group with no address is the app's default, and that is a fact with a shelf life.** Every list
+written before this — and everything the React Native app wrote — was one instance at a time, so
+nil means "wherever this install points". `RecentGroupsStore.stampInstances` writes the resolved
+default onto those rows at launch, and it must not stamp `updatedAt`: two phones sharing an iCloud
+list can have different defaults, and stamping as an edit would let whichever launched last
+overwrite the other's addresses. `-uiTestRecentGroups` seeds rows with no address on purpose, so
+the stamping is also what keeps the end-to-end suites pointed at `-baseURL`.
+
 **A review prompt is not something a test can see, and iOS will quietly swallow it.**
 `requestReview()` shows nothing at all once iOS decides the app has asked enough — three times
 in 365 days, counted across the whole install — and the app is never told which happened. There

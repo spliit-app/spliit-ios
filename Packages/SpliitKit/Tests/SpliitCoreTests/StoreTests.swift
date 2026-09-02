@@ -12,25 +12,25 @@ struct SettingsStoreTests {
         return try #require(UserDefaults(suiteName: name))
     }
 
-    @Test("A fresh install talks to the official instance")
+    @Test("A fresh install creates groups on the official instance")
     @MainActor
     func defaultsToOfficialInstance() throws {
         let settings = SettingsStore(defaults: try makeDefaults())
 
-        #expect(settings.baseURL == SettingsStore.defaultBaseURL)
+        #expect(settings.defaultInstanceURL == SettingsStore.officialInstanceURL)
         #expect(settings.isUsingOfficialInstance)
     }
 
-    @Test("A changed address survives a restart")
+    @Test("A changed default survives a restart")
     @MainActor
-    func persistsBaseURL() throws {
+    func persistsDefaultInstance() throws {
         let defaults = try makeDefaults()
         let settings = SettingsStore(defaults: defaults)
 
-        settings.baseURL = try #require(URL(string: "https://home.example.com/spliit/"))
+        settings.defaultInstanceURL = try #require(URL(string: "https://home.example.com/spliit/"))
 
         let reloaded = SettingsStore(defaults: defaults)
-        #expect(reloaded.baseURL.absoluteString == "https://home.example.com/spliit/")
+        #expect(reloaded.defaultInstanceURL.absoluteString == "https://home.example.com/spliit/")
         #expect(reloaded.isUsingOfficialInstance == false)
     }
 
@@ -45,7 +45,21 @@ struct SettingsStoreTests {
         // Simulates what the argument domain does to the same key.
         defaults.set("http://localhost:3009/", forKey: SettingsStore.Key.baseURL)
 
-        #expect(SettingsStore(defaults: defaults).baseURL.absoluteString == "http://localhost:3009/")
+        #expect(
+            SettingsStore(defaults: defaults).defaultInstanceURL.absoluteString
+                == "http://localhost:3009/"
+        )
+    }
+
+    /// The host is the name people use. A row reading "https://spliit.app/" is a URL.
+    @Test("An instance is named by its host, port and path")
+    func displayNames() throws {
+        #expect(SettingsStore.displayName(for: try #require(URL(string: "https://spliit.app/"))) == "spliit.app")
+        #expect(SettingsStore.displayName(for: try #require(URL(string: "http://localhost:3009/"))) == "localhost:3009")
+        #expect(
+            SettingsStore.displayName(for: try #require(URL(string: "https://home.example.com/spliit/")))
+                == "home.example.com/spliit"
+        )
     }
 
     @Test("A bare host is accepted and completed")
@@ -380,6 +394,133 @@ struct RecentGroupsStoreTests {
         #expect(store.groups.map(\.groupId) == ["a", "b"])
         #expect(store.groups.first?.groupName == "Weekend in Lisbon")
         #expect(store.groups.first?.isStarred == true)
+    }
+
+    // MARK: - Which instance a group is on
+
+    private let official = URL(string: "https://spliit.app/")!
+    private let selfHosted = URL(string: "https://spliit.example.com/")!
+
+    @Test("Groups from two instances sit in one list, each keeping its own address")
+    @MainActor
+    func keepsAnInstancePerGroup() {
+        let store = makeStore()
+
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon", instanceURL: official))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B", instanceURL: selfHosted))
+
+        #expect(store.instanceURL(forGroup: "a") == official)
+        #expect(store.instanceURL(forGroup: "b") == selfHosted)
+        #expect(store.instancesInUse(fallback: official) == [selfHosted, official])
+    }
+
+    /// The caller has just been answered by a server, so it knows where the group is; the flags
+    /// beside it are this device's and stay.
+    @Test("Reopening a group takes the address it was found at, and keeps its flags")
+    @MainActor
+    func remembersTheInstanceItWasFoundAt() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon", instanceURL: official))
+        store.setStarred(true, groupId: "a")
+
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon", instanceURL: selfHosted))
+
+        #expect(store.instanceURL(forGroup: "a") == selfHosted)
+        #expect(store.groups.first?.isStarred == true)
+    }
+
+    /// Every list written before an address was part of a group — and everything the React
+    /// Native app wrote — is on whatever instance the app was pointed at.
+    @Test("A group with no address is stamped with the default")
+    @MainActor
+    func stampsGroupsWithNoInstance() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B", instanceURL: official))
+
+        store.stampInstances(with: selfHosted)
+
+        #expect(store.instanceURL(forGroup: "a") == selfHosted)
+        #expect(store.instanceURL(forGroup: "b") == official)
+    }
+
+    /// Stamping is a device writing down what it already believed, not an edit — and a list two
+    /// phones share must not have one of them overwrite the other's addresses with its own.
+    @Test("Stamping doesn’t count as an edit")
+    @MainActor
+    func stampingIsNotAnEdit() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        let before = store.groups.first?.updatedAt
+
+        store.stampInstances(with: official)
+
+        #expect(store.groups.first?.updatedAt == before)
+    }
+
+    @Test("The home screen asks each instance about its own groups")
+    @MainActor
+    func groupsAreListedPerInstance() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon", instanceURL: official))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B", instanceURL: selfHosted))
+        store.remember(RecentGroup(groupId: "c", groupName: "Ski trip"))
+
+        let byInstance = store.groupIDsByInstance(fallback: official)
+
+        #expect(byInstance[official]?.sorted() == ["a", "c"])
+        #expect(byInstance[selfHosted] == ["b"])
+    }
+
+    @Test("A group’s address survives a restart")
+    @MainActor
+    func persistsTheInstance() {
+        let url = URL.temporaryDirectory
+            .appending(path: "recent-\(UUID().uuidString)")
+            .appending(path: "recent-groups.json")
+
+        let store = RecentGroupsStore(fileURL: url)
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon", instanceURL: selfHosted))
+
+        #expect(RecentGroupsStore(fileURL: url).instanceURL(forGroup: "a") == selfHosted)
+    }
+}
+
+@Suite("Choosing an instance for a new group")
+struct InstanceChoiceTests {
+
+    private let official = URL(string: "https://spliit.app/")!
+
+    @Test("A chosen instance is what the group is created on")
+    func picksFromTheList() {
+        #expect(InstanceChoice(url: official).resolved == official)
+    }
+
+    /// Half an address is not a mistake yet — it is somebody typing. The form only shows the
+    /// problem once a save has been attempted, and the address stays on screen either way.
+    @Test("A typed address only becomes an instance once it parses")
+    func typedAddress() {
+        var choice = InstanceChoice(url: official)
+        choice.typeAddress()
+        #expect(choice.resolved == nil)
+
+        choice.address = "spliit.example"
+        #expect(choice.resolved == URL(string: "https://spliit.example/"))
+        #expect(choice.isValid)
+    }
+
+    @Test("Picking from the list again is the way back from a typed address")
+    func returnsToTheList() {
+        var choice = InstanceChoice(url: official)
+        choice.typeAddress()
+        choice.address = "nonsense address"
+        #expect(choice.isValid == false)
+
+        choice.use(official)
+
+        #expect(choice.isTypingAddress == false)
+        #expect(choice.address.isEmpty)
+        #expect(choice.resolved == official)
     }
 }
 

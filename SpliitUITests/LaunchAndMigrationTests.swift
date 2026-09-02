@@ -64,6 +64,8 @@ final class LaunchAndMigrationTests: SpliitUITestCase {
         )
     }
 
+    /// The old app's address is not a setting any more — it is where the next group is created,
+    /// which is the only thing a list with no groups in it can still say about an instance.
     @MainActor
     func testSelfHostedAddressCarriesOverFromTheOldApp() {
         let app = launchApp(
@@ -72,11 +74,16 @@ final class LaunchAndMigrationTests: SpliitUITestCase {
             overrideBaseURL: false
         )
 
-        app.buttons[AccessibilityID.GroupsList.settingsButton].tap()
+        app.buttons[AccessibilityID.GroupsList.createGroupButton].tap()
 
-        let field = app.textFields[AccessibilityID.Settings.baseURLField]
-        assertExists(field, "Settings should open.")
-        XCTAssertEqual(field.value as? String, "https://spliit.example.com/")
+        let server = app.descendants(matching: .any)
+            .matching(identifier: AccessibilityID.GroupForm.serverPicker)
+            .firstMatch
+        assertExists(server, "The create form should say which server the group goes on.")
+        XCTAssertTrue(
+            "\(server.value ?? "") \(server.label)".contains("spliit.example.com"),
+            "A group created after the upgrade should go on the instance the old app used."
+        )
     }
 
     @MainActor
@@ -85,7 +92,7 @@ final class LaunchAndMigrationTests: SpliitUITestCase {
 
         app.buttons[AccessibilityID.GroupsList.settingsButton].tap()
         assertExists(app.buttons[AccessibilityID.Settings.doneButton], "Settings should open.")
-        XCTAssertTrue(app.textFields[AccessibilityID.Settings.baseURLField].exists)
+        XCTAssertTrue(app.staticTexts[AccessibilityID.Settings.version].exists)
 
         app.buttons[AccessibilityID.Settings.doneButton].tap()
         assertExists(

@@ -6,6 +6,10 @@ import SwiftUI
 struct BalancesView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let model: GroupDetailModel
     let onSettle: (Reimbursement) -> Void
@@ -29,7 +33,7 @@ struct BalancesView: View {
                 description: Text(model.loadFailure ?? String(localized: "The server didn’t respond."))
             ) {
                 Button("Try again") {
-                    Task { await model.retry(using: app.client) }
+                    Task { await model.retry(using: client) }
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier(AccessibilityID.ExpenseList.retryButton)
@@ -89,7 +93,7 @@ struct BalancesView: View {
                     }
                 }
             }
-            .refreshable { await model.reloadAfterExpenseChange(using: app.client) }
+            .refreshable { await model.reloadAfterExpenseChange(using: client) }
             // Settling a payment moves every balance at once. This is what lets the amounts roll
             // to their new values and the bars slide, rather than the screen simply being
             // different the next time you look at it.

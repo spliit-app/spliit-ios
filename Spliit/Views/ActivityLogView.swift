@@ -20,6 +20,10 @@ import SwiftUI
 struct ActivityLogView: View {
 
     @Environment(AppModel.self) private var app
+
+    /// The instance this group is on. Every request from this screen goes through it: a group ID
+    /// only means anything to the server that issued it.
+    private var client: TRPCClient { app.client(forGroup: model.groupID) }
     let model: GroupDetailModel
 
     /// The expense a row opened, if any. Held here rather than handed up to `GroupDetailView`:
@@ -39,7 +43,7 @@ struct ActivityLogView: View {
             // The log is fetched here rather than with the rest of the group: it is the one
             // thing no other screen needs. `.task` runs when this is first built, and the model
             // ignores every call after the first that succeeded.
-            .task { await model.loadActivitiesIfNeeded(using: app.client) }
+            .task { await model.loadActivitiesIfNeeded(using: client) }
             .sheet(item: $editingExpense) { edited in
                 if let group = model.group {
                     ExpenseFormView(
@@ -47,7 +51,7 @@ struct ActivityLogView: View {
                         group: group,
                         categories: model.categories,
                         draft: nil,
-                        onFinished: { await model.reloadAfterExpenseChange(using: app.client) }
+                        onFinished: { await model.reloadAfterExpenseChange(using: client) }
                     )
                 }
             }
@@ -67,7 +71,7 @@ struct ActivityLogView: View {
                 )
             ) {
                 Button("Try again") {
-                    Task { await model.retryActivities(using: app.client) }
+                    Task { await model.retryActivities(using: client) }
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier(AccessibilityID.ActivityLog.retryButton)
@@ -109,10 +113,10 @@ struct ActivityLogView: View {
                         .accessibilityLabel(Text("Loading more activity"))
                     Spacer()
                 }
-                .task { await model.loadNextActivityPage(using: app.client) }
+                .task { await model.loadNextActivityPage(using: client) }
             }
         }
-        .refreshable { await model.refreshActivities(using: app.client) }
+        .refreshable { await model.refreshActivities(using: client) }
     }
 
     /// A row leads to its expense when there is still one to lead to. Rows about a deleted

@@ -224,7 +224,8 @@ tRPC fixtures, with the full backend suite on merge.
 6. Edit an expense; delete an expense
 7. Edit group: rename, add a participant, blocked deletion of a participant
    who has expenses
-8. Change base URL in settings → app talks to the new instance
+8. Add a group by a link to a second instance → both it and a group on the
+   first one load, each from its own server
 9. **Upgrade test:** launch with a legacy AsyncStorage manifest planted in the
    container (both inline and sidecar variants) → recent groups appear
 
@@ -299,7 +300,8 @@ Everything the RN app does today, and nothing more.
 
 **Settings / About**
 - About text, website and GitHub links, version and build
-- Base URL for self-hosted instances
+- Self-hosted instances, chosen per group rather than app-wide: the create form
+  picks the server, a pasted link is taken to mean the one it names
 
 **Cross-cutting**
 - Plausible analytics: same screen names and events as today

@@ -178,6 +178,21 @@ struct SpliitTestAPI {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// The same, for a list whose groups are not all on the same instance.
+    static func recentGroupsJSON(
+        onInstances groups: [(id: String, name: String, instanceURL: String)]
+    ) -> String {
+        let payload = groups.map { group in
+            [
+                "groupId": group.id,
+                "groupName": group.name,
+                "instanceURL": group.instanceURL,
+            ]
+        }
+        let data = try! JSONSerialization.data(withJSONObject: payload)
+        return String(decoding: data, as: UTF8.self)
+    }
+
     // MARK: - Transport
 
     private func query(_ path: String, _ input: [String: Any]) async throws -> [String: Any] {

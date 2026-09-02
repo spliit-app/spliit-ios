@@ -83,6 +83,19 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
     /// opening it.
     public var lastOpenedAt: Date?
 
+    /// The Spliit instance this group is on.
+    ///
+    /// A group ID means nothing on its own: the same list can hold a flatshare on spliit.app and
+    /// a family group on a server in somebody's hallway, and asking the wrong one about either
+    /// gets back a group that does not exist. So the address belongs to the group, not to the
+    /// app — which is what lets the two sit in one list.
+    ///
+    /// Nil means "wherever this install points by default", which is every list written before
+    /// this existed and everything the React Native app ever wrote: those were one instance at a
+    /// time. `stampInstances` fills them in on the next launch, so a nil never lives long enough
+    /// for a changed default to move somebody's groups out from under them.
+    public var instanceURL: URL?
+
     public var id: String { groupId }
 
     public init(
@@ -92,7 +105,8 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         isArchived: Bool = false,
         activeParticipant: ActiveParticipant? = nil,
         updatedAt: Date? = nil,
-        lastOpenedAt: Date? = nil
+        lastOpenedAt: Date? = nil,
+        instanceURL: URL? = nil
     ) {
         self.groupId = groupId
         self.groupName = groupName
@@ -101,11 +115,12 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         self.activeParticipant = activeParticipant
         self.updatedAt = updatedAt
         self.lastOpenedAt = lastOpenedAt
+        self.instanceURL = instanceURL
     }
 
     private enum CodingKeys: String, CodingKey {
         case groupId, groupName, isStarred, isArchived, activeParticipant
-        case updatedAt, lastOpenedAt
+        case updatedAt, lastOpenedAt, instanceURL
     }
 
     /// Written by hand because the flags arrived after the file did: every list saved before
@@ -123,6 +138,7 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         )
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         lastOpenedAt = try container.decodeIfPresent(Date.self, forKey: .lastOpenedAt)
+        instanceURL = try container.decodeIfPresent(URL.self, forKey: .instanceURL)
     }
 }
 
@@ -296,6 +312,9 @@ public final class RecentGroupsStore {
             group.isStarred = existing.isStarred
             group.isArchived = existing.isArchived
             group.activeParticipant = existing.activeParticipant
+            // The instance is the exception: the caller has just been answered by a server, so
+            // it knows better than the list does where this group was found.
+            group.instanceURL = group.instanceURL ?? existing.instanceURL
         }
         group.updatedAt = .now
         group.lastOpenedAt = group.updatedAt
@@ -351,6 +370,43 @@ public final class RecentGroupsStore {
     /// rather than a reason to invent a row with no name.
     public func setActiveParticipant(_ participant: ActiveParticipant, groupId: String) {
         modify(groupId) { $0.activeParticipant = participant }
+    }
+
+    /// Where a group lives, or nil for one that has never been told.
+    public func instanceURL(forGroup groupId: String) -> URL? {
+        groups.first { $0.groupId == groupId }?.instanceURL
+    }
+
+    /// The instances the list actually uses, most recently opened first, resolving the groups
+    /// that carry no address to `fallback`.
+    public func instancesInUse(fallback: URL) -> [URL] {
+        var seen: Set<URL> = []
+        return groups.compactMap { group in
+            let url = group.instanceURL ?? fallback
+            return seen.insert(url).inserted ? url : nil
+        }
+    }
+
+    /// The group IDs to ask each instance about. The home screen makes one request per instance,
+    /// because `groups.list` can only answer for the server it was sent to.
+    public func groupIDsByInstance(fallback: URL) -> [URL: [String]] {
+        Dictionary(grouping: groups) { $0.instanceURL ?? fallback }
+            .mapValues { $0.map(\.groupId) }
+    }
+
+    /// Writes an address onto every group that has none, so that changing which instance is the
+    /// default can never silently move a group somewhere it isn't.
+    ///
+    /// Deliberately does not touch `updatedAt`: this is a device filling in what it already
+    /// believed, not an edit. Stamping as an edit would let one phone's default overwrite the
+    /// other's on a list they share, and neither of them is wrong.
+    public func stampInstances(with url: URL) {
+        var changed = false
+        for index in groups.indices where groups[index].instanceURL == nil {
+            groups[index].instanceURL = url
+            changed = true
+        }
+        if changed { save() }
     }
 
     private func modify(_ groupId: String, _ change: (inout RecentGroup) -> Void) {

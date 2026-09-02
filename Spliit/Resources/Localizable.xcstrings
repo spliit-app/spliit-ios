@@ -774,22 +774,22 @@
         }
       }
     },
+    "Couldn’t reach %@, so group details may be out of date.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de joindre %@ : les détails des groupes peuvent être obsolètes."
+          }
+        }
+      }
+    },
     "Couldn’t reach the rates service. Enter the rate yourself.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Impossible de joindre le service de taux de change. Saisissez le taux vous-même."
-          }
-        }
-      }
-    },
-    "Couldn’t reach the server, so group details may be out of date.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Serveur injoignable : les détails des groupes ne sont peut-être plus à jour."
           }
         }
       }
@@ -1411,12 +1411,12 @@
         }
       }
     },
-    "No group with that link exists on this server.": {
+    "No group with that link exists on %@.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun groupe ne correspond à ce lien sur ce serveur."
+            "value": "Aucun groupe avec ce lien n’existe sur %@."
           }
         }
       }
@@ -1591,6 +1591,16 @@
         }
       }
     },
+    "Other server": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autre serveur"
+          }
+        }
+      }
+    },
     "Paid by": {
       "localizations": {
         "fr": {
@@ -1641,12 +1651,12 @@
         }
       }
     },
-    "Paste the link to a group that was shared with you, and it will appear in your list.": {
+    "Paste the link to a group that was shared with you, from spliit.app or from any other Spliit server, and it will appear in your list.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Collez le lien d’un groupe qu’on a partagé avec vous : il apparaîtra dans votre liste."
+            "value": "Collez le lien d’un groupe qui vous a été partagé, sur spliit.app ou sur n’importe quel autre serveur Spliit, et il apparaîtra dans votre liste."
           }
         }
       }
@@ -1713,16 +1723,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choisissez-vous une fois et ce groupe se lit depuis votre place : votre solde d’abord, et votre nom déjà rempli sur une nouvelle dépense."
-          }
-        }
-      }
-    },
-    "Point the app at your own Spliit instance. Leave this alone if you use the official one.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pointez l’app vers votre propre instance Spliit. Laissez ce champ tel quel si vous utilisez l’instance officielle."
           }
         }
       }
@@ -2464,16 +2464,6 @@
         }
       }
     },
-    "Use spliit.app": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Utiliser spliit.app"
-          }
-        }
-      }
-    },
     "Use the published rate": {
       "localizations": {
         "fr": {
@@ -2560,6 +2550,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ce que vous avez payé, face à ce qui a été dépensé pour vous. La différence, c’est votre solde."
+          }
+        }
+      }
+    },
+    "Where this group is created. Groups on different Spliit servers sit in the same list, and a group stays on the server it was made on.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur sur lequel ce groupe est créé. Des groupes hébergés sur des serveurs Spliit différents cohabitent dans la même liste, et un groupe reste sur le serveur où il a été créé."
           }
         }
       }
@@ -2674,10 +2674,6 @@
         }
       }
     },
-    "https://spliit.app/": {
-      "comment": "The official instance's address, shown as a placeholder.",
-      "shouldTranslate": false
-    },
     "is owed": {
       "localizations": {
         "fr": {
@@ -2714,6 +2710,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "parts"
+          }
+        }
+      }
+    },
+    "spliit.example.com": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "spliit.example.com"
           }
         }
       }

@@ -5,7 +5,8 @@ import SwiftUI
 /// Adds a group someone shared, by pasting its URL.
 ///
 /// Spliit has no accounts: a group URL *is* the invitation, so this is how a second device
-/// ever learns about a group.
+/// ever learns about a group. The link says which server as well as which group, which is what
+/// lets somebody be handed a group on an instance this device has never talked to.
 struct AddGroupByURLView: View {
 
     @Environment(AppModel.self) private var app
@@ -21,7 +22,10 @@ struct AddGroupByURLView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("\(app.settings.baseURL.absoluteString)groups/…", text: $urlText)
+                    TextField(
+                        "\(app.settings.defaultInstanceURL.absoluteString)groups/…",
+                        text: $urlText
+                    )
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -38,7 +42,7 @@ struct AddGroupByURLView: View {
                 } header: {
                     Text("Group link")
                 } footer: {
-                    Text("Paste the link to a group that was shared with you, and it will appear in your list.")
+                    Text("Paste the link to a group that was shared with you, from spliit.app or from any other Spliit server, and it will appear in your list.")
                 }
             }
             .navigationTitle("Add group")
@@ -62,23 +66,31 @@ struct AddGroupByURLView: View {
         guard !isChecking else { return }
         problem = nil
 
-        guard let groupID = GroupLink.groupID(inPastedText: urlText) else {
+        guard let link = GroupLink(pastedText: urlText) else {
             problem = String(localized: "That doesn’t look like a Spliit group link.")
             return
         }
+        // A bare ID names no server, and the one this device creates groups on is the only
+        // reasonable guess.
+        let instanceURL = link.instanceURL ?? app.settings.defaultInstanceURL
 
         isChecking = true
         Task {
             defer { isChecking = false }
             do {
-                let response = try await app.client.call(Spliit.group(id: groupID))
+                let response = try await app.client(on: instanceURL)
+                    .call(Spliit.group(id: link.groupID))
                 guard let group = response.group else {
                     problem = String(
-                        localized: "No group with that link exists on this server."
+                        localized: "No group with that link exists on \(SettingsStore.displayName(for: instanceURL))."
                     )
                     return
                 }
-                onAdded(RecentGroup(groupId: group.id, groupName: group.name))
+                onAdded(
+                    RecentGroup(
+                        groupId: group.id, groupName: group.name, instanceURL: instanceURL
+                    )
+                )
                 dismiss()
             } catch {
                 problem = error.localizedDescription

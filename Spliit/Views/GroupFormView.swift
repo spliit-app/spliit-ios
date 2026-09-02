@@ -11,6 +11,11 @@ struct GroupFormView: View {
     @Binding var draft: GroupFormDraft
     /// Participants who appear on an expense; the server refuses to remove these.
     var participantsWithExpenses: Set<String> = []
+    /// Which instance the group will be created on, or nil when editing one: a group cannot move
+    /// between servers, so the address is only ever chosen once.
+    var instance: Binding<InstanceChoice>?
+    /// The instances to offer, most recently used first. Empty unless `instance` is set.
+    var knownInstances: [URL] = []
     var isSaving: Bool
     let saveTitle: LocalizedStringKey
     let onSave: () -> Void
@@ -55,6 +60,20 @@ struct GroupFormView: View {
                     Text("The currency symbol is shown next to every amount, for example $ or CHF.")
                 } else {
                     Text("Amounts in this group are shown with this currency’s symbol.")
+                }
+            }
+
+            if let instance {
+                Section {
+                    InstanceField(
+                        choice: instance,
+                        knownInstances: knownInstances,
+                        showsProblem: hasAttemptedSave
+                    )
+                } header: {
+                    Text("Server")
+                } footer: {
+                    Text("Where this group is created. Groups on different Spliit servers sit in the same list, and a group stays on the server it was made on.")
                 }
             }
 
@@ -122,7 +141,7 @@ struct GroupFormView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button(saveTitle) {
                     hasAttemptedSave = true
-                    guard draft.isValid else { return }
+                    guard draft.isValid, instance?.wrappedValue.isValid ?? true else { return }
                     onSave()
                 }
                 .disabled(isSaving)
@@ -182,16 +201,26 @@ struct CreateGroupView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var draft = GroupFormDraft(newGroupIn: .autoupdatingCurrent)
+    @State private var instance: InstanceChoice
     @State private var isSaving = false
     @State private var failure: String?
 
     /// Called with the new group so the caller can remember it and open it.
     let onCreated: (RecentGroup) -> Void
 
+    /// - Parameter instanceURL: where the form opens — the last instance a group was created on.
+    ///   Passed in rather than read here, because the environment isn't available yet.
+    init(instanceURL: URL, onCreated: @escaping (RecentGroup) -> Void) {
+        _instance = State(initialValue: InstanceChoice(url: instanceURL))
+        self.onCreated = onCreated
+    }
+
     var body: some View {
         NavigationStack {
             GroupFormView(
                 draft: $draft,
+                instance: $instance,
+                knownInstances: app.knownInstances,
                 isSaving: isSaving,
                 saveTitle: "Create",
                 onSave: save,
@@ -210,14 +239,23 @@ struct CreateGroupView: View {
     }
 
     private func save() {
+        // The form's save button already refuses an unusable address; this is what makes that a
+        // guarantee rather than a convention.
+        guard let instanceURL = instance.resolved else { return }
         isSaving = true
         Task {
             defer { isSaving = false }
             do {
-                let response = try await app.client.call(Spliit.createGroup(draft.formValues))
+                let response = try await app.client(on: instanceURL)
+                    .call(Spliit.createGroup(draft.formValues))
                 Analytics.shared.event(.createGroup)
+                app.noteInstanceUsedForNewGroup(instanceURL)
                 onCreated(
-                    RecentGroup(groupId: response.groupId, groupName: draft.formValues.name)
+                    RecentGroup(
+                        groupId: response.groupId,
+                        groupName: draft.formValues.name,
+                        instanceURL: instanceURL
+                    )
                 )
                 dismiss()
             } catch {
@@ -235,6 +273,10 @@ struct GroupSettingsView: View {
 
     let groupID: String
     let onSaved: (String) -> Void
+
+    /// The instance this group is on. A group cannot move between servers, so this form only
+    /// ever reads it.
+    private var client: TRPCClient { app.client(forGroup: groupID) }
 
     @State private var draft: GroupFormDraft?
     @State private var participantsWithExpenses: Set<String> = []
@@ -276,7 +318,7 @@ struct GroupSettingsView: View {
 
     private func load() async {
         do {
-            let response = try await app.client.call(Spliit.groupDetails(id: groupID))
+            let response = try await client.call(Spliit.groupDetails(id: groupID))
             draft = GroupFormDraft(editing: response.group)
             participantsWithExpenses = Set(response.participantsWithExpenses)
             participants = response.group.participants
@@ -291,7 +333,7 @@ struct GroupSettingsView: View {
         Task {
             defer { isSaving = false }
             do {
-                _ = try await app.client.call(
+                _ = try await client.call(
                     Spliit.updateGroup(
                         id: groupID,
                         values: draft.formValues,

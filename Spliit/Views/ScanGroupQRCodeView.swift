@@ -154,24 +154,33 @@ struct ScanGroupQRCodeView: View {
     private func found(_ payload: String) {
         guard phase != .adding, payload != refusedPayload else { return }
 
-        guard let groupID = GroupLink.groupID(inURL: payload) else {
+        guard let link = GroupLink(url: payload) else {
             refuse(payload, saying: String(localized: "That QR code isn’t a Spliit group link."))
             return
         }
+        // The code names its server as well as its group, which is what lets somebody hold up a
+        // group on an instance this phone has never talked to. A URL always names one.
+        let instanceURL = link.instanceURL ?? app.settings.defaultInstanceURL
 
         phase = .adding
         Task {
             do {
-                guard let group = try await app.client.call(Spliit.group(id: groupID)).group else {
+                let client = app.client(on: instanceURL)
+                guard let group = try await client.call(Spliit.group(id: link.groupID)).group
+                else {
                     refuse(
                         payload,
                         saying: String(
-                            localized: "No group with that link exists on this server."
+                            localized: "No group with that link exists on \(SettingsStore.displayName(for: instanceURL))."
                         )
                     )
                     return
                 }
-                onAdded(RecentGroup(groupId: group.id, groupName: group.name))
+                onAdded(
+                    RecentGroup(
+                        groupId: group.id, groupName: group.name, instanceURL: instanceURL
+                    )
+                )
                 dismiss()
             } catch {
                 // Nothing wrong with the code — the server was unreachable — so this one is

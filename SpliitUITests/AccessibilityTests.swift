@@ -101,12 +101,13 @@ final class AccessibilityTests: SpliitUITestCase {
         )
         capture(app, "welcome-ax5")
 
-        // The second action sits below the first, so it is the one that falls off the bottom.
-        let addByLink = app.buttons[AccessibilityID.GroupsList.addByURLButton]
-        for _ in 0..<10 where !addByLink.isHittable { app.swipeUp() }
+        // The last action is the one that falls off the bottom, and reaching it means the ones
+        // stacked above it were scrolled past on the way.
+        let scanQRCode = app.buttons[AccessibilityID.GroupsList.scanQRCodeButton]
+        for _ in 0..<10 where !scanQRCode.isHittable { app.swipeUp() }
         XCTAssertTrue(
-            addByLink.isHittable,
-            "Both welcome actions have to be reachable by scrolling at the largest text size."
+            scanQRCode.isHittable,
+            "Every welcome action has to be reachable by scrolling at the largest text size."
         )
     }
 

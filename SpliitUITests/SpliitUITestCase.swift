@@ -36,6 +36,8 @@ class SpliitUITestCase: XCTestCase {
     ///     happens to the picture afterwards is real either way — Vision and the parser on one
     ///     path, a genuine upload to the harness's bucket on the other. Only the on-device
     ///     model is skipped, since its answer is not a fixture.
+    ///   - qrCode: make "Scan QR code" take this payload as if the camera had just read it.
+    ///     A simulator has none, so this is the only way to reach what happens after a scan.
     @MainActor
     func launchApp(
         recentGroups: String? = nil,
@@ -48,7 +50,8 @@ class SpliitUITestCase: XCTestCase {
         addExpense: (groupID: String, title: String, amount: String)? = nil,
         openURL: String? = nil,
         exchangeRate: String? = nil,
-        receiptSample: Bool = false
+        receiptSample: Bool = false,
+        qrCode: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = overrideBaseURL ? ["-baseURL", serverURL ?? baseURL] : []
@@ -89,6 +92,9 @@ class SpliitUITestCase: XCTestCase {
         }
         if receiptSample {
             app.launchArguments.append("-uiTestReceiptSample")
+        }
+        if let qrCode {
+            app.launchArguments += ["-uiTestQRCodeSample", qrCode]
         }
 
         app.launch()

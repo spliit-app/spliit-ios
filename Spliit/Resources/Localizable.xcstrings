@@ -326,6 +326,16 @@
         }
       }
     },
+    "Add by QR code": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter par code QR"
+          }
+        }
+      }
+    },
     "Add by link": {
       "localizations": {
         "fr": {
@@ -352,16 +362,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajouter un groupe"
-          }
-        }
-      }
-    },
-    "Add group by link": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter un groupe par lien"
           }
         }
       }
@@ -402,6 +402,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajoutez une première dépense et Spliit calculera qui doit quoi."
+          }
+        }
+      }
+    },
+    "Adding the group…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajout du groupe…"
           }
         }
       }
@@ -577,6 +587,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Par catégorie"
+          }
+        }
+      }
+    },
+    "Camera access is off": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès à la caméra est désactivé"
           }
         }
       }
@@ -1361,6 +1381,16 @@
         }
       }
     },
+    "No camera to scan with": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune caméra pour scanner"
+          }
+        }
+      }
+    },
     "No expense here has “%@” in its title.": {
       "localizations": {
         "fr": {
@@ -1531,6 +1561,16 @@
         }
       }
     },
+    "Open Settings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir Réglages"
+          }
+        }
+      }
+    },
     "Opens one of your groups in Spliit.": {
       "localizations": {
         "fr": {
@@ -1687,6 +1727,16 @@
         }
       }
     },
+    "Point the camera at the QR code from a group’s share screen.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visez le code QR affiché sur l’écran de partage d’un groupe."
+          }
+        }
+      }
+    },
     "Rate Spliit on the App Store": {
       "localizations": {
         "fr": {
@@ -1783,6 +1833,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dites qui vous êtes"
+          }
+        }
+      }
+    },
+    "Scan QR code": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanner un code QR"
           }
         }
       }
@@ -1907,6 +1967,16 @@
         }
       }
     },
+    "Spliit reads the QR code with the camera. You can turn access back on in Settings, or add the group by its link instead.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spliit lit le code QR avec la caméra. Vous pouvez réactiver l’accès dans Réglages, ou ajouter le groupe par son lien."
+          }
+        }
+      }
+    },
     "Split": {
       "localizations": {
         "fr": {
@@ -2026,6 +2096,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Touchez un document pour le voir en grand."
+          }
+        }
+      }
+    },
+    "That QR code isn’t a Spliit group link.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce code QR n’est pas un lien vers un groupe Spliit."
           }
         }
       }
@@ -2159,6 +2239,16 @@
         }
       },
       "comment": "Storing documents needs a bucket the instance's administrator configures; plenty of self-hosted instances have none."
+    },
+    "This device can’t read a QR code. Add the group by its link instead.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet appareil ne peut pas lire de code QR. Ajoutez le groupe par son lien."
+          }
+        }
+      }
     },
     "This group no longer exists on this server.": {
       "localizations": {

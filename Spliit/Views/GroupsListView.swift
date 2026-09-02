@@ -13,6 +13,10 @@ struct GroupsListView: View {
     @State private var model = GroupsListModel()
     @State private var path: [String] = []
     @State private var sheet: Sheet?
+    /// Not one of the sheets: the camera takes the whole screen, and the cover is attached to
+    /// the stack rather than to `content` — which swaps identity the moment the list stops
+    /// being empty, taking any presentation hanging off it with it.
+    @State private var isScanningQRCode = false
     @State private var linkFailure: String?
     private var router: Router { Router.shared }
 
@@ -47,6 +51,9 @@ struct GroupsListView: View {
         }
         .onChange(of: router.destination) { openRoutedGroup() }
         .onOpenURL { open($0) }
+        .fullScreenCover(isPresented: $isScanningQRCode) {
+            ScanGroupQRCodeView { app.recentGroups.remember($0) }
+        }
         .alert(
             "Couldn’t open that link",
             isPresented: .constant(linkFailure != nil)
@@ -130,6 +137,10 @@ struct GroupsListView: View {
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
                 Button("Add by link", systemImage: "link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+                Button("Add by QR code", systemImage: "qrcode.viewfinder") {
+                    isScanningQRCode = true
+                }
+                .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
             } label: {
                 Label("Add group", systemImage: "plus")
             }
@@ -223,12 +234,47 @@ struct GroupsListView: View {
             description: Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
         ) {
             VStack(spacing: 12) {
-                Button("Create group") { sheet = .createGroup }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
+                // The one thing most people opening this screen are here to do, at a size that
+                // says so: full width over the pair below it, and the rounded display face the
+                // title above it is already set in. A `Font.TextStyle` rather than a point
+                // size, so it grows with Dynamic Type like everything else.
+                Button { sheet = .createGroup } label: {
+                    Text("Create group")
+                        .font(.system(.headline, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        // Between the default height and `.controlSize(.large)`, which is a
+                        // step too far: enough to stand off the pair below without becoming
+                        // the tallest thing on the screen.
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
 
-                Button("Add group by link") { sheet = .addByURL }
+                // Side by side, because they are one decision — someone else made the group,
+                // and this is how you get in — taken by whichever route is to hand. Stacked in
+                // a column they read as two more things to choose between, and each was a bare
+                // line of text to aim at.
+                //
+                // They are named the way the toolbar menu names them, which is what lets both
+                // labels sit on one line at half the width: "add group by" is already the
+                // sentence above them. `AdaptiveHStack` puts them back in a column once the
+                // text is large enough that two of them can't share a row.
+                AdaptiveHStack(spacing: 12) {
+                    Button { sheet = .addByURL } label: {
+                        Text("Add by link")
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+
+                    Button { isScanningQRCode = true } label: {
+                        Text("Add by QR code")
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

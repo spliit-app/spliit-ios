@@ -57,6 +57,7 @@ struct AnalyticsEventTests {
                 "about",
                 "create-group",
                 "add-group-by-url",
+                "add-group-by-qr-code",
                 "group-expenses",
                 "group-balances",
                 "group-search",

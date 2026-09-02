@@ -66,20 +66,20 @@ struct AddGroupByURLView: View {
         guard !isChecking else { return }
         problem = nil
 
-        guard case .group(let groupID, let linkedInstance)? = IncomingLink.pasted(urlText) else {
+        guard let link = GroupLink(pastedText: urlText) else {
             problem = String(localized: "That doesn’t look like a Spliit group link.")
             return
         }
         // A bare ID names no server, and the one this device creates groups on is the only
         // reasonable guess.
-        let instanceURL = linkedInstance ?? app.settings.defaultInstanceURL
+        let instanceURL = link.instanceURL ?? app.settings.defaultInstanceURL
 
         isChecking = true
         Task {
             defer { isChecking = false }
             do {
                 let response = try await app.client(on: instanceURL)
-                    .call(Spliit.group(id: groupID))
+                    .call(Spliit.group(id: link.groupID))
                 guard let group = response.group else {
                     problem = String(
                         localized: "No group with that link exists on \(SettingsStore.displayName(for: instanceURL))."

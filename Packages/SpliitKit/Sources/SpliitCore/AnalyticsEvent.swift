@@ -20,6 +20,10 @@ public struct AnalyticsEvent: Equatable, Sendable {
         case about
         case createGroup = "create-group"
         case addGroupByURL = "add-group-by-url"
+        // A screen of its own here, where the web app has a second mode inside its
+        // add-by-URL popover: on a phone the camera is the whole screen, so counting it as one
+        // is what says how many people actually reach for it.
+        case addGroupByQRCode = "add-group-by-qr-code"
         case groupExpenses = "group-expenses"
         case groupBalances = "group-balances"
         // None of these four was a React Native screen. Search is a name of our own; the

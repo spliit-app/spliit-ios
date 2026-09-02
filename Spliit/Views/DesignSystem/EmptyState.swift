@@ -101,7 +101,11 @@ extension EmptyState where Actions == EmptyView {
     ) {
         VStack(spacing: 12) {
             Button("Create group") {}.buttonStyle(.borderedProminent)
-            Button("Add group by link") {}
+            HStack(spacing: 12) {
+                Button("Add by link") {}
+                Button("Add by QR code") {}
+            }
+            .buttonStyle(.bordered)
         }
     }
 }

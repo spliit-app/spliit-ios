@@ -40,6 +40,15 @@ enum UITestSupport {
         /// scanning one, and attaching one — instead of opening a camera the simulator has not
         /// got or a library with nothing in it. Present with no value.
         static let receiptSample = "-uiTestReceiptSample"
+        /// A QR code payload to take as if the camera had just read it. A simulator has no
+        /// camera at all, so this is the only way in to everything that happens after a scan.
+        static let qrCodeSample = "-uiTestQRCodeSample"
+    }
+
+    /// The code the QR scanner should behave as though it had just read, if this run supplies
+    /// one. Nil otherwise, so the screen asks for the camera exactly as it always does.
+    static func sampleQRCode() -> String? {
+        value(for: Argument.qrCodeSample, in: ProcessInfo.processInfo.arguments)
     }
 
     /// Whether the app is being driven by the end-to-end suite.
@@ -161,7 +170,11 @@ enum UITestSupport {
 
     private static func resetState() {
         let defaults = UserDefaults.standard
-        for key in ["didMigrateFromReactNative", SettingsStore.Key.baseURL] {
+        // Including the review prompt's state: a suite that inherited a launch count or an
+        // armed ask from an earlier run would be one system alert away from a hung run.
+        let keys = ["didMigrateFromReactNative", SettingsStore.Key.baseURL]
+            + ReviewPromptStore.Key.all
+        for key in keys {
             defaults.removeObject(forKey: key)
         }
         try? FileManager.default.removeItem(at: RecentGroupsStore.defaultFileURL())

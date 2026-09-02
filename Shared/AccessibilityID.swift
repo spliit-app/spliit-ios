@@ -15,6 +15,7 @@ enum AccessibilityID {
     enum GroupsList {
         static let createGroupButton = "groups.create"
         static let addByURLButton = "groups.addByURL"
+        static let scanQRCodeButton = "groups.scanQRCode"
         static let settingsButton = "groups.settings"
         static let loadFailed = "groups.loadFailed"
 
@@ -36,6 +37,8 @@ enum AccessibilityID {
     enum Settings {
         static let doneButton = "settings.done"
         static let version = "settings.version"
+        static let rateButton = "settings.rate"
+        static let feedbackButton = "settings.feedback"
     }
 
     enum AddByURL {
@@ -43,6 +46,15 @@ enum AccessibilityID {
         static let addButton = "addByURL.add"
         static let cancelButton = "addByURL.cancel"
         static let error = "addByURL.error"
+    }
+
+    /// Reading a group's QR code. Nothing names the camera itself: the live scanner is a
+    /// simulator's blind spot, so what the suite drives is the code that runs once one has been
+    /// read — which is what the status line reports on.
+    enum ScanQRCode {
+        static let status = "scanQRCode.status"
+        static let cancelButton = "scanQRCode.cancel"
+        static let settingsButton = "scanQRCode.settings"
     }
 
     enum GroupForm {

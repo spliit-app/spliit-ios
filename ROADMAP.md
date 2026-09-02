@@ -270,6 +270,8 @@ Everything the RN app does today, and nothing more.
 **Add group by URL**
 - Parse `/groups/:id` out of a pasted URL, verify against the server, add to
   recents, error state for anything invalid
+- Since M3.3, the same by QR code: the camera reads the code the web app's share
+  dialog draws, and the ID in it goes through the same lookup
 
 **Group screen**
 - Title from the group, overflow menu: edit group, share group
@@ -581,6 +583,15 @@ Ordered by value to a phone user, not by web-app order.
   parser, the date through the same plausibility window, and the category has to be one the
   server actually offers. A receipt is untrusted text; it can have anything printed on it
 - Category auto-suggestion — **done** with the above, from the same two passes
+- ~~Add a group by QR code~~ — **done**. The web app's share dialog draws a QR code of the
+  group URL, and this reads it: VisionKit's `DataScannerViewController` for the viewfinder and
+  the highlighting, and the same lookup "Add by link" does once a code turns out to name a
+  group. Two things came out of it. **A scanned code is read more strictly than a pasted one.**
+  Pasting accepts a bare ID, because that is what people copy out of an address bar; a QR code
+  can have anything at all printed on it, and a Wi-Fi sticker has no slashes or spaces either —
+  so `GroupLink` has two readings and the camera gets the one that insists on a URL. **And the
+  lookup happens with the camera still up**, rather than after dismissing, so a code naming a
+  group this instance has never heard of is answered where the next code is one movement away
 - Recurring expenses (`NONE` / `DAILY` / `WEEKLY` / `MONTHLY`)
 
 **Wave 4 — localization**
@@ -633,6 +644,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Export CSV / JSON | ➖ | ✅ | M3.2 |
 | Expense documents | ➖ | ✅ | ✅ M3.3 |
 | Receipt scanning | ➖ | ✅ | ✅ M3.3 (on device) |
+| Add a group by QR code | ➖ | ✅ | ✅ M3.3 |
 | Recurring expenses | ➖ | ✅ | M3.3 |
 | French | ➖ | ✅ | ✅ |
 | The other 34 locales | ➖ | ✅ | M3.4 |

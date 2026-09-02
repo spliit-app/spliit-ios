@@ -9,6 +9,7 @@ final class AppModel {
 
     let settings: SettingsStore
     let recentGroups: RecentGroupsStore
+    let reviewPrompt: ReviewPromptStore
 
     /// What the first-launch migration found, kept for logging.
     private(set) var migration: LegacyDataMigration.Result?
@@ -27,6 +28,7 @@ final class AppModel {
         self.defaults = defaults
         settings = SettingsStore(defaults: defaults)
         recentGroups = RecentGroupsStore(fileURL: recentGroupsFileURL, cloud: cloud)
+        reviewPrompt = ReviewPromptStore(defaults: defaults)
     }
 
     /// Where the recent-groups list is mirrored, or nil to keep it on this device.

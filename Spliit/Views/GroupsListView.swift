@@ -13,6 +13,10 @@ struct GroupsListView: View {
     @State private var model = GroupsListModel()
     @State private var path: [String] = []
     @State private var sheet: Sheet?
+    /// Not one of the sheets: the camera takes the whole screen, and the cover is attached to
+    /// the stack rather than to `content` — which swaps identity the moment the list stops
+    /// being empty, taking any presentation hanging off it with it.
+    @State private var isScanningQRCode = false
     @State private var linkFailure: String?
     private var router: Router { Router.shared }
 
@@ -47,6 +51,9 @@ struct GroupsListView: View {
         }
         .onChange(of: router.destination) { openRoutedGroup() }
         .onOpenURL { open($0) }
+        .fullScreenCover(isPresented: $isScanningQRCode) {
+            ScanGroupQRCodeView { app.recentGroups.remember($0) }
+        }
         .alert(
             "Couldn’t open that link",
             isPresented: .constant(linkFailure != nil)
@@ -142,19 +149,27 @@ struct GroupsListView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button("Settings", systemImage: "gearshape") { sheet = .settings }
-                .accessibilityIdentifier(AccessibilityID.GroupsList.settingsButton)
-        }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Create group", systemImage: "plus") { sheet = .createGroup }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
                 Button("Add by link", systemImage: "link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+                Button("Add by QR code", systemImage: "qrcode.viewfinder") {
+                    isScanningQRCode = true
+                }
+                .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
             } label: {
                 Label("Add group", systemImage: "plus")
             }
+        }
+        // Settings sits at the bottom, out of the wordmark's way and within thumb's reach — it
+        // is the one thing here nobody opens twice. The flexible spacer is what pushes it to the
+        // trailing edge; a lone bottom-bar item centres itself.
+        ToolbarSpacer(.flexible, placement: .bottomBar)
+        ToolbarItem(placement: .bottomBar) {
+            Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                .accessibilityIdentifier(AccessibilityID.GroupsList.settingsButton)
         }
     }
 
@@ -184,9 +199,50 @@ struct GroupsListView: View {
             emptyState
                 .navigationTitle(Text(verbatim: ""))
         } else {
+            // The title stays "Groups" even though the wordmark is what's drawn: it is what the
+            // back button on every group screen is named after, and what VoiceOver reads when the
+            // mark is skipped over.
             groupList
                 .navigationTitle("Groups")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { wordmarkToolbar }
         }
+    }
+
+    /// The brand mark in place of the title, on the one screen that is the app rather than a
+    /// group, an expense or a form.
+    ///
+    /// Two items rather than one, and both are load-bearing. The mark is a *leading* item so it
+    /// sits at the edge the title would start from, and `.sharedBackgroundVisibility(.hidden)`
+    /// takes it out of the bar's glass: an unhidden item is drawn as a glass button, which
+    /// rounds a 32pt wordmark into a 44pt circle and makes it smaller than the centred one it
+    /// replaced. The empty principal item is what suppresses "Groups" — a principal view is the
+    /// documented way to replace an inline title, and the title itself has to stay set because
+    /// it is what names the back button on every group screen.
+    @ToolbarContentBuilder
+    private var wordmarkToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) { wordmark }
+            .sharedBackgroundVisibility(.hidden)
+        ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
+            .sharedBackgroundVisibility(.hidden)
+    }
+
+    /// The asset is 522×180, and both numbers are needed here. A height on its own is not enough:
+    /// the toolbar proposes a narrow width to its items, `scaledToFit` honours the proposal, and
+    /// the mark comes out a third of the height asked for — which is how it first shipped smaller
+    /// than the one it replaced.
+    private static let wordmarkHeight: CGFloat = 32
+    private static let wordmarkWidth: CGFloat = wordmarkHeight * 522 / 180
+
+    /// Fixed size, like the welcome screen's: the navigation bar is 44pt whatever the text size,
+    /// so a mark that grew with Dynamic Type would only be clipped by it.
+    private var wordmark: some View {
+        Image("Logo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: Self.wordmarkWidth, height: Self.wordmarkHeight)
+            .accessibilityLabel(Text(verbatim: "Spliit"))
+            .accessibilityAddTraits(.isHeader)
     }
 
     private var emptyState: some View {
@@ -196,12 +252,47 @@ struct GroupsListView: View {
             description: Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
         ) {
             VStack(spacing: 12) {
-                Button("Create group") { sheet = .createGroup }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
+                // The one thing most people opening this screen are here to do, at a size that
+                // says so: full width over the pair below it, and the rounded display face the
+                // title above it is already set in. A `Font.TextStyle` rather than a point
+                // size, so it grows with Dynamic Type like everything else.
+                Button { sheet = .createGroup } label: {
+                    Text("Create group")
+                        .font(.system(.headline, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        // Between the default height and `.controlSize(.large)`, which is a
+                        // step too far: enough to stand off the pair below without becoming
+                        // the tallest thing on the screen.
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
 
-                Button("Add group by link") { sheet = .addByURL }
+                // Side by side, because they are one decision — someone else made the group,
+                // and this is how you get in — taken by whichever route is to hand. Stacked in
+                // a column they read as two more things to choose between, and each was a bare
+                // line of text to aim at.
+                //
+                // They are named the way the toolbar menu names them, which is what lets both
+                // labels sit on one line at half the width: "add group by" is already the
+                // sentence above them. `AdaptiveHStack` puts them back in a column once the
+                // text is large enough that two of them can't share a row.
+                AdaptiveHStack(spacing: 12) {
+                    Button { sheet = .addByURL } label: {
+                        Text("Add by link")
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+
+                    Button { isScanningQRCode = true } label: {
+                        Text("Add by QR code")
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

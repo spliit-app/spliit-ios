@@ -30,36 +30,10 @@ public enum IncomingLink: Equatable, Sendable {
         }
 
         guard let origin = origin(of: url), knownOrigins.contains(origin) else { return nil }
-        guard let id = groupID(in: url.pathComponents, host: nil) else { return nil }
-        return .group(id: id, instanceURL: instanceURL(of: url))
-    }
-
-    /// What somebody pasted into "Add group by link".
-    ///
-    /// No origin check, unlike `parse`: this is a link the user has deliberately put in front of
-    /// the app, and taking it at its word is exactly how a group on a server this device has
-    /// never heard of gets into the list. A bare ID — what people paste when they copy from the
-    /// address bar of a group they already have open — names no instance, so it means the
-    /// default one.
-    public static func pasted(_ text: String) -> IncomingLink? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        // A link copied out of a browser's address bar often arrives without its scheme, and
-        // "spliit.example.com/groups/x" parses as a path with no host at all. Only ever assumed
-        // for something with a slash in it: "https://" in front of a bare ID would make the ID
-        // the hostname.
-        let candidate = trimmed.contains("://") || !trimmed.contains("/")
-            ? trimmed
-            : "https://\(trimmed)"
-
-        if let url = URL(string: candidate), url.host() != nil {
-            guard let id = groupID(in: url.pathComponents, host: nil) else { return nil }
-            return .group(id: id, instanceURL: instanceURL(of: url))
-        }
-
-        guard !trimmed.contains("/"), !trimmed.contains(" ") else { return nil }
-        return .group(id: trimmed, instanceURL: nil)
+        // Past the origin check it is the same reading as a link somebody pasted, so it is the
+        // same code: what a group URL says is one thing, and ``GroupLink`` is where it is said.
+        guard let link = GroupLink(url: url.absoluteString) else { return nil }
+        return .group(id: link.groupID, instanceURL: link.instanceURL)
     }
 
     public static let officialScheme = "app.spliit.spliitmobile"
@@ -73,25 +47,6 @@ public enum IncomingLink: Equatable, Sendable {
     /// which is what a downgrade would look like.
     public static func knownOrigins(instances: some Collection<URL>) -> Set<String> {
         Set(instances.compactMap { origin(of: $0) } + ["https://spliit.app"])
-    }
-
-    /// The instance a group link belongs to: everything before `/groups/…`, so an instance
-    /// served from a subdirectory keeps it.
-    private static func instanceURL(of url: URL) -> URL? {
-        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let index = url.pathComponents.firstIndex(of: "groups")
-        else {
-            return nil
-        }
-        let prefix = url.pathComponents[..<index].filter { $0 != "/" }
-        components.path = "/" + prefix.joined(separator: "/") + (prefix.isEmpty ? "" : "/")
-        components.query = nil
-        components.fragment = nil
-        // Lowercased, so a link somebody typed with a capital letter doesn't become a second
-        // instance sitting beside the one it is.
-        components.scheme = components.scheme?.lowercased()
-        components.host = components.host?.lowercased()
-        return components.url
     }
 
     private static func origin(of url: URL) -> String? {
@@ -117,4 +72,5 @@ public enum IncomingLink: Equatable, Sendable {
         let id = components[index + 1]
         return id.isEmpty ? nil : id
     }
+
 }

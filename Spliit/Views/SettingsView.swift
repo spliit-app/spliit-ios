@@ -21,6 +21,29 @@ struct SettingsView: View {
                     Text("Spliit is an open source project by Sebastien Castiel, with help from many contributors.")
                 }
 
+                // A permanent way in, so that being asked is never the only one. The prompt
+                // itself is deliberately rare — see `ReviewPromptStore` — and somebody who
+                // wants to say something today should not have to wait for it.
+                Section {
+                    Link(
+                        "Rate Spliit on the App Store",
+                        destination: URL(
+                            string: "https://apps.apple.com/app/id6737742507?action=write-review"
+                        )!
+                    )
+                    .accessibilityIdentifier(AccessibilityID.Settings.rateButton)
+
+                    Link(
+                        "Report a problem",
+                        destination: URL(string: "https://github.com/spliit-app/spliit-ios/issues")!
+                    )
+                    .accessibilityIdentifier(AccessibilityID.Settings.feedbackButton)
+                } header: {
+                    Text("Feedback")
+                } footer: {
+                    Text("A review is how people find an app nobody advertises. Anything that is wrong with this one is better raised on GitHub, where it can be fixed.")
+                }
+
                 Section {
                     LabeledContent("Version", value: versionText)
                         .accessibilityIdentifier(AccessibilityID.Settings.version)

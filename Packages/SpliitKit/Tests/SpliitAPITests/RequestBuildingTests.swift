@@ -67,6 +67,21 @@ struct RequestBuildingTests {
         #expect(try decodedInput(request)["participantId"] as? String == "ana")
     }
 
+    /// The name the totals go by on an instance that has folded the stats page into one query.
+    /// It takes the same input, and leaving the date range out is what asks for all of it.
+    @Test("The stats overview takes the same input under its own name")
+    func buildsStatsOverview() throws {
+        let request = try client("https://spliit.app/")
+            .makeRequest(for: Spliit.statsOverview(groupId: "abc123", participantId: "ana"))
+
+        let input = try decodedInput(request)
+        #expect(request.url?.path == "/api/trpc/groups.stats.overview")
+        #expect(input["groupId"] as? String == "abc123")
+        #expect(input["participantId"] as? String == "ana")
+        #expect(input["from"] == nil)
+        #expect(input["to"] == nil)
+    }
+
     @Test("A procedure with no input sends no input parameter")
     func omitsEmptyInput() throws {
         let request = try client("https://spliit.app/").makeRequest(for: Spliit.categories())

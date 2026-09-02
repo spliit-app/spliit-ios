@@ -4,10 +4,14 @@ import SwiftUI
 
 /// What the group has spent, and how much of it is yours.
 ///
-/// Three numbers, and they are the only three the API can answer: `groups.stats.get` sums the
+/// Three numbers, and they are the only three the API can answer: the stats procedure sums the
 /// expenses themselves, which is what makes it the one endpoint that knows what anybody actually
 /// paid. The balances tab next door looks like it knows and does not — its `paid` and `paidFor`
 /// come from the suggested payments, so one of the pair is always zero.
+///
+/// Which procedure that is depends on the instance, and asking for only one of the two names is
+/// what made this screen say the server had no totals for every group on `spliit.app` in 2.2.0.
+/// `TRPCClient.groupStats` knows both.
 ///
 /// Two of the three are a participant's, so the tab is worth one number until somebody says who
 /// they are — which is why the invitation to answer is on this screen too, below the total it

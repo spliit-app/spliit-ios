@@ -148,7 +148,7 @@ struct BalancesView: View {
     /// It is one number and stays one number. "You paid X, and Y was spent on you" was written
     /// here first and was false: the `paid` and `paidFor` this endpoint returns are the
     /// settlement's, not the group's — see the footer below. The real pair lives on the totals
-    /// tab, which asks `groups.stats.get` for it.
+    /// tab, which asks the stats procedure for it.
     private func summary(for balance: Balance) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(direction(of: balance))

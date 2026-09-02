@@ -133,6 +133,37 @@ struct ResponseDecodingTests {
         #expect(response.totalParticipantShare == nil)
     }
 
+    /// Recorded from the same seed as `groups-stats-get`, against a server that has replaced it
+    /// with the overview. The numbers are deliberately asserted as the same three: the endpoint
+    /// changed name and grew a great deal beside them — a summary, spending by month, by
+    /// participant and by category, and the recurring subscriptions — and these are still
+    /// summed by the same helpers over the same expenses.
+    @Test("The overview answers the same three figures the old procedure did")
+    func decodesStatsOverview() throws {
+        let response = try SuperJSON.decode(
+            Spliit.GroupStatsResponse.self, fromResponse: Fixture.data("groups-stats-overview")
+        )
+
+        #expect(response.totalGroupSpendings == 4250 + 9630 + 48000 + 1800)
+        #expect(response.totalParticipantSpendings == 4250 + 1800)
+        #expect(response.totalParticipantShare == 17627)
+    }
+
+    /// The half that has to survive is the same one as before — the participant's figures come
+    /// back annotated `undefined` rather than omitted — and it arrives here inside a payload
+    /// with five more sections the decoder has to walk past rather than trip over.
+    @Test("An overview for nobody in particular leaves the participant figures absent")
+    func decodesStatsOverviewWithoutAParticipant() throws {
+        let response = try SuperJSON.decode(
+            Spliit.GroupStatsResponse.self,
+            fromResponse: Fixture.data("groups-stats-overview-anonymous")
+        )
+
+        #expect(response.totalGroupSpendings == 63680)
+        #expect(response.totalParticipantSpendings == nil)
+        #expect(response.totalParticipantShare == nil)
+    }
+
     /// The wire type is `Double` for instances older than the web app's *Shares* change, which
     /// summed floating-point thirds and rounded to two decimals. `Int` would throw on this and
     /// take the screen with it, so the type has to stay wide enough for a server nobody has

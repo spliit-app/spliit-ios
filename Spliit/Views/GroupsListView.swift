@@ -189,9 +189,18 @@ struct GroupsListView: View {
             description: Text("Create a group to start splitting expenses with friends, or add one that was shared with you.")
         ) {
             VStack(spacing: 12) {
-                Button("Create group") { sheet = .createGroup }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
+                // The one thing most people opening this screen are here to do, at a size that
+                // says so: full width over the pair below it, and the rounded display face the
+                // title above it is already set in. A `Font.TextStyle` rather than a point
+                // size, so it grows with Dynamic Type like everything else.
+                Button { sheet = .createGroup } label: {
+                    Text("Create group")
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
 
                 // Side by side, because they are one decision — someone else made the group,
                 // and this is how you get in — taken by whichever route is to hand. Stacked in

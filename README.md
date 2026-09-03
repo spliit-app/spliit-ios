@@ -235,3 +235,8 @@ recent groups crosses that threshold, so both paths are implemented and both are
 This runs once, unattended, and groups are only reachable by ID — a user who loses their list
 cannot get it back. So the migration never throws, never overwrites data this app already has,
 and never deletes the legacy files.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Same licence as [Spliit](https://github.com/spliit-app/spliit)
+itself.

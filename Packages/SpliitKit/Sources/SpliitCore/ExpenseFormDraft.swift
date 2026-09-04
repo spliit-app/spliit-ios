@@ -136,12 +136,12 @@ public struct ExpenseFormDraft: Equatable, Sendable {
                     // With nothing remembered — and under `.byAmount`, which remembers no shares
                     // — the split covers the group, which is how a new expense has always begun.
                     isIncluded: split?.shares == nil || shares != nil,
+                    // No currency precision to hand it: the shares that get here are the ×100
+                    // kind, and `.byAmount` — the one mode whose shares are money — remembers
+                    // none.
                     valueText: shares.map {
                         Self.text(
-                            forShares: $0,
-                            splitMode: split?.splitMode ?? .evenly,
-                            locale: locale,
-                            minorUnitDigits: digits
+                            forShares: $0, splitMode: split?.splitMode ?? .evenly, locale: locale
                         )
                     } ?? "1"
                 )

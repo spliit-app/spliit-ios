@@ -182,11 +182,16 @@ has ever read it — the web app writes the split it wants to keep into `localSt
 `<groupId>-defaultSplittingOptions` and reads it back itself. So a default set in a browser and
 one set on the phone are two different facts about the same group, and no amount of server work
 will bring them together. Ours lives on `RecentGroup`, which puts it in the same file and the
-same iCloud payload as who you are in the group, and under the same whole-row merge. Two rules
-travel with it: `.byAmount` keeps only its mode, because its shares are one receipt's amounts and
-would never add up to the next expense's total; and a split naming a participant the group no
-longer has is dropped whole, not trimmed, because 70/30 with the 30 removed is a percentage split
-that cannot be saved and that nobody chose.
+same iCloud payload as who you are in the group, and under the same whole-row merge. Three rules
+travel with it. `.byAmount` keeps only its mode, because its shares are one receipt's amounts and
+would never add up to the next expense's total. A split naming a participant the group no longer
+has is dropped whole, not trimmed, because 70/30 with the 30 removed is a percentage split that
+cannot be saved and that nobody chose. And an even split of the *whole* group is stored as
+membership alone, with no shares at all: those hundreds say nothing under `.evenly` beyond who was
+in it, and stored as names instead, a flatmate who moves in next month would be left out of every
+expense from then on without a word. The other modes cannot do that — nobody joins 50/30/20
+without breaking it — so they keep their names and leave the newcomer out until an expense says
+otherwise.
 
 **Who did it is something you have to tell the server.** `groups.update` and all three
 `groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the

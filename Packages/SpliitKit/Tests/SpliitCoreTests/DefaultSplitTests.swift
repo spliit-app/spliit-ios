@@ -50,19 +50,19 @@ struct DefaultSplitTests {
             ).formValues
         )
 
-        let split = DefaultSplit(remembering: values)
+        let split = DefaultSplit(remembering: values, participants: group.participants)
 
         #expect(split.splitMode == .byPercentage)
         #expect(split.shares == ["ana": 7000, "bruno": 2000, "chloe": 1000])
     }
 
     /// Who is in the split is half of what makes one worth keeping: the flatshare where two of
-    /// three people share the car is remembered by the two names, not by the numbers.
+    /// three people share the car is remembered by those two names.
     @Test("Only the people in the split are remembered")
     func remembersOnlyTheIncluded() throws {
         let values = try #require(draft(included: ["ana", "bruno"]).formValues)
 
-        let split = DefaultSplit(remembering: values)
+        let split = DefaultSplit(remembering: values, participants: group.participants)
 
         #expect(split.splitMode == .evenly)
         #expect(split.shares == ["ana": 100, "bruno": 100])
@@ -79,10 +79,59 @@ struct DefaultSplitTests {
             ).formValues
         )
 
-        let split = DefaultSplit(remembering: values)
+        let split = DefaultSplit(remembering: values, participants: group.participants)
 
         #expect(split.splitMode == .byAmount)
         #expect(split.shares == nil)
+    }
+
+    /// Stored as three names it would be a split of Ana, Bruno and Chloé — and Dimitri, who
+    /// moves in next month, would be left out of every expense without a word being said.
+    @Test("An even split of the whole group remembers the group, not its names")
+    func remembersTheWholeGroupAsMembership() throws {
+        let values = try #require(draft().formValues)
+
+        let split = DefaultSplit(remembering: values, participants: group.participants)
+
+        #expect(split.splitMode == .evenly)
+        #expect(split.shares == nil)
+    }
+
+    @Test("So somebody who joins afterwards is in the split too")
+    func includesANewParticipant() throws {
+        let values = try #require(draft().formValues)
+        let split = DefaultSplit(remembering: values, participants: group.participants)
+
+        let joined = Group(
+            id: group.id,
+            name: group.name,
+            information: nil,
+            currency: group.currency,
+            currencyCode: group.currencyCode,
+            createdAt: group.createdAt,
+            participants: group.participants + [.init(id: "dimitri", name: "Dimitri")]
+        )
+        let form = ExpenseFormDraft(
+            creatingIn: joined, defaultSplit: split, locale: Locale(identifier: "en_US")
+        )
+
+        #expect(form.includedParticipants.map(\.id) == ["ana", "bruno", "chloe", "dimitri"])
+    }
+
+    /// Not under the modes whose numbers mean something: nobody can be added to 50/30/20
+    /// without breaking it, so the newcomer waits for an expense that says what they owe.
+    @Test("A whole-group percentage split still remembers its names")
+    func remembersNamesUnderPercentages() throws {
+        let values = try #require(
+            draft(
+                splitMode: .byPercentage,
+                values: ["ana": "50", "bruno": "30", "chloe": "20"]
+            ).formValues
+        )
+
+        let split = DefaultSplit(remembering: values, participants: group.participants)
+
+        #expect(split.shares == ["ana": 5000, "bruno": 3000, "chloe": 2000])
     }
 
     @Test("The flag the web app sends travels with the expense")

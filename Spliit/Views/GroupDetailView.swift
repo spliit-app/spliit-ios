@@ -160,9 +160,7 @@ struct GroupDetailView: View {
         var draft = ExpenseFormDraft(
             creatingIn: group,
             paidBy: activeParticipant?.participantID,
-            defaultSplit: app.recentGroups.defaultSplit(
-                inGroup: model.groupID, participants: group.participants
-            )
+            defaultSplit: app.recentGroups.defaultSplit(inGroup: model.groupID)
         )
         if let title = prefill?.title, !title.isEmpty { draft.title = title }
         if let amount = prefill?.amount, !amount.isEmpty { draft.amountText = amount }

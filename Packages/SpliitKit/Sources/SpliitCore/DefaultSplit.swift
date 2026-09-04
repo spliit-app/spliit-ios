@@ -36,10 +36,22 @@ public struct DefaultSplit: Codable, Sendable, Hashable {
     /// Built from the payload rather than from the form, because these numbers have been
     /// through validation: every share is parsed, positive, and — under the modes that require
     /// it — adds up. A draft still being typed in has none of that.
-    public init(remembering values: ExpenseFormValues) {
+    ///
+    /// An even split of the whole group is kept as the *group*, with no shares at all. Those
+    /// hundreds say nothing under `.evenly` beyond who was in it, and "everybody" is the one
+    /// answer that should still be right after somebody moves in: written down as two names, a
+    /// third flatmate would be left out of every expense from then on, silently, and it is real
+    /// money. Under the other modes the numbers do mean something and cannot be handed to
+    /// somebody who was never given any — nobody can join 50/30/20 without breaking it — so
+    /// those keep their names and leave the newcomer out until an expense says otherwise.
+    public init(remembering values: ExpenseFormValues, participants: [Participant]) {
+        let paidFor = Set(values.paidFor.map(\.participant))
+        let isOnlyMembership =
+            values.splitMode == .evenly && paidFor == Set(participants.map(\.id))
+
         self.init(
             splitMode: values.splitMode,
-            shares: values.splitMode == .byAmount
+            shares: values.splitMode == .byAmount || isOnlyMembership
                 ? nil
                 : values.paidFor.reduce(into: [:]) { $0[$1.participant] = $1.shares }
         )

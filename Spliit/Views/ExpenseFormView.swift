@@ -675,7 +675,8 @@ struct ExpenseFormView: View {
                 // server refused would go on prefilling expenses that never happened.
                 if form.saveSplitAsDefault, form.isSplitWorthRemembering {
                     app.recentGroups.setDefaultSplit(
-                        DefaultSplit(remembering: values), groupId: group.id
+                        DefaultSplit(remembering: values, participants: group.participants),
+                        groupId: group.id
                     )
                 }
                 // Before the reload, so it lands with the save rather than after the list has

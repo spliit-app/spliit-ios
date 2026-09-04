@@ -143,7 +143,12 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         activeParticipant = try container.decodeIfPresent(
             ActiveParticipant.self, forKey: .activeParticipant
         )
-        defaultSplit = try container.decodeIfPresent(DefaultSplit.self, forKey: .defaultSplit)
+        // The one field here whose *contents* can fail: `SplitMode` has no unknown case, so a
+        // mode written by a later version throws. `try?` rather than `try`, because the whole
+        // point of this decoder is that no group is ever lost — and a forgotten split is a tick
+        // box, while a row that throws takes the entire list with it.
+        defaultSplit = (try? container.decodeIfPresent(DefaultSplit.self, forKey: .defaultSplit))
+            ?? nil
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         lastOpenedAt = try container.decodeIfPresent(Date.self, forKey: .lastOpenedAt)
         instanceURL = try container.decodeIfPresent(URL.self, forKey: .instanceURL)
@@ -312,14 +317,18 @@ public final class RecentGroupsStore {
     /// Adds a group, or moves it to the front and refreshes its name if it's already there.
     ///
     /// Callers build a `RecentGroup` from what the server just told them, which carries no
-    /// flags and no identity — so the stored ones win. Otherwise renaming a group would quietly
-    /// unstar it, and make the person holding the phone a stranger in it.
+    /// flags, no identity and no split — so the stored ones win. Otherwise renaming a group
+    /// would quietly unstar it, make the person holding the phone a stranger in it, and forget
+    /// how the group divides its expenses. Anything else that comes to live on a row belongs in
+    /// this list too: what is not named here is destroyed by a rename, and stamped as an edit on
+    /// the way out, so the other phone loses it as well.
     public func remember(_ group: RecentGroup) {
         var group = group
         if let existing = groups.first(where: { $0.groupId == group.groupId }) {
             group.isStarred = existing.isStarred
             group.isArchived = existing.isArchived
             group.activeParticipant = existing.activeParticipant
+            group.defaultSplit = existing.defaultSplit
             // The instance is the exception: the caller has just been answered by a server, so
             // it knows better than the list does where this group was found.
             group.instanceURL = group.instanceURL ?? existing.instanceURL
@@ -382,21 +391,22 @@ public final class RecentGroupsStore {
 
     /// How this group's expenses are usually split, or nil when nothing has been remembered.
     ///
-    /// A split naming somebody the group no longer has reads as nothing remembered rather than
-    /// as a smaller split — see ``DefaultSplit/applies(to:)``. It is left in the file rather than
-    /// cleared: this is asked while a screen is being built, and a read is not the place to write
-    /// anything. The next expense saved with the box ticked replaces it.
-    public func defaultSplit(
-        inGroup groupId: String, participants: [Participant]
-    ) -> DefaultSplit? {
-        guard let split = groups.first(where: { $0.groupId == groupId })?.defaultSplit,
-              split.applies(to: participants)
-        else { return nil }
-        return split
+    /// As stored, which may name somebody who has since left: whether a split still describes
+    /// the group is ``DefaultSplit/applies(to:)``, and it is asked where the split is applied.
+    /// One rule, one place. A stale one is left in the file rather than cleared, because this is
+    /// read while a screen is being built and a read is not the place to write anything.
+    public func defaultSplit(inGroup groupId: String) -> DefaultSplit? {
+        groups.first { $0.groupId == groupId }?.defaultSplit
     }
 
     /// Remembers how this expense was split, for the ones after it.
+    ///
+    /// Saving the same split again is not an edit. Five expenses in a row with the box ticked —
+    /// which is how somebody who wants this will use it — would otherwise be five writes of the
+    /// whole list to the file and to iCloud, and five fresh timestamps beating the other phone's
+    /// row in every merge in between, all to store what was already there.
     public func setDefaultSplit(_ split: DefaultSplit, groupId: String) {
+        guard defaultSplit(inGroup: groupId) != split else { return }
         modify(groupId) { $0.defaultSplit = split }
     }
 

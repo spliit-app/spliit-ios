@@ -354,6 +354,104 @@ struct RecentGroupsStoreTests {
         #expect(try JSONDecoder().decode([RecentGroup].self, from: Data(encoded.utf8)) == groups)
     }
 
+    @Test("How a group splits its expenses is remembered per group")
+    @MainActor
+    func remembersADefaultSplitPerGroup() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+
+        store.setDefaultSplit(
+            DefaultSplit(splitMode: .byPercentage, shares: ["ana": 7000, "bruno": 3000]),
+            groupId: "a"
+        )
+
+        #expect(store.defaultSplit(inGroup: "a")?.splitMode == .byPercentage)
+        #expect(store.defaultSplit(inGroup: "b") == nil)
+    }
+
+    /// Renaming a group builds a fresh row out of what the server just said, and the server
+    /// has never heard of any of this. The star, who you are and the split live only here.
+    @Test("Renaming a group keeps the split it divides its expenses by")
+    @MainActor
+    func keepsTheDefaultSplitAcrossARename() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Flat 3B"))
+        let split = DefaultSplit(splitMode: .byPercentage, shares: ["ana": 7000, "bruno": 3000])
+        store.setDefaultSplit(split, groupId: "a")
+
+        store.remember(RecentGroup(groupId: "a", groupName: "Flat 3B, top floor"))
+
+        #expect(store.defaultSplit(inGroup: "a") == split)
+    }
+
+    @Test("A remembered split survives a restart")
+    @MainActor
+    func persistsTheDefaultSplit() {
+        let url = URL.temporaryDirectory
+            .appending(path: "recent-\(UUID().uuidString)")
+            .appending(path: "recent-groups.json")
+
+        let store = RecentGroupsStore(fileURL: url)
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.setDefaultSplit(
+            DefaultSplit(splitMode: .byShares, shares: ["ana": 200, "bruno": 100]),
+            groupId: "a"
+        )
+
+        let reloaded = RecentGroupsStore(fileURL: url)
+        #expect(
+            reloaded.defaultSplit(inGroup: "a")
+                == DefaultSplit(splitMode: .byShares, shares: ["ana": 200, "bruno": 100])
+        )
+    }
+
+    /// Another device has to be told, or it goes on prefilling expenses the old way and wins the
+    /// next merge with a row nobody edited.
+    @Test("Remembering a split counts as an edit")
+    @MainActor
+    func stampsTheGroupWhenTheSplitChanges() throws {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        let before = try #require(store.groups.first?.updatedAt)
+
+        store.setDefaultSplit(DefaultSplit(splitMode: .byAmount), groupId: "a")
+
+        #expect(try #require(store.groups.first?.updatedAt) > before)
+    }
+
+    /// And saving the same one again is not an edit at all: five expenses in a row with the box
+    /// ticked would otherwise beat the row on the other phone five times over, having changed
+    /// nothing.
+    @Test("Remembering the same split again changes nothing")
+    @MainActor
+    func doesNotStampAnUnchangedSplit() throws {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        let split = DefaultSplit(splitMode: .byShares, shares: ["ana": 200, "bruno": 100])
+        store.setDefaultSplit(split, groupId: "a")
+        let stamped = try #require(store.groups.first?.updatedAt)
+
+        store.setDefaultSplit(split, groupId: "a")
+
+        #expect(store.groups.first?.updatedAt == stamped)
+    }
+
+    /// A split this version cannot read is a tick box to set again; a row that throws takes
+    /// every group ID in the list with it, which is the one thing this file must never do.
+    @Test("A split written by a later version costs the split, not the list")
+    @MainActor
+    func survivesAnUnreadableDefaultSplit() throws {
+        let stored = Data(
+            #"[{"groupId":"abc","groupName":"Lisbon","defaultSplit":{"splitMode":"BY_VIBES"}}]"#.utf8
+        )
+
+        let groups = try JSONDecoder().decode([RecentGroup].self, from: stored)
+
+        #expect(groups.first?.groupName == "Lisbon")
+        #expect(groups.first?.defaultSplit == nil)
+    }
+
     @Test("A list saved before this existed still decodes")
     @MainActor
     func decodesGroupsWithoutAnActiveParticipant() throws {

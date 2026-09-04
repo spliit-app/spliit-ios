@@ -153,6 +153,7 @@ enum AccessibilityID {
         static let conversionRateStatus = "expenseForm.conversionRate.status"
         static let refreshRateButton = "expenseForm.conversionRate.refresh"
         static let selectAllButton = "expenseForm.paidFor.selectAll"
+        static let saveSplitToggle = "expenseForm.saveSplitAsDefault"
 
         /// Reading the expense off a photo of the receipt. One identifier for the row whichever
         /// it is: a menu where there is a camera to choose with, a plain button where there is

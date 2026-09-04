@@ -1817,6 +1817,16 @@
         }
       }
     },
+    "Save as default split": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer comme répartition par défaut"
+          }
+        }
+      }
+    },
     "Saving…": {
       "localizations": {
         "fr": {

@@ -33,6 +33,11 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     public var paidByID: String?
     public var splitMode: SplitMode
     public var participants: [ParticipantShareDraft]
+    /// Whether this split should become the one the group's next expense starts from.
+    ///
+    /// Always starts off, editing included: remembering a split is something to ask for, and a
+    /// box that arrives ticked would rewrite the default every time somebody corrected a typo.
+    public var saveSplitAsDefault: Bool
     public var isReimbursement: Bool
     public var notes: String
     /// Used to parse typed numbers; a comma is the decimal separator in much of the world.
@@ -68,6 +73,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         paidByID: String? = nil,
         splitMode: SplitMode = .evenly,
         participants: [ParticipantShareDraft] = [],
+        saveSplitAsDefault: Bool = false,
         isReimbursement: Bool = false,
         notes: String = "",
         locale: Locale = .autoupdatingCurrent,
@@ -86,6 +92,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         self.paidByID = paidByID
         self.splitMode = splitMode
         self.participants = participants
+        self.saveSplitAsDefault = saveSplitAsDefault
         self.isReimbursement = isReimbursement
         self.notes = notes
         self.locale = locale
@@ -98,24 +105,49 @@ public struct ExpenseFormDraft: Equatable, Sendable {
         self.conversionRateText = conversionRateText
     }
 
-    /// A blank expense for a group: everyone included, split evenly.
+    /// A blank expense for a group: everyone included, split evenly — or divided however this
+    /// group's expenses were last said to be divided.
     ///
-    /// - Parameter paidBy: whoever the user said they are in this group, when they have said.
-    ///   An ID the group no longer has falls back to the first participant, which is what this
-    ///   form filled in before anybody could answer the question.
+    /// - Parameters:
+    ///   - paidBy: whoever the user said they are in this group, when they have said. An ID the
+    ///     group no longer has falls back to the first participant, which is what this form
+    ///     filled in before anybody could answer the question.
+    ///   - defaultSplit: what the group remembers, if anything. One naming somebody who has
+    ///     since left is ignored rather than trimmed, so a stale default can never quietly leave
+    ///     a participant out of the expense being written.
     public init(
         creatingIn group: Group,
         paidBy: String? = nil,
+        defaultSplit: DefaultSplit? = nil,
         locale: Locale = .autoupdatingCurrent
     ) {
         let payer = group.participants.first { $0.id == paidBy } ?? group.participants.first
+        let split = defaultSplit.flatMap { $0.applies(to: group.participants) ? $0 : nil }
+        let digits = Self.minorUnitDigits(for: group, locale: locale)
+
         self.init(
             paidByID: payer?.id,
-            participants: group.participants.map {
-                ParticipantShareDraft(id: $0.id, name: $0.name, isIncluded: true)
+            splitMode: split?.splitMode ?? .evenly,
+            participants: group.participants.map { participant in
+                let shares = split?.shares?[participant.id]
+                return ParticipantShareDraft(
+                    id: participant.id,
+                    name: participant.name,
+                    // With nothing remembered — and under `.byAmount`, which remembers no shares
+                    // — the split covers the group, which is how a new expense has always begun.
+                    isIncluded: split?.shares == nil || shares != nil,
+                    // No currency precision to hand it: the shares that get here are the ×100
+                    // kind, and `.byAmount` — the one mode whose shares are money — remembers
+                    // none.
+                    valueText: shares.map {
+                        Self.text(
+                            forShares: $0, splitMode: split?.splitMode ?? .evenly, locale: locale
+                        )
+                    } ?? "1"
+                )
             },
             locale: locale,
-            minorUnitDigits: Self.minorUnitDigits(for: group, locale: locale),
+            minorUnitDigits: digits,
             groupCurrencyCode: group.currencyCode,
             originalCurrencyCode: group.currencyCode
         )
@@ -302,6 +334,13 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     public var includedParticipants: [ParticipantShareDraft] {
         participants.filter(\.isIncluded)
     }
+
+    /// Whether keeping this split for the group's later expenses is worth offering.
+    ///
+    /// A reimbursement is one person handing money to one other, and never the shape of the
+    /// group's ordinary expenses: remembering it would leave every expense after it paid for by
+    /// whoever happened to be owed.
+    public var isSplitWorthRemembering: Bool { !isReimbursement }
 
     /// Whether the split covers the whole group, which is what decides whether the paid-for list
     /// offers to select all or to select none.
@@ -499,7 +538,10 @@ public struct ExpenseFormDraft: Equatable, Sendable {
             paidBy: paidByID,
             paidFor: paidFor,
             splitMode: splitMode,
-            saveDefaultSplittingOptions: false,
+            // Sent because the web app sends it, and read by neither: the procedures ignore it,
+            // and the browser that set it is the only thing that ever acts on it. What remembers
+            // a split here is the phone — see `DefaultSplit`.
+            saveDefaultSplittingOptions: saveSplitAsDefault,
             isReimbursement: isReimbursement,
             documents: documents,
             notes: trimmedNotes.isEmpty ? nil : trimmedNotes,

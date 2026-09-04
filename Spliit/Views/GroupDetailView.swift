@@ -151,12 +151,17 @@ struct GroupDetailView: View {
         }
     }
 
-    /// A blank expense, plus whatever an intent already knew.
+    /// A blank expense — divided however this group's expenses were last said to be divided —
+    /// plus whatever an intent already knew.
     ///
     /// The amount arrives as text and stays text: `amountText` is parsed by the same code that
     /// reads the field, in the user's locale, so "12,50" means the same thing spoken as typed.
     private func prefilledDraft(for group: SpliitAPI.Group) -> ExpenseFormDraft {
-        var draft = ExpenseFormDraft(creatingIn: group, paidBy: activeParticipant?.participantID)
+        var draft = ExpenseFormDraft(
+            creatingIn: group,
+            paidBy: activeParticipant?.participantID,
+            defaultSplit: app.recentGroups.defaultSplit(inGroup: model.groupID)
+        )
         if let title = prefill?.title, !title.isEmpty { draft.title = title }
         if let amount = prefill?.amount, !amount.isEmpty { draft.amountText = amount }
         return draft

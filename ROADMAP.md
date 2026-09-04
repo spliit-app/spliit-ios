@@ -400,8 +400,9 @@ to a user opening it for the first time.
   is in a group, so guessing would put someone else's name against a payment in a
   shared ledger. Revisit when M3.1 lands the active user — that is what makes a
   headless "add £12 for coffee to Lisbon" safe. **The active user has since landed** (M3.1),
-  so that is now possible in any group somebody has said who they are in; what is still missing
-  is the split, which is what "saved default splitting options" below is for
+  so that is now possible in any group somebody has said who they are in — and the split has
+  landed with it ("saved default splitting options" below), so nothing is missing now but the
+  intent itself
 - **Widget** — moved to M3.1. It was specced as "balances at a glance for a starred
   group", and starring is itself an M3.1 feature. Building it against the
   most-recent group instead would ship it twice: once now with the wrong subject,
@@ -475,7 +476,16 @@ Ordered by value to a phone user, not by web-app order.
   rows never leave the draft and a share typed before an accidental "select none" comes
   back with its owner — the web app rebuilds the list instead, and gives anyone re-added a
   share of 1
-- Saved default splitting options
+- ~~Saved default splitting options~~ — **done**. A tick under the paid-for list keeps the
+  split for the group, and the next expense opens on it: mode, who is in it, and what each of
+  them was given. It is remembered on `RecentGroup`, beside who you are in the group, so it
+  rides the same file and the same iCloud copy — a per-group answer to a per-group question.
+  What is *not* shared is the web app's own default: that one is `localStorage` in whichever
+  browser set it, and the `saveDefaultSplittingOptions` flag both products send with an expense
+  is read by neither server. A by-amount split keeps only its mode, because its shares are one
+  receipt's amounts; one naming somebody who has since left the group is dropped whole rather
+  than trimmed, since 70/30 without the 30 is not a split anybody chose. Reimbursements are not
+  offered it at all — one person paying one other is never how the group divides anything
 - ~~Starred and archived groups on the home screen~~ — **done**. Both flags live on
   the group in `recent-groups.json` rather than in two lists of IDs the way the web
   app keeps them: one file, one write, and no way to end up starring a group the
@@ -640,7 +650,7 @@ Legend: ✅ present · ➖ absent · 🔜 planned milestone
 | Multi-currency expenses | ➖ | ✅ | ✅ M3.1 |
 | Active user / personal balance | ➖ | ✅ | ✅ M3.1 |
 | Select all-or-none participants | ➖ | ✅ | ✅ M3.1 |
-| Default splitting options | ➖ | ✅ | M3.1 |
+| Default splitting options | ➖ | ✅ | ✅ M3.1 |
 | Starred / archived groups | ➖ | ✅ | ✅ M3.1 |
 | Group information tab | ➖ | ✅ | ✅ M3.2 |
 | Stats | ➖ | ✅ | ✅ M3.2 |

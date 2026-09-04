@@ -434,6 +434,11 @@ struct ExpenseFormView: View {
                     }
                 }
             }
+
+            if form.wrappedValue.isSplitWorthRemembering {
+                Toggle("Save as default split", isOn: form.saveSplitAsDefault)
+                    .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveSplitToggle)
+            }
         } header: {
             HStack {
                 Text("Paid for")
@@ -664,6 +669,13 @@ struct ExpenseFormView: View {
                         Spliit.updateExpense(
                             groupId: group.id, expenseId: expenseID, values, by: actorID
                         )
+                    )
+                }
+                // Only once the expense is actually written: a split remembered from a save the
+                // server refused would go on prefilling expenses that never happened.
+                if form.saveSplitAsDefault, form.isSplitWorthRemembering {
+                    app.recentGroups.setDefaultSplit(
+                        DefaultSplit(remembering: values), groupId: group.id
                     )
                 }
                 // Before the reload, so it lands with the save rather than after the list has

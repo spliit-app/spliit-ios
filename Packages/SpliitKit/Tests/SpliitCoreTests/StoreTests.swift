@@ -354,6 +354,74 @@ struct RecentGroupsStoreTests {
         #expect(try JSONDecoder().decode([RecentGroup].self, from: Data(encoded.utf8)) == groups)
     }
 
+    @Test("How a group splits its expenses is remembered per group")
+    @MainActor
+    func remembersADefaultSplitPerGroup() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.remember(RecentGroup(groupId: "b", groupName: "Flat 3B"))
+        let participants = [Participant(id: "ana", name: "Ana"), Participant(id: "bruno", name: "Bruno")]
+
+        store.setDefaultSplit(
+            DefaultSplit(splitMode: .byPercentage, shares: ["ana": 7000, "bruno": 3000]),
+            groupId: "a"
+        )
+
+        #expect(store.defaultSplit(inGroup: "a", participants: participants)?.splitMode == .byPercentage)
+        #expect(store.defaultSplit(inGroup: "b", participants: participants) == nil)
+    }
+
+    /// The stored split outlives the people it names, exactly as the stored answer to "who are
+    /// you" does — and a split missing one of its names is not a smaller split.
+    @Test("A split naming somebody the group has dropped reads as nothing remembered")
+    @MainActor
+    func forgetsAStaleDefaultSplit() {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.setDefaultSplit(
+            DefaultSplit(splitMode: .byPercentage, shares: ["ana": 7000, "dimitri": 3000]),
+            groupId: "a"
+        )
+
+        #expect(store.defaultSplit(inGroup: "a", participants: [.init(id: "ana", name: "Ana")]) == nil)
+    }
+
+    @Test("A remembered split survives a restart")
+    @MainActor
+    func persistsTheDefaultSplit() {
+        let url = URL.temporaryDirectory
+            .appending(path: "recent-\(UUID().uuidString)")
+            .appending(path: "recent-groups.json")
+        let participants = [Participant(id: "ana", name: "Ana"), Participant(id: "bruno", name: "Bruno")]
+
+        let store = RecentGroupsStore(fileURL: url)
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        store.setDefaultSplit(
+            DefaultSplit(splitMode: .byShares, shares: ["ana": 200, "bruno": 100]),
+            groupId: "a"
+        )
+
+        let reloaded = RecentGroupsStore(fileURL: url)
+        #expect(
+            reloaded.defaultSplit(inGroup: "a", participants: participants)
+                == DefaultSplit(splitMode: .byShares, shares: ["ana": 200, "bruno": 100])
+        )
+    }
+
+    /// Another device has to be told, or it goes on prefilling expenses the old way and wins the
+    /// next merge with a row nobody edited.
+    @Test("Remembering a split counts as an edit")
+    @MainActor
+    func stampsTheGroupWhenTheSplitChanges() throws {
+        let store = makeStore()
+        store.remember(RecentGroup(groupId: "a", groupName: "Lisbon"))
+        let before = try #require(store.groups.first?.updatedAt)
+
+        store.setDefaultSplit(DefaultSplit(splitMode: .byAmount), groupId: "a")
+
+        #expect(try #require(store.groups.first?.updatedAt) > before)
+    }
+
     @Test("A list saved before this existed still decodes")
     @MainActor
     func decodesGroupsWithoutAnActiveParticipant() throws {

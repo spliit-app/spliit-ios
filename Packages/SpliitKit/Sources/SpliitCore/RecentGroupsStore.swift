@@ -71,6 +71,11 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
     /// has forgotten.
     public var activeParticipant: ActiveParticipant?
 
+    /// How this group's expenses are usually divided, once somebody has said so. Beside the
+    /// rest for the same reason they are, and with one more: a split is a list of participant
+    /// IDs, and the only thing that can vouch for those is the group they belong to.
+    public var defaultSplit: DefaultSplit?
+
     /// When this row last changed, in any way — opened, renamed, starred, archived, answered
     /// for. This is what decides a disagreement between two devices, and nothing else: the
     /// later row wins whole, because the fields on it were last edited together and picking a
@@ -104,6 +109,7 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         isStarred: Bool = false,
         isArchived: Bool = false,
         activeParticipant: ActiveParticipant? = nil,
+        defaultSplit: DefaultSplit? = nil,
         updatedAt: Date? = nil,
         lastOpenedAt: Date? = nil,
         instanceURL: URL? = nil
@@ -113,13 +119,14 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         self.isStarred = isStarred
         self.isArchived = isArchived
         self.activeParticipant = activeParticipant
+        self.defaultSplit = defaultSplit
         self.updatedAt = updatedAt
         self.lastOpenedAt = lastOpenedAt
         self.instanceURL = instanceURL
     }
 
     private enum CodingKeys: String, CodingKey {
-        case groupId, groupName, isStarred, isArchived, activeParticipant
+        case groupId, groupName, isStarred, isArchived, activeParticipant, defaultSplit
         case updatedAt, lastOpenedAt, instanceURL
     }
 
@@ -136,6 +143,7 @@ public struct RecentGroup: Codable, Sendable, Identifiable, Hashable {
         activeParticipant = try container.decodeIfPresent(
             ActiveParticipant.self, forKey: .activeParticipant
         )
+        defaultSplit = try container.decodeIfPresent(DefaultSplit.self, forKey: .defaultSplit)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         lastOpenedAt = try container.decodeIfPresent(Date.self, forKey: .lastOpenedAt)
         instanceURL = try container.decodeIfPresent(URL.self, forKey: .instanceURL)
@@ -370,6 +378,26 @@ public final class RecentGroupsStore {
     /// rather than a reason to invent a row with no name.
     public func setActiveParticipant(_ participant: ActiveParticipant, groupId: String) {
         modify(groupId) { $0.activeParticipant = participant }
+    }
+
+    /// How this group's expenses are usually split, or nil when nothing has been remembered.
+    ///
+    /// A split naming somebody the group no longer has reads as nothing remembered rather than
+    /// as a smaller split — see ``DefaultSplit/applies(to:)``. It is left in the file rather than
+    /// cleared: this is asked while a screen is being built, and a read is not the place to write
+    /// anything. The next expense saved with the box ticked replaces it.
+    public func defaultSplit(
+        inGroup groupId: String, participants: [Participant]
+    ) -> DefaultSplit? {
+        guard let split = groups.first(where: { $0.groupId == groupId })?.defaultSplit,
+              split.applies(to: participants)
+        else { return nil }
+        return split
+    }
+
+    /// Remembers how this expense was split, for the ones after it.
+    public func setDefaultSplit(_ split: DefaultSplit, groupId: String) {
+        modify(groupId) { $0.defaultSplit = split }
     }
 
     /// Where a group lives, or nil for one that has never been told.

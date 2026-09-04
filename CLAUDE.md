@@ -175,6 +175,19 @@ Note also what did *not* catch this. CI pins `SPLIIT_SERVER_REF` to a commit, de
 the build is reproducible; `upstream-drift` is the nightly job that runs against the latest
 server, and it is the only thing watching. A change upstream can otherwise reach users before it
 reaches a test.
+
+**A saved split is the client's, not the server's.** Both products send
+`saveDefaultSplittingOptions` with every expense, its zod schema validates it, and no procedure
+has ever read it — the web app writes the split it wants to keep into `localStorage` under
+`<groupId>-defaultSplittingOptions` and reads it back itself. So a default set in a browser and
+one set on the phone are two different facts about the same group, and no amount of server work
+will bring them together. Ours lives on `RecentGroup`, which puts it in the same file and the
+same iCloud payload as who you are in the group, and under the same whole-row merge. Two rules
+travel with it: `.byAmount` keeps only its mode, because its shares are one receipt's amounts and
+would never add up to the next expense's total; and a split naming a participant the group no
+longer has is dropped whole, not trimmed, because 70/30 with the 30 removed is a percentage split
+that cannot be saved and that nobody chose.
+
 **Who did it is something you have to tell the server.** `groups.update` and all three
 `groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the
 activity log has to name anybody with. Leave it out and the call still succeeds, the expense is

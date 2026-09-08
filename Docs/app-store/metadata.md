@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.2.0
+# App Store Connect — Spliit 2.3.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,13 +9,19 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.2.0, build 24, uploaded and attached to the 2.2 record. 2.1.0 is approved,
-  which *closes* that train — a further build for it is refused with 90186, and 90062 beside it
-  asking for a higher marketing version. So the first upload after a release moves both numbers,
-  not just the build
-- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.2 record, and the
-  framed screenshots from §4 are uploaded against both device sizes in both languages. What is
-  left before submitting is §8
+- **Version**: 2.3.0, build 26, uploaded and attached to the 2.3 record. 2.2.0 is
+  `READY_FOR_SALE`, which *closes* that train — a further build for it is refused with 90186, and
+  90062 beside it asking for a higher marketing version. So the first upload after a release moves
+  both numbers, not just the build
+- **What 2.2.0 actually shipped**: build **25**, not the 24 this file used to say. The totals fix
+  (#47) went up as 25 while its own pull request was still open, replaced 24 on the 2.2 record
+  before review, and was approved there. So *totals on `spliit.app` are already fixed for
+  everybody* and 2.3.0 must not announce them again — the release notes below are the default
+  split alone. The build attached to a version record is the one that shipped it; the upload dates
+  in App Store Connect are what settle a question like this, not this file
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.3 record, and the
+  screenshots carried forward from 2.2 unchanged — the release adds no screen worth reshooting.
+  What is left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
 - **Minimum iOS**: 26.0. Everyone below it keeps 1.2.0 through the App Store's
@@ -66,7 +72,7 @@ Split expenses with friends
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-Your groups follow you to a new phone, kept in iCloud. Join one by scanning its QR code. Split what you spent, see who owes whom, settle up — no account needed.
+A group now remembers how it splits, and the next expense opens on it. Your groups are kept in iCloud, so a new phone opens on the same list. No account needed.
 ```
 
 It does not survive a new version: App Store Connect carries the description and the keywords
@@ -125,12 +131,11 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-Your list of groups now follows you to a new phone.
+A group now remembers how it splits.
 
-• The groups you have opened are kept in iCloud, so a new phone opens on the same list as the old one — nothing to export, and nothing to set up again
-• Join a group by holding up its QR code, and show yours from the group's information tab
-• Groups can now live on different Spliit servers — the public one and your own — side by side in the same list
-• A clearer home screen, with settings moved down within reach of your thumb
+• Tick "Save as default split" under the paid-for list, and the next expense in that group opens on it — the mode, who it is split between, and each of their shares
+• Each group keeps its own, so a flatshare's uneven split and a trip's even one never get in each other's way
+• It travels with your groups in iCloud, so a new phone starts where the old one left off
 
 Still no account, and still nothing to sign in to.
 ```
@@ -145,10 +150,10 @@ Still no account, and still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 162 / 170
+### Texte promotionnel — 161 / 170
 
 ```
-Vos groupes vous suivent sur un nouveau téléphone, gardés dans iCloud. Rejoignez-en un avec son QR code. Partagez les dépenses, voyez qui doit quoi — sans compte.
+Un groupe retient sa répartition : la dépense suivante s'ouvre dessus. Vos groupes sont gardés dans iCloud et vous suivent d'un téléphone à l'autre. Sans compte.
 ```
 
 ### Mots-clés — 93 / 100
@@ -199,12 +204,11 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Votre liste de groupes vous suit désormais sur un nouveau téléphone.
+Un groupe se souvient désormais de sa répartition.
 
-• Les groupes que vous avez ouverts sont conservés dans iCloud : un nouveau téléphone retrouve la même liste que l'ancien — rien à exporter, rien à reconfigurer
-• Rejoignez un groupe en scannant son QR code, et affichez le vôtre depuis l'onglet Informations du groupe
-• Les groupes peuvent maintenant vivre sur différents serveurs Spliit — le public et le vôtre — côte à côte dans la même liste
-• Un écran d'accueil plus clair, avec les réglages à portée de pouce
+• Cochez « Enregistrer comme répartition par défaut » sous la liste des participants concernés, et la dépense suivante du groupe s'ouvre dessus — le mode, entre qui elle est partagée, et la part de chacun
+• Chaque groupe garde la sienne : la répartition inégale d'une colocation et le partage équitable d'un voyage ne se marchent jamais dessus
+• Elle suit vos groupes dans iCloud, et un nouveau téléphone reprend là où l'ancien s'est arrêté
 
 Toujours pas de compte, et toujours rien à quoi se connecter.
 ```

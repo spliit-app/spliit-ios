@@ -16,7 +16,7 @@ struct GroupDetailView: View {
     @State private var query = ""
     /// What an intent knew about the expense before the form opened. Held apart from `Sheet` so
     /// the sheet's identity stays a plain string and it does not reopen when this changes.
-    @State private var prefill: (title: String?, amount: String?)?
+    @State private var prefill: ExpensePrefill?
 
     init(groupID: String) {
         _model = State(initialValue: GroupDetailModel(groupID: groupID))
@@ -111,7 +111,10 @@ struct GroupDetailView: View {
         // inside `search` a debounce rather than a delay.
         .task(id: query) { await model.search(query, using: client) }
         .toolbar { toolbarContent }
-        .sheet(item: $sheet, content: sheetContent)
+        // The prefill is for the one form the intent opened. Left in place, the next expense
+        // added by hand would start from the same title and amount — and upload the same
+        // photographs a second time.
+        .sheet(item: $sheet, onDismiss: { prefill = nil }, content: sheetContent)
         .task { await model.loadIfNeeded(using: client) }
         // The store belongs to the view layer, so the model is told who the user is rather than
         // asking. It is what attributes the delete that waits out its undo window, and it has to
@@ -156,6 +159,8 @@ struct GroupDetailView: View {
     ///
     /// The amount arrives as text and stays text: `amountText` is parsed by the same code that
     /// reads the field, in the user's locale, so "12,50" means the same thing spoken as typed.
+    /// The category is taken as it is: the intent resolved it against this group's instance a
+    /// moment ago, and the picker shows it by name once the list is in.
     private func prefilledDraft(for group: SpliitAPI.Group) -> ExpenseFormDraft {
         var draft = ExpenseFormDraft(
             creatingIn: group,
@@ -164,13 +169,15 @@ struct GroupDetailView: View {
         )
         if let title = prefill?.title, !title.isEmpty { draft.title = title }
         if let amount = prefill?.amount, !amount.isEmpty { draft.amountText = amount }
+        if let categoryID = prefill?.categoryID { draft.categoryID = categoryID }
+        if let notes = prefill?.notes, !notes.isEmpty { draft.notes = notes }
         return draft
     }
 
     private func collectRoutedIntent() {
         switch Router.shared.takeDestination(for: model.groupID) {
-        case .newExpense(_, let title, let amount):
-            prefill = (title: title, amount: amount)
+        case .newExpense(_, let prefill):
+            self.prefill = prefill
             sheet = .createExpense
         case .group, .none:
             break
@@ -205,6 +212,7 @@ struct GroupDetailView: View {
                     group: group,
                     categories: model.categories,
                     draft: prefilledDraft(for: group),
+                    photosToAttach: prefill?.photos ?? [],
                     onFinished: { await model.reloadAfterExpenseChange(using: client) }
                 )
             }

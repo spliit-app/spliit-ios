@@ -20,12 +20,12 @@ final class Router {
     enum Destination: Equatable {
         case group(id: String)
         /// The group's expense form, opened and prefilled with whatever the intent was given.
-        case newExpense(groupID: String, title: String?, amount: String?)
+        case newExpense(groupID: String, prefill: ExpensePrefill)
 
         var groupID: String {
             switch self {
             case .group(let id): id
-            case .newExpense(let groupID, _, _): groupID
+            case .newExpense(let groupID, _): groupID
             }
         }
     }
@@ -68,4 +68,22 @@ final class Router {
     func clear() {
         destination = nil
     }
+}
+
+/// What an intent knew about an expense before the form opened.
+///
+/// Everything is optional because a shortcut fills in what it has: a card tapped at a till knows
+/// the merchant and the amount, and nothing else unless whoever built it said so.
+struct ExpensePrefill: Equatable {
+    var title: String?
+    /// As text, not a number: it is typed into the amount field, which parses it in the user's
+    /// locale — the one place in the app that knows whether a comma is a decimal separator.
+    var amount: String?
+    /// One the group's own instance answered with. `CategoryEntityQuery` resolves it against that
+    /// server each time the shortcut runs, so an ID that gets here is one the group can use.
+    var categoryID: Int?
+    var notes: String?
+    /// Photographs to attach, uploaded once the form is up — that being the first moment anything
+    /// knows which instance's bucket they go to.
+    var photos: [ReceiptPhoto] = []
 }

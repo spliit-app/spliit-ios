@@ -9,7 +9,11 @@ import VisionKit
 /// so the scan runs off the main actor without the picture having to be copied first — and a
 /// photo out of the library is very often sideways, which is the difference between a transcript
 /// and a page of nonsense.
-struct ReceiptPhoto: Sendable {
+///
+/// Equatable by the image's identity, which is what `CGImage` compares by: two photographs are
+/// the same one only when they are literally the same picture. That is enough for the router,
+/// which holds a shortcut's photographs until the form is up and only needs to notice a change.
+struct ReceiptPhoto: Sendable, Equatable {
     let image: CGImage
     let orientation: CGImagePropertyOrientation
 
@@ -21,6 +25,13 @@ struct ReceiptPhoto: Sendable {
     init?(_ image: UIImage) {
         guard let cgImage = image.cgImage else { return nil }
         self.init(image: cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation))
+    }
+
+    /// An image file as it arrived — out of the photo library, or handed to a shortcut — or nil
+    /// when it isn't one this device can decode.
+    init?(data: Data) {
+        guard let image = UIImage(data: data) else { return nil }
+        self.init(image)
     }
 }
 

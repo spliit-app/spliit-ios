@@ -402,7 +402,11 @@ to a user opening it for the first time.
   headless "add £12 for coffee to Lisbon" safe. **The active user has since landed** (M3.1),
   so that is now possible in any group somebody has said who they are in — and the split has
   landed with it ("saved default splitting options" below), so nothing is missing now but the
-  intent itself
+  intent itself. Meanwhile *Add Expense* takes everything the form has a field for (#53): a
+  **category**, offered from the list the chosen group's own instance returns; **notes**; and
+  **photographs to attach**, which start uploading as the form opens, and hold the Save button
+  until they have landed. A "when a card is tapped" automation can now hand over the whole
+  expense and leave only the checking
 - **Widget** — moved to M3.1. It was specced as "balances at a glance for a starred
   group", and starring is itself an M3.1 feature. Building it against the
   most-recent group instead would ship it twice: once now with the wrong subject,

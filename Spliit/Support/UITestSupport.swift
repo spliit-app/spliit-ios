@@ -29,8 +29,10 @@ enum UITestSupport {
         static let plantLegacyStore = "-uiTestLegacyStore"
         /// A group ID to route to at launch, standing in for `OpenGroupIntent`.
         static let openGroup = "-uiTestOpenGroup"
-        /// A group ID to open the expense form in, standing in for `AddExpenseIntent`. The
-        /// title and amount it would carry follow as two more arguments.
+        /// A JSON object standing in for `AddExpenseIntent`: `groupID`, and whichever of
+        /// `title`, `amount`, `categoryID` and `notes` the intent would have carried. `documents`
+        /// is how many copies of the receipt the app draws for itself to hand over as
+        /// photographs, since a test has no photo to give a shortcut.
         static let addExpense = "-uiTestAddExpense"
         /// A URL to deliver as if the system had just opened the app with it.
         static let openURL = "-uiTestOpenURL"
@@ -72,7 +74,12 @@ enum UITestSupport {
     /// Nil unless the launch argument is present, so the app is otherwise untouched.
     static func sampleReceipt() -> ReceiptPhoto? {
         guard usesSampleReceipt else { return nil }
+        return drawnReceipt()
+    }
 
+    /// The receipt itself, drawn whether or not this run asked for it in place of the camera —
+    /// the intent stand-in hands it over as the photograph a shortcut would have.
+    private static func drawnReceipt() -> ReceiptPhoto? {
         let lines = SampleReceipt.lines
         // Big, black on white, and monospaced: a photograph is what text recognition is usually
         // up against, and a drawing that gives it a hard time on top of that would only make the
@@ -147,16 +154,33 @@ enum UITestSupport {
         if let text = value(for: Argument.openURL, in: arguments), let url = URL(string: text) {
             Router.shared.deliver(url)
         }
-        if let groupID = value(for: Argument.addExpense, in: arguments) {
-            let index = arguments.firstIndex(of: Argument.addExpense)!
+        if let json = value(for: Argument.addExpense, in: arguments),
+           let expense = try? JSONDecoder().decode(RoutedExpense.self, from: Data(json.utf8)) {
             Router.shared.go(
                 to: .newExpense(
-                    groupID: groupID,
-                    title: arguments.indices.contains(index + 2) ? arguments[index + 2] : nil,
-                    amount: arguments.indices.contains(index + 3) ? arguments[index + 3] : nil
+                    groupID: expense.groupID,
+                    prefill: ExpensePrefill(
+                        title: expense.title,
+                        amount: expense.amount,
+                        categoryID: expense.categoryID,
+                        notes: expense.notes,
+                        photos: Array(
+                            repeating: drawnReceipt(), count: expense.documents ?? 0
+                        ).compactMap { $0 }
+                    )
                 )
             )
         }
+    }
+
+    /// The shape of `Argument.addExpense`.
+    private struct RoutedExpense: Decodable {
+        var groupID: String
+        var title: String?
+        var amount: String?
+        var categoryID: Int?
+        var notes: String?
+        var documents: Int?
     }
 
     private static func value(for argument: String, in arguments: [String]) -> String? {

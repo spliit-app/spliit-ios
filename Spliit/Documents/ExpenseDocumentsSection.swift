@@ -18,9 +18,14 @@ struct ExpenseDocumentsSection: View {
 
     @Binding var documents: [ExpenseDocument]
 
-    /// A photograph handed over from elsewhere on the form — the receipt scanner — for this
-    /// section to upload, since this is where the uploading lives. Cleared as it is taken.
-    @Binding var photoToAttach: PhotoToAttach?
+    /// Photographs handed over from elsewhere — the receipt scanner, or the shortcut that opened
+    /// the form — for this section to upload, since this is where the uploading lives. Cleared as
+    /// they are taken.
+    @Binding var photosToAttach: PhotosToAttach?
+
+    /// Whether an upload is in flight, for the form to hold its Save button until it isn't: a
+    /// document is only on the expense once the instance has said where it landed.
+    @Binding var isUploading: Bool
 
     /// The instance the expense's group is on. Documents go to the bucket that instance signs
     /// for, and whether it has one at all is answered per instance.
@@ -122,7 +127,11 @@ struct ExpenseDocumentsSection: View {
             matching: .images
         )
         .task(id: pickedItems.count) { await attachPickedPhotos() }
-        .onChange(of: photoToAttach?.id) { _, _ in takeHandedOverPhoto() }
+        // `initial` because the shortcut's photographs are already waiting when this section
+        // first appears, and a change that happened before there was anyone to see it is not
+        // a change `onChange` reports.
+        .onChange(of: photosToAttach?.id, initial: true) { _, _ in takeHandedOverPhotos() }
+        .onChange(of: uploads.isEmpty, initial: true) { _, isEmpty in isUploading = !isEmpty }
         .fullScreenCover(item: $presented) { presented in
             switch presented {
             case .camera:
@@ -223,8 +232,7 @@ struct ExpenseDocumentsSection: View {
 
         for item in pickedItems {
             guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data),
-                  let photo = ReceiptPhoto(image)
+                  let photo = ReceiptPhoto(data: data)
             else {
                 status = .failed(String(localized: "That photo couldn’t be read."))
                 continue
@@ -234,15 +242,17 @@ struct ExpenseDocumentsSection: View {
         pickedItems = []
     }
 
-    /// Takes the photograph the scanner just read, if there is one.
+    /// Takes the photographs handed over from elsewhere, if there are any.
     ///
     /// `onChange` rather than `task(id:)`: this has nothing to await, and clearing the binding
-    /// would cancel the task it was keyed on. The photo is read out before the binding is
+    /// would cancel the task it was keyed on. The photos are read out before the binding is
     /// cleared, because a binding read back after a write answers with what it held before it.
-    private func takeHandedOverPhoto() {
-        guard let pending = photoToAttach else { return }
-        photoToAttach = nil
-        attach(pending.photo)
+    private func takeHandedOverPhotos() {
+        guard let pending = photosToAttach else { return }
+        photosToAttach = nil
+        for photo in pending.photos {
+            attach(photo)
+        }
     }
 
     // MARK: - Uploading
@@ -301,11 +311,11 @@ struct ExpenseDocumentsSection: View {
     }
 }
 
-/// A photograph on its way from one part of the expense form to another.
+/// Photographs on their way from one part of the expense form to another.
 ///
-/// Identified rather than compared: `ReceiptPhoto` is not `Equatable`, and two scans of the same
-/// receipt are two things to attach in any case.
-struct PhotoToAttach: Identifiable {
+/// Identified rather than compared: two scans of the same receipt are two things to attach, and
+/// a handover is an event rather than a value.
+struct PhotosToAttach: Identifiable {
     let id = UUID()
-    let photo: ReceiptPhoto
+    let photos: [ReceiptPhoto]
 }

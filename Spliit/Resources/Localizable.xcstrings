@@ -991,6 +991,17 @@
       },
       "comment": "Spoken label for one thumbnail, by its position in the grid."
     },
+    "Documents": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Documents"
+          }
+        }
+      },
+      "comment": "The Add Expense shortcut's parameter for the photographs to attach."
+    },
     "Done": {
       "localizations": {
         "fr": {

@@ -47,7 +47,7 @@ class SpliitUITestCase: XCTestCase {
         serverURL: String? = nil,
         textSize: UIContentSizeCategory? = nil,
         openGroup: String? = nil,
-        addExpense: (groupID: String, title: String, amount: String)? = nil,
+        addExpense: IntentExpense? = nil,
         openURL: String? = nil,
         exchangeRate: String? = nil,
         receiptSample: Bool = false,
@@ -80,9 +80,8 @@ class SpliitUITestCase: XCTestCase {
             app.launchArguments += ["-uiTestOpenGroup", openGroup]
         }
         if let addExpense {
-            app.launchArguments += [
-                "-uiTestAddExpense", addExpense.groupID, addExpense.title, addExpense.amount,
-            ]
+            let json = try! JSONEncoder().encode(addExpense)
+            app.launchArguments += ["-uiTestAddExpense", String(decoding: json, as: UTF8.self)]
         }
         if let openURL {
             app.launchArguments += ["-uiTestOpenURL", openURL]
@@ -99,6 +98,19 @@ class SpliitUITestCase: XCTestCase {
 
         app.launch()
         return app
+    }
+
+    /// What `AddExpenseIntent` would have opened the form with. Encoded as the JSON the app's
+    /// `-uiTestAddExpense` argument reads, key for key.
+    struct IntentExpense: Encodable {
+        var groupID: String
+        var title: String? = nil
+        var amount: String? = nil
+        var categoryID: Int? = nil
+        var notes: String? = nil
+        /// How many photographs to hand over — copies of the receipt the app draws for itself,
+        /// since a test has none of its own to give a shortcut.
+        var documents: Int = 0
     }
 
     var api: SpliitTestAPI {

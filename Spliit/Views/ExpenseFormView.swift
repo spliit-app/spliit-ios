@@ -25,6 +25,8 @@ struct ExpenseFormView: View {
     let categories: [ExpenseCategory]
     /// Prefilled for a new expense; nil when editing, since it is fetched.
     let draft: ExpenseFormDraft?
+    /// Photographs a shortcut handed over with the expense, uploaded as soon as the form is up.
+    var photosToAttach: [ReceiptPhoto] = []
     let onFinished: () async -> Void
 
     @State private var form: ExpenseFormDraft?
@@ -37,9 +39,16 @@ struct ExpenseFormView: View {
     @State private var savedCount = 0
     @State private var refusedCount = 0
 
-    /// The photograph the scanner has just read, on its way to the documents section, which is
-    /// the one that knows how to upload.
-    @State private var scannedPhoto: PhotoToAttach?
+    /// Photographs on their way to the documents section, which is the one that knows how to
+    /// upload: the one the scanner has just read, or the ones the intent that opened this form
+    /// was given.
+    @State private var handedOverPhotos: PhotosToAttach?
+
+    /// Whether the documents section still has an upload in flight. A document joins the expense
+    /// only once the instance has answered with its address, so a save before that would write
+    /// the expense without it — and the shortcut that attached a receipt opens the form with the
+    /// upload already running.
+    @State private var isUploading = false
 
     @State private var rateLookup = RateLookup.idle
     /// The last rate this screen filled in by itself, so a rate the user typed over it is left
@@ -86,7 +95,7 @@ struct ExpenseFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSaving ? "Saving…" : "Save", action: save)
-                        .disabled(isSaving || form == nil)
+                        .disabled(isSaving || isUploading || form == nil)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
             }
@@ -130,7 +139,7 @@ struct ExpenseFormView: View {
             // on purpose.
             if !mode.isEditing {
                 ReceiptScanSection(categories: categories) { photo in
-                    scannedPhoto = PhotoToAttach(photo: photo)
+                    handedOverPhotos = PhotosToAttach(photos: [photo])
                 } onScan: { scan in
                     form.wrappedValue.apply(scan)
                 }
@@ -178,7 +187,7 @@ struct ExpenseFormView: View {
 
                 if !categories.isEmpty {
                     Picker("Category", selection: form.categoryID) {
-                        ForEach(groupedCategories, id: \.name) { grouping in
+                        ForEach(ExpenseCategory.grouped(categories), id: \.name) { grouping in
                             Section(grouping.name) {
                                 ForEach(grouping.categories) { category in
                                     Text(category.displayName).tag(category.id)
@@ -207,7 +216,8 @@ struct ExpenseFormView: View {
             // visible here whatever this screen is for.
             ExpenseDocumentsSection(
                 documents: form.documents,
-                photoToAttach: $scannedPhoto,
+                photosToAttach: $handedOverPhotos,
+                isUploading: $isUploading,
                 instanceURL: instanceURL
             )
 
@@ -531,22 +541,6 @@ struct ExpenseFormView: View {
         }
     }
 
-    /// Sorted on the translated names, not the English the server sent, and with the locale's own
-    /// collation — otherwise a French picker runs in English alphabetical order and "Épicerie"
-    /// sorts after "Vêtements" on the strength of its accent.
-    private var groupedCategories: [(name: String, categories: [ExpenseCategory])] {
-        Dictionary(grouping: categories, by: \.grouping)
-            .map { grouping, categories in
-                (
-                    name: ExpenseCategory.displayHeading(grouping),
-                    categories: categories.sorted {
-                        $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
-                    }
-                )
-            }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-    }
-
     private var decimalSeparator: String {
         Locale.autoupdatingCurrent.decimalSeparator ?? "."
     }
@@ -631,6 +625,11 @@ struct ExpenseFormView: View {
     private func load() async {
         if let draft {
             form = draft
+            // In the same turn as the form, so the documents section finds them waiting the
+            // moment it exists. It takes them the way it takes the scanner's.
+            if !photosToAttach.isEmpty {
+                handedOverPhotos = PhotosToAttach(photos: photosToAttach)
+            }
             return
         }
         guard case .edit(let expenseID) = mode else { return }

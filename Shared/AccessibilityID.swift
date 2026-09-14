@@ -165,6 +165,10 @@ enum AccessibilityID {
         static func splitModeOption(_ mode: String) -> String { "expenseForm.split.\(mode)" }
         static func participantToggle(_ id: String) -> String { "expenseForm.paidFor.\(id)" }
         static func participantValue(_ id: String) -> String { "expenseForm.share.\(id)" }
+        /// What a participant's share comes to, as opposed to the share they were given above.
+        static func participantShareAmount(_ id: String) -> String {
+            "expenseForm.shareAmount.\(id)"
+        }
     }
 
     /// Receipts kept with an expense. The thumbnails are named by position rather than by

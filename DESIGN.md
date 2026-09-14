@@ -96,8 +96,11 @@ Money(value: formatter.string(minorUnits: balance.total),
 participant you are — and what the totals tab leads with, where the group's own spending is the
 one figure that exists before anybody says anything. The two personal figures under it are
 `.lead`, which is the scale saying they are the second half of that sentence rather than a
-second headline. `.support` is still spare, and stays because the scale is the point —
-inventing a fifth size later is worse than leaving one over.
+second headline. `.support` is what each participant's share comes to on the expense form: an
+aside in the trailing column of their row, under the share they were given where there is a
+field for one, and alone where the split is even. It is untinted, like every expense amount —
+a share has no direction either — and it is the first use the size has had, which is the case
+for keeping a scale whole rather than trimming it to what is in use today.
 
 **Sign is carried by colour, and only where the amount has a direction.** An expense amount has
 none, so it is `.primary`. A balance is positive, negative or settled — `Money.Sign(balance:)`

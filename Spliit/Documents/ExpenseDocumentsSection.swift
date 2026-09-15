@@ -6,53 +6,24 @@ import VisionKit
 
 /// The receipts kept with an expense: a grid of what is attached, and a way to add more.
 ///
-/// The upload happens here rather than at save time, exactly as it does on the web: a document is
-/// a URL by the time the form holds one, so what the expense stores is only ever an address. Two
-/// things follow from that, and both are true of the web app as well. An expense that is written
-/// and then abandoned leaves an object in the bucket that nothing points at, and removing a
-/// document forgets its URL without deleting anything — neither product has credentials for the
-/// bucket, only the instance does.
+/// The uploading itself is the form's — see `DocumentUploads` for why — and this section draws
+/// it: the stored documents, the ones still on their way, and the tile that adds another.
 struct ExpenseDocumentsSection: View {
 
     @Environment(AppModel.self) private var app
 
     @Binding var documents: [ExpenseDocument]
 
-    /// A photograph handed over from elsewhere on the form — the receipt scanner — for this
-    /// section to upload, since this is where the uploading lives. Cleared as it is taken.
-    @Binding var photoToAttach: PhotoToAttach?
+    /// What is being uploaded, and the pictures of what has been.
+    let uploads: DocumentUploads
 
     /// The instance the expense's group is on. Documents go to the bucket that instance signs
     /// for, and whether it has one at all is answered per instance.
     let instanceURL: URL
 
-    /// Shared with the gallery, so opening a receipt shows the picture the grid already has.
-    @State private var images = DocumentImages()
-    @State private var uploads: [Upload] = []
-    @State private var status = Status.idle
     @State private var presented: Presented?
     @State private var isShowingLibrary = false
     @State private var pickedItems: [PhotosPickerItem] = []
-
-    /// A picture being uploaded. Held so the grid can show it, greyed, in the place it is about
-    /// to occupy — an upload with nothing on screen is a spinner beside a form that looks
-    /// unchanged.
-    ///
-    /// A thumbnail rather than the photograph. The original can be twelve megapixels, five of
-    /// them can be picked at once, and drawing one into a ninety-point square decodes the whole
-    /// thing; nil when even that fails, which costs the tile its picture and nothing else.
-    private struct Upload: Identifiable {
-        let id = UUID()
-        let preview: UIImage?
-    }
-
-    private enum Status: Equatable {
-        case idle
-        case uploading
-        /// This instance keeps no documents. Not an error, and not worth offering to retry.
-        case unsupported
-        case failed(String)
-    }
 
     /// One presentation for the whole section, rather than a `fullScreenCover` per thing to
     /// present. Two of them on one view is a coin toss over which gets shown, and the modifier
@@ -87,14 +58,14 @@ struct ExpenseDocumentsSection: View {
                 Button {
                     presented = .document(document.id)
                 } label: {
-                    DocumentThumbnail(document: document, images: images)
+                    DocumentThumbnail(document: document, images: uploads.images)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Document \(index + 1)"))
                 .accessibilityIdentifier(AccessibilityID.Documents.thumbnail(index))
             }
 
-            ForEach(uploads) { upload in
+            ForEach(uploads.inFlight) { upload in
                 Color(.secondarySystemFill)
                     .aspectRatio(1, contentMode: .fit)
                     .overlay {
@@ -122,7 +93,6 @@ struct ExpenseDocumentsSection: View {
             matching: .images
         )
         .task(id: pickedItems.count) { await attachPickedPhotos() }
-        .onChange(of: photoToAttach?.id) { _, _ in takeHandedOverPhoto() }
         .fullScreenCover(item: $presented) { presented in
             switch presented {
             case .camera:
@@ -130,7 +100,7 @@ struct ExpenseDocumentsSection: View {
                     if let photo { attach(photo) }
                 }
             case .document(let id):
-                DocumentGalleryView(documents: $documents, images: images, startingAt: id)
+                DocumentGalleryView(documents: $documents, images: uploads.images, startingAt: id)
             }
         }
     }
@@ -172,7 +142,7 @@ struct ExpenseDocumentsSection: View {
     /// A `Text` rather than a key, so the one case carrying a message from somewhere else can
     /// show it verbatim instead of becoming a catalogue entry that reads "%@".
     private var footer: Text {
-        switch status {
+        switch uploads.status {
         case .idle:
             documents.isEmpty
                 ? Text("Photograph the receipt and it stays with the expense.")
@@ -222,90 +192,13 @@ struct ExpenseDocumentsSection: View {
         guard !pickedItems.isEmpty else { return }
 
         for item in pickedItems {
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data),
-                  let photo = ReceiptPhoto(image)
-            else {
-                status = .failed(String(localized: "That photo couldn’t be read."))
-                continue
-            }
-            attach(photo)
+            let data = try? await item.loadTransferable(type: Data.self)
+            uploads.attach(file: data, to: instanceURL, app: app) { documents.append($0) }
         }
         pickedItems = []
     }
 
-    /// Takes the photograph the scanner just read, if there is one.
-    ///
-    /// `onChange` rather than `task(id:)`: this has nothing to await, and clearing the binding
-    /// would cancel the task it was keyed on. The photo is read out before the binding is
-    /// cleared, because a binding read back after a write answers with what it held before it.
-    private func takeHandedOverPhoto() {
-        guard let pending = photoToAttach else { return }
-        photoToAttach = nil
-        attach(pending.photo)
-    }
-
-    // MARK: - Uploading
-
     private func attach(_ photo: ReceiptPhoto) {
-        let full = UIImage(
-            cgImage: photo.image, scale: 1, orientation: UIImage.Orientation(photo.orientation)
-        )
-        let upload = Upload(
-            preview: full.preparingThumbnail(of: CGSize(width: 300, height: 300))
-        )
-        uploads.append(upload)
-        status = .uploading
-
-        Task {
-            defer { uploads.removeAll { $0.id == upload.id } }
-
-            // Off the main actor: re-encoding twelve megapixels is a tenth of a second the form
-            // would otherwise spend not responding.
-            guard let prepared = await Task.detached(priority: .userInitiated, operation: {
-                DocumentImage.prepared(from: photo)
-            }).value else {
-                status = .failed(String(localized: "That photo couldn’t be read."))
-                return
-            }
-
-            do {
-                let uploader = DocumentUploader(baseURL: instanceURL)
-                let url = try await uploader.upload(
-                    prepared.data, contentType: prepared.contentType
-                )
-                // What everyone else will see, rather than the original: the thumbnail is then
-                // the picture that was actually stored, and it needs no round trip to appear.
-                if let stored = UIImage(data: prepared.data) {
-                    images.remember(stored, for: url)
-                }
-                documents.append(
-                    ExpenseDocument(
-                        id: ExpenseDocument.newID(),
-                        url: url,
-                        width: prepared.width,
-                        height: prepared.height
-                    )
-                )
-                Analytics.shared.event(.attachDocument)
-                status = .idle
-            } catch DocumentUploader.Failure.unsupported {
-                // Remembered for the session, so the next expense doesn't offer an upload this
-                // instance has already said it cannot accept.
-                app.noteDocumentStorageIsUnavailable(on: instanceURL)
-                status = .unsupported
-            } catch {
-                status = .failed(error.localizedDescription)
-            }
-        }
+        uploads.attach(photo, to: instanceURL, app: app) { documents.append($0) }
     }
-}
-
-/// A photograph on its way from one part of the expense form to another.
-///
-/// Identified rather than compared: `ReceiptPhoto` is not `Equatable`, and two scans of the same
-/// receipt are two things to attach in any case.
-struct PhotoToAttach: Identifiable {
-    let id = UUID()
-    let photo: ReceiptPhoto
 }

@@ -13,9 +13,9 @@ import Foundation
 enum ExpenseCategoryIcon {
 
     /// What the web app falls back to, and so do we.
-    static let fallback = "banknote"
+    nonisolated static let fallback = "banknote"
 
-    static func symbol(grouping: String?, name: String?) -> String {
+    nonisolated static func symbol(grouping: String?, name: String?) -> String {
         guard let grouping, let name else { return fallback }
         return symbols["\(grouping)/\(name)"] ?? fallback
     }
@@ -23,7 +23,7 @@ enum ExpenseCategoryIcon {
     /// Keyed exactly as the web app keys it — note that several category *names* contain a slash
     /// of their own ("Bus/Train", "Gas/Fuel", "Heat/Gas", "TV/Phone/Internet"), which is why this
     /// is a flat string key rather than a pair.
-    static let symbols: [String: String] = [
+    nonisolated static let symbols: [String: String] = [
         "Uncategorized/General": "banknote",
         "Uncategorized/Payment": "banknote",
 

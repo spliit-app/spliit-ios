@@ -19,7 +19,7 @@ import Foundation
 enum ExpenseCategoryName {
 
     /// The heading a group of categories sits under in the picker.
-    static func heading(_ grouping: String) -> String? {
+    nonisolated static func heading(_ grouping: String) -> String? {
         switch grouping {
         case "Uncategorized": String(localized: "Uncategorized", table: "Categories")
         case "Entertainment": String(localized: "Entertainment", table: "Categories")
@@ -35,7 +35,7 @@ enum ExpenseCategoryName {
     /// One category's own name. Several contain a slash of their own ("Bus/Train", "Heat/Gas"),
     /// which is why the key is concatenated rather than split — the same reason the icon map
     /// gives.
-    static func name(grouping: String, name: String) -> String? {
+    nonisolated static func name(grouping: String, name: String) -> String? {
         switch "\(grouping)/\(name)" {
         case "Uncategorized/General": String(localized: "General", table: "Categories")
         case "Uncategorized/Payment": String(localized: "Payment", table: "Categories")

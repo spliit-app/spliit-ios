@@ -47,7 +47,7 @@ class SpliitUITestCase: XCTestCase {
         serverURL: String? = nil,
         textSize: UIContentSizeCategory? = nil,
         openGroup: String? = nil,
-        addExpense: (groupID: String, title: String, amount: String)? = nil,
+        addExpense: IntentExpense? = nil,
         openURL: String? = nil,
         exchangeRate: String? = nil,
         receiptSample: Bool = false,
@@ -80,9 +80,8 @@ class SpliitUITestCase: XCTestCase {
             app.launchArguments += ["-uiTestOpenGroup", openGroup]
         }
         if let addExpense {
-            app.launchArguments += [
-                "-uiTestAddExpense", addExpense.groupID, addExpense.title, addExpense.amount,
-            ]
+            let json = try! JSONEncoder().encode(addExpense)
+            app.launchArguments += ["-uiTestAddExpense", String(decoding: json, as: UTF8.self)]
         }
         if let openURL {
             app.launchArguments += ["-uiTestOpenURL", openURL]

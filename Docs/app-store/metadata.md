@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.3.0
+# App Store Connect — Spliit 2.4.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,18 +9,18 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.3.0, build 26, uploaded and attached to the 2.3 record. 2.2.0 is
+- **Version**: 2.4.0, build 27, uploaded and attached to the 2.4 record. 2.3.0 is
   `READY_FOR_SALE`, which *closes* that train — a further build for it is refused with 90186, and
   90062 beside it asking for a higher marketing version. So the first upload after a release moves
   both numbers, not just the build
-- **What 2.2.0 actually shipped**: build **25**, not the 24 this file used to say. The totals fix
-  (#47) went up as 25 while its own pull request was still open, replaced 24 on the 2.2 record
-  before review, and was approved there. So *totals on `spliit.app` are already fixed for
-  everybody* and 2.3.0 must not announce them again — the release notes below are the default
-  split alone. The build attached to a version record is the one that shipped it; the upload dates
-  in App Store Connect are what settle a question like this, not this file
-- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.3 record, and the
-  screenshots carried forward from 2.2 unchanged — the release adds no screen worth reshooting.
+- **What shipped before**: 2.3.0 went out as build 26 — the default split — and 2.2.0 as build
+  **25**, not the 24 this file once said: the totals fix (#47) went up while its own pull request
+  was still open, replaced 24 on the 2.2 record before review, and was approved there. The build
+  attached to a version record is the one that shipped it; the upload dates in App Store Connect
+  are what settle a question like this, not this file. The release notes below are what landed
+  since 2.3.0 and nothing older: each share's amount (#55) and the fuller Shortcuts action (#56)
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.4 record, and the
+  screenshots carried forward from 2.3 unchanged — the release adds no screen worth reshooting.
   What is left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
@@ -67,12 +67,12 @@ descriptive half belongs in the subtitle, which is what the subtitle is for.
 Split expenses with friends
 ```
 
-### Promotional text — 160 / 170
+### Promotional text — 167 / 170
 
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-A group now remembers how it splits, and the next expense opens on it. Your groups are kept in iCloud, so a new phone opens on the same list. No account needed.
+See what each person's share comes to as you type, and let a shortcut hand over the whole expense, receipt included. Your groups are kept in iCloud. No account needed.
 ```
 
 It does not survive a new version: App Store Connect carries the description and the keywords
@@ -131,11 +131,10 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-A group now remembers how it splits.
+Every share, worked out for you.
 
-• Tick "Save as default split" under the paid-for list, and the next expense in that group opens on it — the mode, who it is split between, and each of their shares
-• Each group keeps its own, so a flatshare's uneven split and a trip's even one never get in each other's way
-• It travels with your groups in iCloud, so a new phone starts where the old one left off
+• Each participant in the expense form now has the amount their share comes to beside their name — $31.67, $31.66, $31.67 — and it follows the split as you type, so you can see who carries the odd cent before you save
+• The Add Expense action in Shortcuts takes the category, a note and a photo of the receipt as well as the title and the amount, so an automation can hand over the whole expense and leave you only the payer to confirm
 
 Still no account, and still nothing to sign in to.
 ```
@@ -150,10 +149,10 @@ Still no account, and still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 161 / 170
+### Texte promotionnel — 169 / 170
 
 ```
-Un groupe retient sa répartition : la dépense suivante s'ouvre dessus. Vos groupes sont gardés dans iCloud et vous suivent d'un téléphone à l'autre. Sans compte.
+Voyez la part de chacun à mesure que vous saisissez, et laissez un raccourci remettre la dépense entière, reçu compris. Vos groupes sont gardés dans iCloud. Sans compte.
 ```
 
 ### Mots-clés — 93 / 100
@@ -204,11 +203,10 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Un groupe se souvient désormais de sa répartition.
+Chaque part, calculée pour vous.
 
-• Cochez « Enregistrer comme répartition par défaut » sous la liste des participants concernés, et la dépense suivante du groupe s'ouvre dessus — le mode, entre qui elle est partagée, et la part de chacun
-• Chaque groupe garde la sienne : la répartition inégale d'une colocation et le partage équitable d'un voyage ne se marchent jamais dessus
-• Elle suit vos groupes dans iCloud, et un nouveau téléphone reprend là où l'ancien s'est arrêté
+• Dans le formulaire de dépense, chaque participant a désormais le montant de sa part à côté de son nom — 31,67 €, 31,66 €, 31,67 € — et il suit la répartition à mesure que vous la saisissez, pour voir qui porte le centime en trop avant d'enregistrer
+• L'action « Ajouter une dépense » dans Raccourcis prend la catégorie, une note et une photo du reçu en plus du titre et du montant : une automatisation peut remettre la dépense entière, et il ne vous reste que le payeur à confirmer
 
 Toujours pas de compte, et toujours rien à quoi se connecter.
 ```
@@ -498,13 +496,13 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [x] ~~Upload a build.~~ **2.2.0 (24) is uploaded, processed and attached to the 2.2 record** —
-      the groups list in iCloud, joining by QR code, a server address per group and the reworked
-      home screen. Both numbers moved together, 2.1.0 being approved having closed that train.
-      Apple mails you if processing fails after an upload that reported success
-- [x] ~~Fill in the listing.~~ Release notes, promotional text and the five framed screenshots
-      are on the 2.2 record in both languages, and the description and keywords carried forward
-      from 2.1.0 untouched
+- [x] ~~Upload a build.~~ **2.4.0 (27) is uploaded, processed and attached to the 2.4 record** —
+      each participant's share worked out beside their name, and the Shortcuts action taking the
+      category, a note and the receipt. Both numbers moved together, 2.3.0 being approved having
+      closed that train. Apple mails you if processing fails after an upload that reported success
+- [x] ~~Fill in the listing.~~ Release notes and promotional text are on the 2.4 record in both
+      languages; the description, the keywords and the five framed screenshots carried forward
+      from 2.3.0 untouched
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0
 - [ ] Serve `apple-app-site-association` from spliit.app if Universal Links should work on day
       one ([Docs/universal-links.md](../universal-links.md))

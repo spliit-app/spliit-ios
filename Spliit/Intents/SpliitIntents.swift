@@ -69,6 +69,18 @@ struct AddExpenseIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        // Read off the main actor: this runs while the app is being brought to the front, and
+        // five photographs off a camera are tens of megabytes to pull off disk.
+        //
+        // A file this device cannot decode is left out rather than failing the whole intent:
+        // throwing here would discard the title and amount with it, and a card-tap automation
+        // does not get run again. Shortcuts has already checked that each one is an image, so
+        // this is a corrupt file, not a wrong kind.
+        let files = documents ?? []
+        let photos = await Task.detached(priority: .userInitiated) {
+            files.compactMap { ReceiptPhoto(data: $0.data) }
+        }.value
+
         Router.shared.go(
             to: .newExpense(
                 groupID: group.id,
@@ -77,11 +89,7 @@ struct AddExpenseIntent: AppIntent {
                     amount: amount,
                     categoryID: category?.id,
                     notes: notes,
-                    // A file this device cannot decode is left out rather than failing the whole
-                    // intent: throwing here would discard the title and amount with it, and a
-                    // card-tap automation does not get run again. Shortcuts has already checked
-                    // that each one is an image, so this is a corrupt file, not a wrong kind.
-                    photos: (documents ?? []).compactMap { ReceiptPhoto(data: $0.data) }
+                    photos: photos
                 )
             )
         )

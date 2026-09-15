@@ -83,7 +83,9 @@ struct ExpensePrefill: Equatable {
     /// server each time the shortcut runs, so an ID that gets here is one the group can use.
     var categoryID: Int?
     var notes: String?
-    /// Photographs to attach, uploaded once the form is up — that being the first moment anything
-    /// knows which instance's bucket they go to.
+    /// Photographs to attach. Uploaded by the form rather than from here, although the instance
+    /// could be resolved here just as well: the form is where an upload is something a person
+    /// can see, and see fail, and where an instance that keeps no documents is remembered for
+    /// the session. See `DocumentUploads`.
     var photos: [ReceiptPhoto] = []
 }

@@ -13,7 +13,7 @@ import VisionKit
 /// Equatable by the image's identity, which is what `CGImage` compares by: two photographs are
 /// the same one only when they are literally the same picture. That is enough for the router,
 /// which holds a shortcut's photographs until the form is up and only needs to notice a change.
-struct ReceiptPhoto: Sendable, Equatable {
+nonisolated struct ReceiptPhoto: Sendable, Equatable {
     let image: CGImage
     let orientation: CGImagePropertyOrientation
 
@@ -38,7 +38,7 @@ struct ReceiptPhoto: Sendable, Equatable {
 extension CGImagePropertyOrientation {
     /// UIKit and ImageIO number the same eight orientations differently, and nothing converts
     /// between them for you.
-    init(_ orientation: UIImage.Orientation) {
+    nonisolated init(_ orientation: UIImage.Orientation) {
         switch orientation {
         case .up: self = .up
         case .upMirrored: self = .upMirrored

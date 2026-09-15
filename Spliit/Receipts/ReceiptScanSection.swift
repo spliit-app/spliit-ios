@@ -152,8 +152,7 @@ struct ReceiptScanSection: View {
         defer { self.pickedItem = nil }
 
         guard let data = try? await pickedItem.loadTransferable(type: Data.self),
-              let image = UIImage(data: data),
-              let photo = ReceiptPhoto(image)
+              let photo = ReceiptPhoto(data: data)
         else {
             phase = .failed
             return

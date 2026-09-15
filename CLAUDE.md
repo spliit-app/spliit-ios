@@ -224,6 +224,17 @@ the second `append` started from an array without the first, and the document vi
 document, asked whether any were left, was told yes and stayed open on nothing. `ExpenseFormView`
 now hands down `liveForm`, whose getter reads `self.form`.
 
+**A `Form` builds its rows as they scroll into view, so a row cannot be trusted to do anything
+before then.** `onAppear`, `task` and `onChange(initial:)` on a row below the fold all wait for the
+scroll; nothing fails and nothing logs. The documents grid is the last row of a long form, and the
+receipt a shortcut handed to it was not uploaded until somebody scrolled down — with Save live all
+the while, so the expense went up without it. The scanner never showed this because a person
+scanning has the form open already, and the suite never showed it because the test scrolled to the
+grid before saving. Anything that has to happen whether or not a row exists belongs to the form:
+that is why the uploads live in `DocumentUploads`, owned by `ExpenseFormView`, and the section only
+draws them. And a UI test of "starts as the form opens" has to save *without* scrolling, or it
+proves nothing.
+
 **Expense documents are the one thing that doesn't go through tRPC.** The instance signs an upload
 at `POST /api/s3-upload` — a REST route `next-s3-upload` puts beside the tRPC one — and the bytes
 go from the phone straight to the bucket; tRPC only ever sees the URL the object ended up at.

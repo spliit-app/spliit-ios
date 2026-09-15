@@ -39,16 +39,10 @@ struct ExpenseFormView: View {
     @State private var savedCount = 0
     @State private var refusedCount = 0
 
-    /// Photographs on their way to the documents section, which is the one that knows how to
-    /// upload: the one the scanner has just read, or the ones the intent that opened this form
-    /// was given.
-    @State private var handedOverPhotos: PhotosToAttach?
-
-    /// Whether the documents section still has an upload in flight. A document joins the expense
-    /// only once the instance has answered with its address, so a save before that would write
-    /// the expense without it — and the shortcut that attached a receipt opens the form with the
-    /// upload already running.
-    @State private var isUploading = false
+    /// The receipts on their way to the bucket. The form's, not the documents section's, so an
+    /// upload starts whether or not that section — the last row of a long form — has been built
+    /// yet. See `DocumentUploads`.
+    @State private var uploads = DocumentUploads()
 
     @State private var rateLookup = RateLookup.idle
     /// The last rate this screen filled in by itself, so a rate the user typed over it is left
@@ -94,8 +88,12 @@ struct ExpenseFormView: View {
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.cancelButton)
                 }
                 ToolbarItem(placement: .confirmationAction) {
+                    // Held while a receipt is uploading: a document is on the expense only once
+                    // the instance has answered with its address, and a save before that would
+                    // write the expense without it. The shortcut that attaches one opens the form
+                    // with the upload already running, which is exactly when somebody saves.
                     Button(isSaving ? "Saving…" : "Save", action: save)
-                        .disabled(isSaving || isUploading || form == nil)
+                        .disabled(isSaving || uploads.isUploading || form == nil)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
             }
@@ -106,6 +104,7 @@ struct ExpenseFormView: View {
             }
         }
         .task { await load() }
+        .onChange(of: categories) { reconcileCategory() }
         .task(id: rateRequest) { await lookUpRate() }
         .interactiveDismissDisabled(isSaving)
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
@@ -139,7 +138,7 @@ struct ExpenseFormView: View {
             // on purpose.
             if !mode.isEditing {
                 ReceiptScanSection(categories: categories) { photo in
-                    handedOverPhotos = PhotosToAttach(photos: [photo])
+                    attach(photo)
                 } onScan: { scan in
                     form.wrappedValue.apply(scan)
                 }
@@ -216,8 +215,7 @@ struct ExpenseFormView: View {
             // visible here whatever this screen is for.
             ExpenseDocumentsSection(
                 documents: form.documents,
-                photosToAttach: $handedOverPhotos,
-                isUploading: $isUploading,
+                uploads: uploads,
                 instanceURL: instanceURL
             )
 
@@ -625,10 +623,9 @@ struct ExpenseFormView: View {
     private func load() async {
         if let draft {
             form = draft
-            // In the same turn as the form, so the documents section finds them waiting the
-            // moment it exists. It takes them the way it takes the scanner's.
-            if !photosToAttach.isEmpty {
-                handedOverPhotos = PhotosToAttach(photos: photosToAttach)
+            reconcileCategory()
+            for photo in photosToAttach {
+                attach(photo)
             }
             return
         }
@@ -640,6 +637,27 @@ struct ExpenseFormView: View {
             form = ExpenseFormDraft(editing: response.expense, group: group)
         } catch {
             failure = error.localizedDescription
+        }
+    }
+
+    /// A category the list does not have goes back to General rather than staying as a number
+    /// the picker cannot name and the server would refuse. A draft prefilled by a shortcut can
+    /// carry one: the ID was resolved against an instance, and — with the group supplied from a
+    /// variable — not necessarily the one this group is on. The list arrives in its own time, so
+    /// this runs both when the draft is loaded and when the categories are.
+    private func reconcileCategory() {
+        guard let categoryID = form?.categoryID, !categories.isEmpty,
+              !categories.contains(where: { $0.id == categoryID })
+        else { return }
+        form?.categoryID = 0
+    }
+
+    /// Starts a receipt on its way to the bucket, and puts it on the expense once it lands.
+    /// `self.form` rather than the draft in hand, for the reason `liveForm` gives: two uploads
+    /// finishing in turn each have to append to the array the other left.
+    private func attach(_ photo: ReceiptPhoto) {
+        uploads.attach(photo, to: instanceURL, app: app) { document in
+            self.form?.documents.append(document)
         }
     }
 

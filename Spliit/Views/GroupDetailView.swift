@@ -113,8 +113,10 @@ struct GroupDetailView: View {
         .toolbar { toolbarContent }
         // The prefill is for the one form the intent opened. Left in place, the next expense
         // added by hand would start from the same title and amount — and upload the same
-        // photographs a second time.
-        .sheet(item: $sheet, onDismiss: { prefill = nil }, content: sheetContent)
+        // photographs a second time. Only when nothing is taking the sheet's place, though: an
+        // intent arriving while the settings sheet is open swaps it for the form, and the
+        // outgoing sheet's dismissal must not clear what the incoming one is about to read.
+        .sheet(item: $sheet, onDismiss: { if sheet == nil { prefill = nil } }, content: sheetContent)
         .task { await model.loadIfNeeded(using: client) }
         // The store belongs to the view layer, so the model is told who the user is rather than
         // asking. It is what attributes the delete that waits out its undo window, and it has to

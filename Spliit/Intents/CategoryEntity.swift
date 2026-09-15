@@ -46,9 +46,11 @@ extension CategoryEntity {
 /// resolution that runs the shortcut — so the ID handed to the form is one that server returned
 /// a moment ago.
 ///
-/// An instance that cannot be reached answers with nothing, which the Shortcuts app shows as an
-/// empty list or an unresolved category. There is nothing better to say: the expense the
-/// shortcut is about to write needs that same server.
+/// An instance that cannot be reached answers with nothing rather than with an error: an empty
+/// picker in the editor, and a category left unresolved when the shortcut runs. Not thrown,
+/// because an error here fails the whole run before `perform` is reached, and a card-tap
+/// automation that fails is a title and an amount gone for good — whereas the form, once it is
+/// reached, will say for itself that the server is unreachable.
 struct CategoryEntityQuery: EntityQuery {
 
     /// The group already chosen in the action, when there is one. What makes the category list
@@ -56,20 +58,24 @@ struct CategoryEntityQuery: EntityQuery {
     @IntentParameterDependency<AddExpenseIntent>(\.$group)
     var addExpense
 
+    @MainActor
     func entities(for identifiers: [CategoryEntity.ID]) async throws -> [CategoryEntity] {
         let wanted = Set(identifiers)
-        return try await categories().filter { wanted.contains($0.id) }.map(CategoryEntity.init)
+        return await categories().filter { wanted.contains($0.id) }.map(CategoryEntity.init)
     }
 
     /// The whole list, in the order the form's picker shows it.
+    @MainActor
     func suggestedEntities() async throws -> [CategoryEntity] {
-        try await ExpenseCategory.grouped(categories())
+        await ExpenseCategory.grouped(categories())
             .flatMap(\.categories)
             .map(CategoryEntity.init)
     }
 
-    private func categories() async throws -> [ExpenseCategory] {
-        try await TRPCClient(baseURL: instanceURL).call(Spliit.categories()).categories
+    @MainActor
+    private func categories() async -> [ExpenseCategory] {
+        let client = TRPCClient(baseURL: instanceURL)
+        return (try? await client.call(Spliit.categories()).categories) ?? []
     }
 
     /// Read fresh, like `GroupEntityQuery` reads the groups: a query is routinely run while the
@@ -87,6 +93,7 @@ extension CategoryEntityQuery: EntityStringQuery {
     /// Matching what the picker's search field was given, against the translated name — the
     /// word on screen — and the server's English, so "groceries" finds "Épicerie" on a French
     /// phone as well as the other way round.
+    @MainActor
     func entities(matching string: String) async throws -> [CategoryEntity] {
         try await suggestedEntities().filter {
             $0.category.displayName.localizedCaseInsensitiveContains(string)

@@ -155,7 +155,10 @@ enum UITestSupport {
             Router.shared.deliver(url)
         }
         if let json = value(for: Argument.addExpense, in: arguments),
-           let expense = try? JSONDecoder().decode(RoutedExpense.self, from: Data(json.utf8)) {
+           let expense = try? JSONDecoder().decode(IntentExpense.self, from: Data(json.utf8)) {
+            // The same drawing however many times it is asked for: two of them are two things
+            // to upload, which is what the test wants, and drawing is not.
+            let receipt = expense.documents > 0 ? drawnReceipt() : nil
             Router.shared.go(
                 to: .newExpense(
                     groupID: expense.groupID,
@@ -164,23 +167,11 @@ enum UITestSupport {
                         amount: expense.amount,
                         categoryID: expense.categoryID,
                         notes: expense.notes,
-                        photos: Array(
-                            repeating: drawnReceipt(), count: expense.documents ?? 0
-                        ).compactMap { $0 }
+                        photos: receipt.map { Array(repeating: $0, count: expense.documents) } ?? []
                     )
                 )
             )
         }
-    }
-
-    /// The shape of `Argument.addExpense`.
-    private struct RoutedExpense: Decodable {
-        var groupID: String
-        var title: String?
-        var amount: String?
-        var categoryID: Int?
-        var notes: String?
-        var documents: Int?
     }
 
     private static func value(for argument: String, in arguments: [String]) -> String? {

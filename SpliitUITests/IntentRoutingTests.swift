@@ -51,8 +51,9 @@ final class IntentRoutingTests: SpliitUITestCase {
     ///
     /// Asserted on the server, as `ReceiptScanTests` does: the category row is below the fold on
     /// a small phone, and what was saved is what matters. The photograph is the one the app
-    /// draws for itself, uploaded for real to the harness's bucket — which is why the thumbnail
-    /// is waited for before saving, exactly as a person would see it arrive.
+    /// draws for itself, uploaded for real to the harness's bucket. This first ran against a
+    /// version that only started the upload once the documents grid had scrolled into view, and
+    /// it caught that only because it saves without scrolling — see the note in CLAUDE.md.
     @MainActor
     func testAddingAnExpenseCarriesTheCategoryNotesAndReceipt() async throws {
         let group = try await api.createGroup(name: "Lisbon", participants: ["Ana", "Bruno"])
@@ -73,13 +74,19 @@ final class IntentRoutingTests: SpliitUITestCase {
         assertExists(title, "The expense form should be open at launch.")
         XCTAssertEqual(title.value as? String, "Pingo Doce", "The title should be filled in.")
 
-        // The thumbnail appearing is what says the upload finished.
-        let thumbnail = app.buttons[AccessibilityID.Documents.thumbnail(0)]
-        scrollUntilHittable(thumbnail, in: app)
-        assertExists(thumbnail, "The receipt the shortcut was given should be uploading already.")
-        capture(app, "intent-prefilled-form-with-receipt")
-
-        app.buttons[AccessibilityID.ExpenseForm.saveButton].tap()
+        // Deliberately not scrolled to the documents grid first. The upload has to start as the
+        // form opens, wherever the grid sits on this phone's screen, and Save has to wait for
+        // it: a handover that only happened once the grid came into view would pass a test
+        // that scrolled there, and drop the receipt for anybody who saved without looking.
+        let save = app.buttons[AccessibilityID.ExpenseForm.saveButton]
+        let enabled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"), object: save
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [enabled], timeout: 30), .completed,
+            "Save should come back once the receipt has landed."
+        )
+        save.tap()
         assertExists(app.staticTexts["Pingo Doce"], "The expense should save.")
 
         let expense = try await api.expense(inGroup: group.id, titled: "Pingo Doce")

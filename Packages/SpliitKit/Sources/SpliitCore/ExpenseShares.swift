@@ -52,7 +52,10 @@ public enum ExpenseShares {
         case .byShares, .byPercentage, .byAmount: rows.map(\.shares)
         }
 
-        let offset = expenseId.map { rows.isEmpty ? 0 : Int(fnv1a($0) % UInt32(rows.count)) } ?? 0
+        // An empty ID counts as none, as it does in JavaScript — `expense.id && …` is false
+        // for "" — so the two agree on every input and not only on the ones that occur.
+        let offset = expenseId.flatMap { $0.isEmpty || rows.isEmpty ? nil : $0 }
+            .map { Int(fnv1a($0) % UInt32(rows.count)) } ?? 0
         let amounts = apportion(amount, weights: weights, offset: offset)
 
         return Dictionary(
@@ -69,14 +72,13 @@ public enum ExpenseShares {
     static func apportion(_ amount: Int, weights: [Int], offset: Int) -> [Int] {
         let count = weights.count
         guard count > 0 else { return [] }
+        // Wide enough that a share count somebody typed with too many zeros adds up and
+        // multiplies out rather than trapping — this runs on every keystroke in the form.
         // Shares are validated as positive on write, but a legacy or directly written row is not
-        // guaranteed to be.
-        let totalWeight = weights.reduce(0, +)
-        guard totalWeight != 0 else { return weights.map { _ in 0 } }
+        // guaranteed to be, so a total of zero is handled rather than divided by.
+        let total = weights.reduce(Int128(0)) { $0 + Int128($1) }
+        guard total != 0 else { return weights.map { _ in 0 } }
 
-        // Wide enough that a share count somebody typed with too many zeros multiplies out
-        // rather than trapping — this runs on every keystroke in the form.
-        let total = Int128(totalWeight)
         var amounts: [Int] = []
         var remainders: [(index: Int, remainder: Int128)] = []
         var distributed = 0

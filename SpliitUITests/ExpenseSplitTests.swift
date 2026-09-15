@@ -76,6 +76,7 @@ final class ExpenseSplitTests: SpliitUITestCase {
         )
         let ana = try XCTUnwrap(group.participants["Ana"])
         let bruno = try XCTUnwrap(group.participants["Bruno"])
+        let chloe = try XCTUnwrap(group.participants["Chloé"])
 
         app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
         app.buttons[AccessibilityID.ExpenseList.emptyAddButton].tap()
@@ -86,10 +87,22 @@ final class ExpenseSplitTests: SpliitUITestCase {
         let brunosShare = app.staticTexts[AccessibilityID.ExpenseForm.participantShareAmount(bruno)]
         scrollUntilHittable(brunosShare, in: app)
         XCTAssertTrue(brunosShare.isHittable, "An even split should show what each share is.")
+        // A new expense has no ID to rotate on, so the odd cents go to the first two by ID —
+        // and which two that is depends on the IDs the server minted, so the three are checked
+        // together rather than each on its own.
+        let chloesShare = app.staticTexts[AccessibilityID.ExpenseForm.participantShareAmount(chloe)]
+        XCTAssertEqual(
+            [anasShare, brunosShare, chloesShare].map(\.label).sorted(),
+            ["$31.66", "$31.67", "$31.67"],
+            "An even split of $95 is 31.67, 31.67 and 31.66."
+        )
 
         // Two shares against one and one: 47.50 and 23.75 twice, with nothing left to round.
+        // Waited for rather than read straight after the keystroke: the label is a snapshot,
+        // and a slow runner can take it before the row has been redrawn.
         app.buttons["Shares"].tap()
         replaceText(in: app.textFields[AccessibilityID.ExpenseForm.participantValue(ana)], with: "2")
+        waitForLabel(of: anasShare, toBe: "$47.50")
         capture(app, "expense-shares-by-shares")
         XCTAssertEqual(anasShare.label, "$47.50")
         XCTAssertEqual(brunosShare.label, "$23.75")

@@ -204,7 +204,9 @@ hashing UTF-8 instead of UTF-16 code units, or sorting by name would each do it,
 test` alone would not notice: the unit suite pins the web app's own cases, but it is
 `ExpenseSplitTests` reading the same share off both tabs that proves the two agree. An expense
 not yet saved has no ID to hash, so its odd cent may move once it has one; the web form has the
-same caveat.
+same caveat. One divergence is known and is the server's: JavaScript multiplies in doubles, so
+past 2^53 — a ten-million total against a share weight in the millions — its floor can land a
+unit away from the exact `Int128` arithmetic here. Not a hash bug, and not worth chasing.
 
 **Who did it is something you have to tell the server.** `groups.update` and all three
 `groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the

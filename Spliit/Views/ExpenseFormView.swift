@@ -399,12 +399,6 @@ struct ExpenseFormView: View {
         if case .edit(let id) = mode { id } else { nil }
     }
 
-    /// Right-aligned against the row's trailing edge, until the row stacks and there is no
-    /// trailing edge to align against.
-    private var detailAlignment: HorizontalAlignment {
-        dynamicTypeSize.isAccessibilitySize ? .leading : .trailing
-    }
-
     @ViewBuilder
     private func splitSection(_ form: Binding<ExpenseFormDraft>) -> some View {
         Section {
@@ -418,10 +412,12 @@ struct ExpenseFormView: View {
 
             // What the split comes to, per person: the number the balances tab will charge each
             // of them, worked out the way the server works it out — down to who gets the odd
-            // cent. Once per pass rather than once per row, since every row needs all of them.
+            // cent. Once per pass rather than once per row, since every row needs all of them;
+            // and so is the formatter, which is a `NumberFormatter` underneath and not free.
             let shares = form.wrappedValue.showsShareAmounts
-                ? form.wrappedValue.shares(expenseId: expenseID)
+                ? form.wrappedValue.shareAmounts(expenseId: expenseID)
                 : nil
+            let formatter = groupFormatter
 
             ForEach(form.participants) { $participant in
                 AdaptiveHStack {
@@ -437,7 +433,8 @@ struct ExpenseFormView: View {
                         shareColumn(
                             for: $participant,
                             splitMode: form.wrappedValue.splitMode,
-                            share: shares?[participant.id]
+                            share: shares?[participant.id],
+                            formatter: formatter
                         )
                     }
                 }
@@ -463,12 +460,15 @@ struct ExpenseFormView: View {
     /// type, and the amount has the column to itself.
     @ViewBuilder
     private func shareColumn(
-        for participant: Binding<ParticipantShareDraft>, splitMode: SplitMode, share: Int?
+        for participant: Binding<ParticipantShareDraft>,
+        splitMode: SplitMode,
+        share: Int?,
+        formatter: MoneyFormatter
     ) -> some View {
         let name = participant.wrappedValue.name
         let id = participant.wrappedValue.id
 
-        VStack(alignment: detailAlignment, spacing: 2) {
+        VStack(alignment: dynamicTypeSize.detailAlignment, spacing: 2) {
             if splitMode != .evenly {
                 HStack(spacing: 4) {
                     TextField("0", text: participant.valueText)
@@ -488,7 +488,7 @@ struct ExpenseFormView: View {
             }
 
             if let share {
-                Money(value: groupFormatter.string(minorUnits: share), size: .support)
+                Money(value: formatter.string(minorUnits: share), size: .support)
                     // Same reason as the field's label, on the amount's value rather than its
                     // label: the label stays what the formatter produced, and the meaning rides
                     // beside it.

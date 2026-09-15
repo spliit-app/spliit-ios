@@ -398,6 +398,8 @@ public struct ExpenseFormDraft: Equatable, Sendable {
 
     /// What each included participant's share comes to, in the group's minor units, by
     /// participant ID — the number the balances tab will charge them once the expense is saved.
+    /// Not to be confused with `shareValue(for:)`, which is the share as typed, on the ×100 scale
+    /// the wire uses: that is what goes in, and this is the money that comes out.
     ///
     /// Nil while the total is not a number yet: there is nothing to divide, and a column of
     /// zeros under an empty amount field would only be noise. A share that is not a number
@@ -405,7 +407,7 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     ///
     /// - Parameter expenseId: the expense being edited, or nil for one not saved yet, which
     ///   decides who is offered the leftover minor unit — see `ExpenseShares`.
-    public func shares(expenseId: String?) -> [String: Int]? {
+    public func shareAmounts(expenseId: String?) -> [String: Int]? {
         guard let amount = amountMinorUnits else { return nil }
         return ExpenseShares.shares(
             expenseId: expenseId,
@@ -419,13 +421,22 @@ public struct ExpenseFormDraft: Equatable, Sendable {
 
     /// Whether what each share comes to is worth printing beside the name.
     ///
-    /// Not for a reimbursement, where the one person paid for gets the whole amount and the
-    /// web form says nothing either. And not under `.byAmount`, where the field beside the name
-    /// *is* the amount: repeating it says nothing, and while the amounts typed do not add up the
-    /// apportioned figure would be a different number from the one in the field — a share the
-    /// form is about to refuse, shown as if it were settled.
+    /// Only for a split that would be saved as it stands. The apportionment takes percentages
+    /// and amounts as a ratio, so 60/60 of $95 comes to $47.50 each — a number that is neither
+    /// what was typed nor what could ever be stored, shown as if it were settled while the
+    /// footer says the split is over the total. The web form shows it anyway; this one waits
+    /// until the shares are positive numbers that add up, which is when the figure means what
+    /// it appears to mean.
+    ///
+    /// Never for a reimbursement, where the one person paid for gets the whole amount and the
+    /// web form says nothing either. And never under `.byAmount`, where the field beside the
+    /// name *is* the amount and repeating it would say nothing.
     public var showsShareAmounts: Bool {
-        !isReimbursement && splitMode != .byAmount
+        guard !isReimbursement, splitMode != .byAmount else { return false }
+        let sharesAreUsable = includedParticipants.allSatisfy { participant in
+            splitMode == .evenly || (shareValue(for: participant) ?? 0) > 0
+        }
+        return sharesAreUsable && (unallocated ?? 0) == 0
     }
 
     // MARK: - Validation

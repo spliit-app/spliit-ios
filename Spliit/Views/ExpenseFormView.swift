@@ -392,6 +392,13 @@ struct ExpenseFormView: View {
         MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode)
     }
 
+    /// The expense being edited, which is what decides who is offered the odd cent of an uneven
+    /// split — see `ExpenseShares`. A new expense has none until the server mints one, so the
+    /// cent may move to somebody else once it is saved; the web form has the same caveat.
+    private var expenseID: String? {
+        if case .edit(let id) = mode { id } else { nil }
+    }
+
     @ViewBuilder
     private func splitSection(_ form: Binding<ExpenseFormDraft>) -> some View {
         Section {
@@ -403,6 +410,15 @@ struct ExpenseFormView: View {
                 splitModePicker(form).pickerStyle(.segmented)
             }
 
+            // What the split comes to, per person: the number the balances tab will charge each
+            // of them, worked out the way the server works it out — down to who gets the odd
+            // cent. Once per pass rather than once per row, since every row needs all of them;
+            // and so is the formatter, which is a `NumberFormatter` underneath and not free.
+            let shares = form.wrappedValue.showsShareAmounts
+                ? form.wrappedValue.shareAmounts(expenseId: expenseID)
+                : nil
+            let formatter = groupFormatter
+
             ForEach(form.participants) { $participant in
                 AdaptiveHStack {
                     Toggle(isOn: $participant.isIncluded) {
@@ -413,24 +429,13 @@ struct ExpenseFormView: View {
                         AccessibilityID.ExpenseForm.participantToggle(participant.id)
                     )
 
-                    if participant.isIncluded, form.wrappedValue.splitMode != .evenly {
-                        HStack(spacing: 4) {
-                            TextField("0", text: $participant.valueText)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .moneyInput()
-                                .frame(maxWidth: shareFieldWidth)
-                                .accessibilityIdentifier(
-                                    AccessibilityID.ExpenseForm.participantValue(participant.id)
-                                )
-                                // Only its position beside a name says whose share this is, and
-                                // position is exactly what a screen reader flattens away.
-                                .accessibilityLabel(Text("\(participant.name)’s share"))
-
-                            Text(form.wrappedValue.splitMode.unitLabel(currency: group.currency))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                    if participant.isIncluded {
+                        shareColumn(
+                            for: $participant,
+                            splitMode: form.wrappedValue.splitMode,
+                            share: shares?[participant.id],
+                            formatter: formatter
+                        )
                     }
                 }
             }
@@ -447,6 +452,49 @@ struct ExpenseFormView: View {
             }
         } footer: {
             splitFooter(form.wrappedValue)
+        }
+    }
+
+    /// The trailing column of a paid-for row — what the row comes to: the share typed in, and
+    /// under it the amount that share works out to. Under an even split there is nothing to
+    /// type, and the amount has the column to itself.
+    @ViewBuilder
+    private func shareColumn(
+        for participant: Binding<ParticipantShareDraft>,
+        splitMode: SplitMode,
+        share: Int?,
+        formatter: MoneyFormatter
+    ) -> some View {
+        let name = participant.wrappedValue.name
+        let id = participant.wrappedValue.id
+
+        VStack(alignment: dynamicTypeSize.detailAlignment, spacing: 2) {
+            if splitMode != .evenly {
+                HStack(spacing: 4) {
+                    TextField("0", text: participant.valueText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .moneyInput()
+                        .frame(maxWidth: shareFieldWidth)
+                        .accessibilityIdentifier(AccessibilityID.ExpenseForm.participantValue(id))
+                        // Only its position beside a name says whose share this is, and
+                        // position is exactly what a screen reader flattens away.
+                        .accessibilityLabel(Text("\(name)’s share"))
+
+                    Text(splitMode.unitLabel(currency: group.currency))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let share {
+                Money(value: formatter.string(minorUnits: share), size: .support)
+                    // Same reason as the field's label, on the amount's value rather than its
+                    // label: the label stays what the formatter produced, and the meaning rides
+                    // beside it.
+                    .accessibilityValue(Text("\(name)’s share"))
+                    .accessibilityIdentifier(AccessibilityID.ExpenseForm.participantShareAmount(id))
+            }
         }
     }
 

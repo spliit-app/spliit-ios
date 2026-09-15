@@ -45,7 +45,7 @@ struct ExpenseRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: detailAlignment, spacing: 2) {
+            VStack(alignment: dynamicTypeSize.detailAlignment, spacing: 2) {
                 Money(
                     value: formatter.string(minorUnits: expense.amount),
                     isReimbursement: expense.isReimbursement
@@ -76,12 +76,6 @@ struct ExpenseRow: View {
     private var categoryDescription: Text {
         guard let category = expense.category else { return Text(verbatim: "") }
         return Text(category.displayName)
-    }
-
-    /// Right-aligned against the amount column, until the row stacks and there is no column to
-    /// align against.
-    private var detailAlignment: HorizontalAlignment {
-        dynamicTypeSize.isAccessibilitySize ? .leading : .trailing
     }
 
     private var paidByDescription: String {

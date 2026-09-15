@@ -193,6 +193,21 @@ expense from then on without a word. The other modes cannot do that — nobody j
 without breaking it — so they keep their names and leave the newcomer out until an expense says
 otherwise.
 
+**What each share comes to is the server's arithmetic, ported — and only right while it stays
+ported.** No procedure returns a participant's share of an expense; the web app works it out in
+`src/lib/shares.ts` and so does `ExpenseShares`, line for line: whole minor units, largest
+remainder first, and the leftover cent rotated by an FNV-1a hash of the expense ID over rows
+sorted by participant ID. Every one of those details decides *who* gets the odd cent, and the
+balances tab — computed server-side by the same code — is where a divergence shows up, as a
+form that says Bruno owes 31.67 under a balance that charges him 31.66. Simplifying the hash,
+hashing UTF-8 instead of UTF-16 code units, or sorting by name would each do it, and `make
+test` alone would not notice: the unit suite pins the web app's own cases, but it is
+`ExpenseSplitTests` reading the same share off both tabs that proves the two agree. An expense
+not yet saved has no ID to hash, so its odd cent may move once it has one; the web form has the
+same caveat. One divergence is known and is the server's: JavaScript multiplies in doubles, so
+past 2^53 — a ten-million total against a share weight in the millions — its floor can land a
+unit away from the exact `Int128` arithmetic here. Not a hash bug, and not worth chasing.
+
 **Who did it is something you have to tell the server.** `groups.update` and all three
 `groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the
 activity log has to name anybody with. Leave it out and the call still succeeds, the expense is

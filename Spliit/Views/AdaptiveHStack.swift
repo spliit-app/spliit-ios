@@ -25,8 +25,19 @@ struct AdaptiveHStack<Content: View>: View {
     }
 
     private var layout: AnyLayout {
-        dynamicTypeSize.isAccessibilitySize
+        dynamicTypeSize.stacksRows
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
             : AnyLayout(HStackLayout(alignment: verticalAlignment, spacing: spacing))
     }
+}
+
+extension DynamicTypeSize {
+    /// Whether `AdaptiveHStack` lays its content out as a column at this size.
+    var stacksRows: Bool { isAccessibilitySize }
+
+    /// How a trailing column of details inside an `AdaptiveHStack` should align its lines:
+    /// against the row's trailing edge, until the row stacks and there is no trailing edge to
+    /// align against. One definition, so the column cannot keep right-aligning in a row that
+    /// has already become a column.
+    var detailAlignment: HorizontalAlignment { stacksRows ? .leading : .trailing }
 }

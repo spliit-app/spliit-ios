@@ -202,6 +202,17 @@ class SpliitUITestCase: XCTestCase {
         }
     }
 
+    /// Waits for an element's label to become `expected`, for a figure that follows a
+    /// keystroke: `label` is a snapshot, and reading it straight after typing races the redraw.
+    /// The assertion that follows is the caller's, so a timeout fails there, on the real value.
+    @MainActor
+    func waitForLabel(of element: XCUIElement, toBe expected: String, timeout: TimeInterval = 5) {
+        let settled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", expected), object: element
+        )
+        _ = XCTWaiter.wait(for: [settled], timeout: timeout)
+    }
+
     /// Saves a screenshot into the result bundle, so a failing run can be looked at without
     /// re-running it, and so the flow can be reviewed without a Mac in front of you.
     @MainActor

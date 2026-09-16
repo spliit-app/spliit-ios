@@ -25,10 +25,11 @@ public enum ExpenseShares {
     ///
     /// - Parameters:
     ///   - expenseId: seeds the rotation deciding who is offered the leftover minor unit of an
-    ///     uneven split. Nil for an expense not yet saved — IDs are minted by the server — in
-    ///     which case the rotation starts at the first participant, and the extra unit may move
-    ///     to somebody else once the expense has an ID of its own. The web form has the same
-    ///     caveat, for the same reason.
+    ///     uneven split. For a new expense this is the ID the form minted and will send with the
+    ///     create, so the preview is the split the expense is saved with — unless the instance
+    ///     predates spliit#647 and mints its own, in which case the extra unit may move to
+    ///     somebody else once it has. Nil starts the rotation at the first participant, as an
+    ///     empty ID does in the web app.
     ///   - amount: the expense total, in the group's minor units.
     ///   - paidFor: who it was for, and their stored shares. `.byPercentage` and `.byAmount`
     ///     shares are taken as a ratio rather than literally, so a row that does not add up to

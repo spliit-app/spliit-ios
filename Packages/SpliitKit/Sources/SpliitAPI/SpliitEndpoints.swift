@@ -132,24 +132,41 @@ public enum Spliit {
         public let groupId: String
         public let expenseFormValues: ExpenseFormValues
         public let participantId: String?
+        /// Omitted from the request when nil, and then the server mints one.
+        public let expenseId: String?
     }
 
+    /// The ID the expense was created under — which is only the one asked for on an instance
+    /// that takes one. See `createExpense`.
     public struct ExpenseIDResponse: Decodable, Sendable {
         public let expenseId: String
     }
 
-    /// - Parameter participantId: who the activity log should say did this. Optional on the
-    ///   server and nil by default here, which records the change as having been made by
-    ///   "someone" — an honest answer for a phone whose owner has not said who they are.
+    /// - Parameters:
+    ///   - participantId: who the activity log should say did this. Optional on the server and
+    ///     nil by default here, which records the change as having been made by "someone" — an
+    ///     honest answer for a phone whose owner has not said who they are.
+    ///   - expenseId: the ID to create the expense under, minted with `NanoID.generate()`. The
+    ///     ID seeds which participant is offered the leftover minor unit of an uneven split, so a
+    ///     form that has it before saving can preview the split the expense is saved with. An
+    ///     instance older than spliit#647 strips the field and mints its own, as it did for every
+    ///     expense before: nothing fails, the answer just carries a different ID. Never reuse one
+    ///     across a failed save — the server may have written the expense and only the answer
+    ///     been lost, and a second create under the same ID collides with it rather than creating
+    ///     anything.
     public static func createExpense(
         groupId: String,
         _ values: ExpenseFormValues,
-        by participantId: String? = nil
+        by participantId: String? = nil,
+        expenseId: String? = nil
     ) -> TRPCProcedure<CreateExpenseInput, ExpenseIDResponse> {
         .mutation(
             "groups.expenses.create",
             CreateExpenseInput(
-                groupId: groupId, expenseFormValues: values, participantId: participantId
+                groupId: groupId,
+                expenseFormValues: values,
+                participantId: participantId,
+                expenseId: expenseId
             )
         )
     }

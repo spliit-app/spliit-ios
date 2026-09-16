@@ -155,6 +155,35 @@ struct RequestBuildingTests {
         #expect(values2["expenseFormValues.expenseDate"] as? [String] == ["Date"])
     }
 
+    /// The ID goes beside `groupId`, not inside the form values — that is where the server's
+    /// schema reads it — and a call that has none leaves the key out altogether, which is the
+    /// request every instance has always taken.
+    @Test("A create names the ID the expense should get, and only when it has one")
+    func sendsTheMintedExpenseID() throws {
+        func input(_ expenseId: String?) throws -> [String: Any] {
+            let values = ExpenseFormValues(
+                title: "Airport taxi",
+                expenseDate: Date(timeIntervalSince1970: 1_700_000_000),
+                amount: 4250,
+                paidBy: "p1",
+                paidFor: [.init(participant: "p1", shares: 100)]
+            )
+            let request = try client("https://spliit.app/").makeRequest(
+                for: Spliit.createExpense(groupId: "g1", values, expenseId: expenseId)
+            )
+            let body = try #require(request.httpBody)
+            let envelope = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            return try #require(envelope["json"] as? [String: Any])
+        }
+
+        let minted = try input("V1StGXR8_Z5jdHi6B-myT")
+        #expect(minted["expenseId"] as? String == "V1StGXR8_Z5jdHi6B-myT")
+        let form = try #require(minted["expenseFormValues"] as? [String: Any])
+        #expect(form["expenseId"] == nil)
+
+        #expect(try input(nil).keys.contains("expenseId") == false)
+    }
+
     /// `originalCurrency` goes out even when there is nothing to convert. A nil optional would be
     /// left out of the request, reach tRPC as `undefined` and tell Prisma to leave the column
     /// alone — so an expense moved back to the group's own currency would go on claiming to have

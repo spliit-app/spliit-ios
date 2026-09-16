@@ -34,6 +34,14 @@ struct ExpenseFormView: View {
     @State private var isSaving = false
     @State private var failure: String?
 
+    /// The ID a new expense is created under. Minted here rather than left to the server so
+    /// the form has it before saving, which is what makes the split it previews the one the
+    /// expense is saved with — see `expenseID`. Fresh for every presentation of the form, and
+    /// fresh again after a save that failed: the server may have written the expense and only
+    /// the answer been lost, and a retry under the same ID would then collide with it rather
+    /// than create anything. The web form does the same.
+    @State private var mintedExpenseID = NanoID.generate()
+
     /// Counters rather than flags: the same outcome twice in a row is still two outcomes, and a
     /// flag that is already true does not trigger anything.
     @State private var savedCount = 0
@@ -400,11 +408,13 @@ struct ExpenseFormView: View {
         MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode)
     }
 
-    /// The expense being edited, which is what decides who is offered the odd cent of an uneven
-    /// split — see `ExpenseShares`. A new expense has none until the server mints one, so the
-    /// cent may move to somebody else once it is saved; the web form has the same caveat.
-    private var expenseID: String? {
-        if case .edit(let id) = mode { id } else { nil }
+    /// The expense's ID, which is what decides who is offered the odd cent of an uneven split —
+    /// see `ExpenseShares`. The one being edited, or the one a new expense will be created
+    /// under: the create sends it, so the cent lands where the form said it would. Only an
+    /// instance older than spliit#647 mints its own instead, and there the cent may still move
+    /// once the expense is saved, as it did everywhere before.
+    private var expenseID: String {
+        if case .edit(let id) = mode { id } else { mintedExpenseID }
     }
 
     @ViewBuilder
@@ -725,7 +735,9 @@ struct ExpenseFormView: View {
                 switch mode {
                 case .create:
                     _ = try await client.call(
-                        Spliit.createExpense(groupId: group.id, values, by: actorID)
+                        Spliit.createExpense(
+                            groupId: group.id, values, by: actorID, expenseId: mintedExpenseID
+                        )
                     )
                     Analytics.shared.event(.createExpense)
                     app.reviewPrompt.record(.expenseRecorded)
@@ -750,6 +762,7 @@ struct ExpenseFormView: View {
                 await onFinished()
                 dismiss()
             } catch {
+                if case .create = mode { mintedExpenseID = NanoID.generate() }
                 failure = error.localizedDescription
             }
         }

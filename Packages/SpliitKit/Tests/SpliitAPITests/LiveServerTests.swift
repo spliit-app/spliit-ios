@@ -566,6 +566,65 @@ struct LiveServerTests {
         #expect(entry.title == "Who paid?")
     }
 
+    /// Both generations are live. An instance from spliit#647 on creates the expense under the
+    /// ID the client minted — and refuses one that is not a nanoid, which is how this tells the
+    /// two apart. One from before strips the field it has never heard of and mints its own, as
+    /// it did for every expense before; what matters there is that the create still goes
+    /// through, since that is the request every phone will be sending from now on.
+    @Test("An expense is created under the ID the client minted, on an instance that takes one")
+    func createsExpenseUnderMintedID() async throws {
+        let client = try client
+
+        let created = try await client.call(
+            Spliit.createGroup(
+                GroupFormValues(
+                    name: "Minted \(UUID().uuidString.prefix(8))",
+                    currency: "$",
+                    participants: [.init(name: "Dana")]
+                )
+            )
+        )
+        let group = try #require(try await client.call(Spliit.group(id: created.groupId)).group)
+        let dana = try #require(group.participants.first)
+
+        func values(_ title: String) -> ExpenseFormValues {
+            ExpenseFormValues(
+                title: title,
+                expenseDate: .now,
+                amount: 1657,
+                paidBy: dana.id,
+                paidFor: [.init(participant: dana.id, shares: 100)]
+            )
+        }
+
+        let takesIDs: Bool
+        do {
+            _ = try await client.call(
+                Spliit.createExpense(
+                    groupId: group.id, values("Probe"), by: dana.id, expenseId: "not-a-nanoid"
+                )
+            )
+            takesIDs = false
+        } catch let error as TRPCServerError where error.code == "BAD_REQUEST" {
+            takesIDs = true
+        }
+
+        let minted = NanoID.generate()
+        let response = try await client.call(
+            Spliit.createExpense(groupId: group.id, values("Minted"), by: dana.id, expenseId: minted)
+        )
+        let fetched = try await client.call(
+            Spliit.expense(groupId: group.id, expenseId: response.expenseId)
+        )
+        #expect(fetched.expense.title == "Minted")
+
+        if takesIDs {
+            #expect(response.expenseId == minted)
+        } else {
+            #expect(response.expenseId != minted, "An instance that ignores the field mints its own.")
+        }
+    }
+
     @Test("A missing group surfaces as a typed server error")
     func reportsNotFound() async throws {
         await #expect(throws: TRPCServerError.self) {

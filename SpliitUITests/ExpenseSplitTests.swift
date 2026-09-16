@@ -64,6 +64,59 @@ final class ExpenseSplitTests: SpliitUITestCase {
         )
     }
 
+    /// The cent lands where the form said it would. $16.57 over two people is 8.28 and 8.29, and
+    /// which of them gets the 8.29 is decided by a hash of the expense's ID — so the form mints
+    /// the ID before saving and sends it with the create, rather than previewing with none and
+    /// letting the server's own ID move the cent to the other person (spliit#646). This needs an
+    /// instance that creates the expense under the ID it is given, which is what CI's server
+    /// pin guarantees; against one older than spliit#647 it is a coin toss.
+    @MainActor
+    func testTheOddCentStaysWhereItWasPreviewed() async throws {
+        let group = try await api.createGroup(name: "Odd cent", participants: ["Ana", "Bruno"])
+        let app = launchApp(
+            recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Odd cent")])
+        )
+        let ana = try XCTUnwrap(group.participants["Ana"])
+        let bruno = try XCTUnwrap(group.participants["Bruno"])
+
+        app.staticTexts[AccessibilityID.GroupsList.rowTitle(group.id)].tap()
+        app.buttons[AccessibilityID.ExpenseList.emptyAddButton].tap()
+        replaceText(in: app.textFields[AccessibilityID.ExpenseForm.titleField], with: "Dinner")
+        replaceText(in: app.textFields[AccessibilityID.ExpenseForm.amountField], with: "16.57")
+
+        let anasShare = app.staticTexts[AccessibilityID.ExpenseForm.participantShareAmount(ana)]
+        let brunosShare = app.staticTexts[AccessibilityID.ExpenseForm.participantShareAmount(bruno)]
+        scrollUntilHittable(brunosShare, in: app)
+        XCTAssertEqual(
+            [anasShare, brunosShare].map(\.label).sorted(), ["$8.28", "$8.29"],
+            "Two whole-cent shares that add up to the total."
+        )
+        let previewed = brunosShare.label
+
+        app.buttons[AccessibilityID.ExpenseForm.saveButton].tap()
+        assertExists(app.staticTexts["Dinner"], "The expense should save.")
+
+        // Reopened, the expense has the ID it was saved under — and the same cent in the same
+        // place, or the two would be two different splits of the same dinner.
+        app.staticTexts["Dinner"].tap()
+        assertExists(app.textFields[AccessibilityID.ExpenseForm.titleField], "The editor should open.")
+        scrollUntilHittable(brunosShare, in: app)
+        XCTAssertEqual(brunosShare.label, previewed, "The saved split should be the previewed one.")
+
+        // And the balances tab is the server's own arithmetic over that ID: Bruno paid nothing,
+        // so what he owes is exactly the share the form showed him before it was saved.
+        app.buttons[AccessibilityID.ExpenseForm.cancelButton].tap()
+        app.buttons["Balances"].tap()
+        assertExists(
+            app.staticTexts[AccessibilityID.Balances.participantAmount(bruno)],
+            "Balances should list everyone."
+        )
+        XCTAssertEqual(
+            app.staticTexts[AccessibilityID.Balances.participantAmount(bruno)].label,
+            "-\(previewed)"
+        )
+    }
+
     /// The amounts follow the split as it is typed, and step aside where the field beside the
     /// name already is the amount.
     @MainActor
@@ -87,9 +140,9 @@ final class ExpenseSplitTests: SpliitUITestCase {
         let brunosShare = app.staticTexts[AccessibilityID.ExpenseForm.participantShareAmount(bruno)]
         scrollUntilHittable(brunosShare, in: app)
         XCTAssertTrue(brunosShare.isHittable, "An even split should show what each share is.")
-        // A new expense has no ID to rotate on, so the odd cents go to the first two by ID —
-        // and which two that is depends on the IDs the server minted, so the three are checked
-        // together rather than each on its own.
+        // Who gets the odd cents is decided by a hash of the ID the form minted for this
+        // expense, which is different every time, so the three are checked together rather
+        // than each on its own.
         let chloesShare = app.staticTexts[AccessibilityID.ExpenseForm.participantShareAmount(chloe)]
         XCTAssertEqual(
             [anasShare, brunosShare, chloesShare].map(\.label).sorted(),

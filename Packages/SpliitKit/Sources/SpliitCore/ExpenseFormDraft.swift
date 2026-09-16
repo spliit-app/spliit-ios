@@ -405,8 +405,9 @@ public struct ExpenseFormDraft: Equatable, Sendable {
     /// zeros under an empty amount field would only be noise. A share that is not a number
     /// counts as nothing, as it does in the web form, so the rest of the split still adds up.
     ///
-    /// - Parameter expenseId: the expense being edited, or nil for one not saved yet, which
-    ///   decides who is offered the leftover minor unit — see `ExpenseShares`.
+    /// - Parameter expenseId: the ID of the expense being edited, or the one a new expense will
+    ///   be created under, which decides who is offered the leftover minor unit — see
+    ///   `ExpenseShares`.
     public func shareAmounts(expenseId: String?) -> [String: Int]? {
         guard let amount = amountMinorUnits else { return nil }
         return ExpenseShares.shares(

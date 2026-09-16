@@ -202,11 +202,24 @@ balances tab — computed server-side by the same code — is where a divergence
 form that says Bruno owes 31.67 under a balance that charges him 31.66. Simplifying the hash,
 hashing UTF-8 instead of UTF-16 code units, or sorting by name would each do it, and `make
 test` alone would not notice: the unit suite pins the web app's own cases, but it is
-`ExpenseSplitTests` reading the same share off both tabs that proves the two agree. An expense
-not yet saved has no ID to hash, so its odd cent may move once it has one; the web form has the
-same caveat. One divergence is known and is the server's: JavaScript multiplies in doubles, so
-past 2^53 — a ten-million total against a share weight in the millions — its floor can land a
-unit away from the exact `Int128` arithmetic here. Not a hash bug, and not worth chasing.
+`ExpenseSplitTests` reading the same share off both tabs that proves the two agree. One
+divergence is known and is the server's: JavaScript multiplies in doubles, so past 2^53 — a
+ten-million total against a share weight in the millions — its floor can land a unit away from
+the exact `Int128` arithmetic here. Not a hash bug, and not worth chasing.
+
+**And the ID being hashed has to be the one the expense ends up with.** A new expense used to
+have none until the server minted it on save, so the form previewed with the rotation at zero
+and the odd cent could move to the other person once saved — €16.57 shown as 8.28 / 8.29 and
+recorded as 8.29 / 8.28 (spliit#646). Since spliit#647 `groups.expenses.create` takes an optional
+`expenseId`, a 21-character nanoid, and creates the expense under it; so `ExpenseFormView` mints
+one with `NanoID.generate()` when it opens, previews with it and sends it. Two things follow. A
+save that fails mints a **fresh** one before the retry, because the server may have written the
+expense and only the answer been lost, and a second create under the same ID is a 500 on
+`Expense_pkey` rather than an expense. And an instance older than #647 strips the field it has
+never heard of and mints its own, so there the cent may still move — nothing fails, and nothing
+says which kind of instance answered until it has. CI's `SPLIIT_SERVER_REF` is pinned at or past
+#647 because `ExpenseSplitTests` asserts the cent stays put, which is a coin toss on anything
+older.
 
 **Who did it is something you have to tell the server.** `groups.update` and all three
 `groups.expenses.*` mutations take an optional `participantId`, and it is the only thing the

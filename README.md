@@ -183,7 +183,8 @@ English and French. The app uses String Catalogs — `Spliit/Resources/Localizab
 `AppShortcuts.xcstrings` for the phrases Siri listens for, and `Categories.xcstrings` for the
 expense categories. Core form validation uses `Resources/en.lproj/Localizable.strings` and
 `Resources/fr.lproj/Localizable.strings` inside `SpliitCore`, read through `NSLocalizedString`
-with `Bundle.module`. These standard tables also work with native Swift on Android.
+with `CoreResources.bundle`. That helper locates the tables in both native SwiftPM builds
+and the Android APK.
 
 **Categories are translated on the client**, because the server does not translate them:
 `categories.list` returns "Groceries" to everyone. The web app has the same problem and solves

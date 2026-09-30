@@ -106,8 +106,8 @@ strings: build ## Check the string catalogues against the strings in the source
 test: ## Run the unit suites on the host (no simulator)
 	@cd Packages/SpliitKit && swift test --build-system native
 
-android-app: ## Build the Android debug APK (requires Skip, Gradle 9.4.1 and JDK 21)
-	@gradle -p Android :app:assembleDebug
+android-app: ## Build the ARM64 Android debug APK (requires Skip, Gradle 9.4.1 and JDK 21)
+	@SKIP_EXPORT_ARCHS=aarch64 gradle -p Android :app:assembleDebug
 
 android-build: ## Build SpliitKit for Android (requires Skip and the Swift Android SDK)
 	@cd Packages/SpliitKit && skip android build

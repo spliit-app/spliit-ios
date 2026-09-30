@@ -279,17 +279,26 @@ remain in their later phases.
   backend: adding a group by link, creating an expense and checking balances, and retaining
   the active user after relaunch. UI tests select English/US explicitly because their money
   assertions use that locale. Native string extraction and its checker regression tests pass.
-- The Android debug APK is 244,267,333 bytes (about 233 MiB). Its generated localization
-  bridge passes the English/French runtime check below. The welcome and group-link screens
+- The ARM64 Android debug APK is **241,418,227 bytes (230.2 MiB)**. The generated localization
+  bridge passed the English/French runtime check below. The welcome and group-link screens
   render, but first transitions trigger ANR dialogs on the shared API 36 emulator while
   release compilation runs. A fresh, dedicated API 36 emulator with hardware graphics also
   boots slowly and reports an ANR in Android's phone service before the prototype is installed.
+  After a restart, the installed prototype's launch times out after 38 seconds; shared storage
+  reports a disconnected mount and UI automation cannot retrieve a root node, even when its
+  output is moved to `/data/local/tmp`. No successful expense flow is inferred from launch.
   This environment cannot yet provide reliable UI/performance evidence. The full Android
   expense flow remains unverified.
+- The ARM64 release APK also builds successfully: **156,692,887 bytes (149.4 MiB)**, with
+  native debug symbols retained by the Skip host configuration. Both final archives contain
+  only ARM64 libraries, including `libSpliitUI.so`. The initial multi-ABI release build took
+  **1 h 24 s** and produced a 402.8 MiB APK, but included x86 dependencies without an x86 app
+  library. The prototype now packages only the architecture covered by its core tests.
+  The final combined debug/release rebuild passed in **12 min 13 s**. These are prototype
+  APK measurements; runtime performance and production download size remain unverified.
 
 Phase 2's exit criterion has **not** been met. No complete Android expense-flow result,
-release-performance measurement, or distribution readiness is claimed yet. The initial
-placeholder debug APK was about 223 MiB; that is not a release-size measurement.
+release-performance measurement, or distribution readiness is claimed yet.
 
 The host `make test` and `make test-live` commands also select the native SwiftPM build
 system: Swift 6.4's default swiftbuild backend rejects the pinned Skip graph for duplicated
@@ -301,6 +310,9 @@ To build the UI prototype, select JDK 21 with `JAVA_HOME`, put Gradle 9.4.1 and 
 `PATH`, set `ANDROID_HOME` to the Android SDK, and run `make android-app`. The APK is
 `.build/Android/app/outputs/apk/debug/app-debug.apk`. The native core commands above remain
 separate. Use `http://10.0.2.2:3009/` for the shared backend from the Android emulator.
+The APK is limited to ARM64 until other architectures receive device coverage. With the
+pinned Skip version, `SKIP_EXPORT_ARCHS=aarch64` also avoids unnecessary native compilations;
+the Gradle ABI filter controls packaging, including third-party JNI libraries.
 
 The debug host includes a small check against the actual generated localization bridge,
 packaged string tables, and Android ICU. After installing the APK, run:

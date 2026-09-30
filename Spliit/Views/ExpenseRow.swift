@@ -25,7 +25,7 @@ struct ExpenseRow: View {
             CategoryIcon(category: expense.category)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(expense.title)
+                Text(verbatim: expense.title)
                     .font(.callout)
                     .italic(expense.isReimbursement)
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.rowTitle(expense.id))

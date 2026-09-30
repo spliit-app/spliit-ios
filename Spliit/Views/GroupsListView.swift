@@ -427,7 +427,7 @@ struct GroupRow: View {
             Monogram(name: group.groupName, seed: group.groupId, size: 40)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(group.groupName)
+                Text(verbatim: group.groupName)
                     .font(.system(.headline, design: .rounded))
                     .accessibilityIdentifier(AccessibilityID.GroupsList.rowTitle(group.groupId))
 

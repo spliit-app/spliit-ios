@@ -112,7 +112,7 @@ struct GroupInformationView: View {
                     // on the balances and on every expense they paid for.
                     Monogram(name: participant.name, position: position, size: 26)
 
-                    Text(participant.name)
+                    Text(verbatim: participant.name)
                         .accessibilityIdentifier(
                             AccessibilityID.GroupInformation.participant(participant.id)
                         )

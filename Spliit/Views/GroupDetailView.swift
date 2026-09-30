@@ -104,7 +104,7 @@ struct GroupDetailView: View {
         #if os(iOS)
         .tabBarMinimizeBehavior(.onScrollDown)
         #endif
-        .navigationTitle(model.group?.name ?? "")
+        .navigationTitle(Text(verbatim: model.group?.name ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         // Leaving the screen closes the undo window rather than dropping the delete: this model
         // goes away with the view, and with it the request that was still waiting.

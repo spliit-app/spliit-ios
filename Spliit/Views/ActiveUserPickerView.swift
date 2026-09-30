@@ -56,7 +56,7 @@ struct ActiveUserPickerView: View {
             HStack(spacing: 12) {
                 Monogram(name: participant.name, position: position, size: 28)
 
-                Text(participant.name)
+                Text(verbatim: participant.name)
 
                 Spacer(minLength: 8)
 

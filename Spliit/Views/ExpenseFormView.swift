@@ -225,7 +225,7 @@ struct ExpenseFormView: View {
             Section {
                 Picker("Paid by", selection: form.paidByID) {
                     ForEach(group.participants) { participant in
-                        Text(participant.name).tag(Optional(participant.id))
+                        Text(verbatim: participant.name).tag(Optional(participant.id))
                     }
                 }
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.paidByPicker)
@@ -496,7 +496,7 @@ struct ExpenseFormView: View {
             ForEach(form.participants) { $participant in
                 AdaptiveHStack {
                     Toggle(isOn: $participant.isIncluded) {
-                        Text(participant.name)
+                        Text(verbatim: participant.name)
                     }
                     #if os(iOS)
                     .toggleStyle(.checkbox)
@@ -561,7 +561,7 @@ struct ExpenseFormView: View {
                         // position is exactly what a screen reader flattens away.
                         .accessibilityLabel(Text("\(name)’s share"))
 
-                    Text(splitMode.unitLabel(currency: group.currency))
+                    Text(verbatim: splitMode.unitLabel(currency: group.currency))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -597,7 +597,7 @@ struct ExpenseFormView: View {
     private func splitModePicker(_ form: Binding<ExpenseFormDraft>) -> some View {
         Picker("Split", selection: form.splitMode) {
             ForEach(SplitMode.allCases, id: \.self) { mode in
-                Text(mode.title)
+                Text(verbatim: mode.title)
                     .tag(mode)
                     .accessibilityIdentifier(
                         AccessibilityID.ExpenseForm.splitModeOption(mode.rawValue)
@@ -1000,12 +1000,12 @@ private struct CalculatingAmountInput: ViewModifier {
 // MARK: - Split mode presentation
 
 extension SplitMode {
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
-        case .evenly: "Evenly"
-        case .byShares: "Shares"
-        case .byPercentage: "Percent"
-        case .byAmount: "Amount"
+        case .evenly: String(localized: "Evenly")
+        case .byShares: String(localized: "Shares")
+        case .byPercentage: String(localized: "Percent")
+        case .byAmount: String(localized: "Amount")
         }
     }
 

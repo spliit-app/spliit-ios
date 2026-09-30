@@ -1,8 +1,9 @@
 # Android integration with Skip
 
-Status: phase 1 complete and pushed in `skip-integration-plan`; phase 2 is in progress,
-based on upstream commit `80b2e984b3dc07782983f24586d7e4568ada2a02`. The Android expense
-flow and platform libraries are not yet verified with Spliit.
+Status: phases 1 and 2 complete in `skip-integration-plan`, based on upstream commit
+`80b2e984b3dc07782983f24586d7e4568ada2a02`. Phase 1 is pushed; subsequent work is local.
+The shared expense flow works on Android and iOS. Phase 3 product coverage and the
+platform libraries remain to be verified.
 
 ## Recommendation
 
@@ -252,7 +253,7 @@ claimed by these native command-line tests. Validate those with the host before 
 UI migration. Receipt date recognition, OCR/media, Android recovery, and distribution
 remain in their later phases.
 
-### Phase 2 — in progress
+### Phase 2 — complete
 
 - Added a native Skip UI package and thin Android host under the separate prototype ID
   `app.spliit.android.prototype`. The existing iOS identity remains unchanged.
@@ -264,11 +265,11 @@ remain in their later phases.
 - Core resources require the core Skip plugin. Swift 6.4's generated `.bundle` URL lookup
   also bypasses the pinned Android bridge's `.resources` mapping; `CoreResources` explicitly
   uses that mapping inside the Android JVM while preserving native command-line resources.
-  Actual French validation in the shared UI still needs verification.
+  French validation in the shared UI is verified below.
 - Shared screens now belong to the `SpliitUI` package under `Spliit/`; the iOS host lives in
   `iOS/`. XcodeGen remains the project source of truth. Apple camera, documents, review prompts,
   and intents stay conditional; unsupported presentation APIs have Android alternatives.
-  Builds and the complete shared flow are being verified.
+  Builds and the complete shared flow are verified below.
 - The user-provided `sudo -n -H -u srv /usr/local/bin/docker compose` starts the existing
   `e2e/compose.yaml` database and app. Both are healthy; **14 live API checks pass** with
   document upload excluded. MinIO's configured image could not be pulled, so attachment
@@ -279,26 +280,54 @@ remain in their later phases.
   backend: adding a group by link, creating an expense and checking balances, and retaining
   the active user after relaunch. UI tests select English/US explicitly because their money
   assertions use that locale. Native string extraction and its checker regression tests pass.
-- The ARM64 Android debug APK is **241,418,227 bytes (230.2 MiB)**. The generated localization
+- The ARM64 Android debug APK is **252,245,964 bytes (240.6 MiB)**. The generated localization
   bridge passed the English/French runtime check below. The welcome and group-link screens
-  render, but first transitions trigger ANR dialogs on the shared API 36 emulator while
-  release compilation runs. A fresh, dedicated API 36 emulator with hardware graphics also
-  boots slowly and reports an ANR in Android's phone service before the prototype is installed.
-  After a restart, the installed prototype's launch times out after 38 seconds; shared storage
-  reports a disconnected mount and UI automation cannot retrieve a root node, even when its
-  output is moved to `/data/local/tmp`. No successful expense flow is inferred from launch.
-  This environment cannot yet provide reliable UI/performance evidence. The full Android
-  expense flow remains unverified.
-- The ARM64 release APK also builds successfully: **156,692,887 bytes (149.4 MiB)**, with
+  render. Initial emulator runs suffered system-wide ANRs, stock Settings launch timeouts,
+  and shared-storage FUSE failures, including on fresh images before Spliit was installed.
+  The confirmed cause was CPU/disk policies inherited from T3's launch daemon with
+  `ProcessType=Background`. Launching through `taskpolicy -a -d default -g default` raised
+  process priority from 4 to 46: the AOSP API 36 control booted in **12.76 seconds**, Settings
+  launched in **174 ms**, and the integer benchmark used **0.249 seconds wall / 0.248 seconds
+  CPU**. The original Google Play AVD then booted in **12.18 seconds** and Spliit cold-launched
+  in **1.457 seconds**, without ANRs in these checks. Idle iOS simulators and the older
+  shared Android emulator were shut down with permission; their data was preserved.
+- The ARM64 release APK also builds successfully: **156,692,907 bytes (149.4 MiB)**, with
   native debug symbols retained by the Skip host configuration. Both final archives contain
   only ARM64 libraries, including `libSpliitUI.so`. The initial multi-ABI release build took
   **1 h 24 s** and produced a 402.8 MiB APK, but included x86 dependencies without an x86 app
   library. The prototype now packages only the architecture covered by its core tests.
-  The final combined debug/release rebuild passed in **12 min 13 s**. These are prototype
-  APK measurements; runtime performance and production download size remain unverified.
+  The first combined debug/release rebuild passed in **12 min 13 s**. With corrected host
+  scheduling, the final incremental debug/release rebuild passed in **1 min 18 s**. These
+  are prototype APK sizes; production download size remains unverified.
 
-Phase 2's exit criterion has **not** been met. No complete Android expense-flow result,
-release-performance measurement, or distribution readiness is claimed yet.
+- Saving the first Android expense exposed a missing `android.permission.VIBRATE` in the
+  host manifest. Added it for the existing save/refusal/undo feedback; successful saves and
+  refused invalid forms now stay in the app.
+- French expense entry exposed Skip formatting the static `%` translation as a printf
+  string. The native localization bridge now returns argument-free translations directly,
+  and split labels render resolved text verbatim. Group, expense, and participant names
+  also render verbatim so user data cannot become catalog keys. The debug runtime check
+  covers literal percent labels and escaped fallback keys as well as the existing plurals.
+- **Android shared flow passed against the disposable backend.** English: add the Lisbon
+  group by link, load expenses, save a €30 expense, verify balance deltas of +€20/−€10/−€10,
+  force-stop, and reopen the remembered group and expense. Final French release: add Book
+  club by link, load its empty state, save `30,00` GBP for two people, verify +£15/−£15,
+  force-stop, and reopen. Its expense title `Percent` remains literal in French, exercising
+  the catalog-key regression. Native Swift validation displays the French required-title
+  and required-amount messages, and the `%` split label renders without crashing.
+- Final iOS rebuild and string extraction pass: 261 app, 19 core, 4 shortcut, and 46 category
+  keys, all translated. The three iOS shared-flow checks reported above remain the UI baseline.
+- Final ARM64 release cold starts after force-stop, with compilation finished, were
+  **130 / 142 / 126 ms** (`am start -W`, median **130 ms**) on the dedicated API 36 emulator.
+  These measure Activity Manager launch time on this host, not network loading, frame-time
+  performance, or physical-device startup. No ANR occurred during the recovered-device checks.
+
+Phase 2's shared-flow exit criterion is **met**. Next is phase 3's broader product and
+Android lifecycle coverage. Distribution readiness is not claimed. Known later-phase gaps:
+missing Android symbol fallbacks, an untranslated Search tab, and native Foundation output
+that still uses English list/date/currency conventions under the French app locale.
+Decimal-comma amount entry and French core validation are verified; full locale parity,
+attachments/OCR, recovery, and physical-device coverage remain outstanding.
 
 The host `make test` and `make test-live` commands also select the native SwiftPM build
 system: Swift 6.4's default swiftbuild backend rejects the pinned Skip graph for duplicated
@@ -314,6 +343,18 @@ The APK is limited to ARM64 until other architectures receive device coverage. W
 pinned Skip version, `SKIP_EXPORT_ARCHS=aarch64` also avoids unnecessary native compilations;
 the Gradle ABI filter controls packaging, including third-party JNI libraries.
 
+When starting the emulator from T3's background launch daemon, reset the inherited task
+policies on the emulator process. For the existing prototype AVD:
+
+```sh
+taskpolicy -a -d default -g default "$ANDROID_HOME/emulator/emulator" \
+  -avd spliit-skip-integration-plan -cores 4 -memory 4096 \
+  -gpu host -feature -Vulkan -no-snapshot -no-audio
+```
+
+Apply the same wrapper to Gradle when it inherits this background policy. The flags were
+tested together; no global launch-daemon settings were changed.
+
 The debug host includes a small check against the actual generated localization bridge,
 packaged string tables, and Android ICU. After installing the APK, run:
 
@@ -325,4 +366,5 @@ adb -s emulator-5554 logcat -d -s SpliitLocalizationCheck:I '*:S'
 
 A successful run logs `PASS`; failed assertions stop the debug launch. The check covers
 English/French plural counts 0, 1, and 2, reordered arguments, and escaped percent signs.
-Native Swift interpolation and normal UI locale selection still require the shared-flow check.
+Native Swift participant interpolation, French validation, and normal UI locale selection
+were also exercised in the shared-flow checks above.

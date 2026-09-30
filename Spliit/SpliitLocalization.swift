@@ -14,7 +14,11 @@ import android.icu.text.MessageFormat
     ) -> String {
         let bundle = bridgedBundle as? Bundle ?? Bundle.module
         let locale = localeIdentifier.map { Locale(identifier: $0) } ?? Locale.current
-        let (_, format, _) = bundle.localizedInfo(forKey: key, value: nil, table: table, locale: locale)
+        let (localized, format, _) = bundle.localizedInfo(forKey: key, value: nil, table: table, locale: locale)
+        // A translation without arguments may contain a literal percent sign.
+        if values.isEmpty {
+            return localized == key ? localized.replace("%%", "%") : localized
+        }
         let platformLocale = java.util.Locale.forLanguageTag(locale.identifier.replace("_", "-"))
         let arguments = values.toList().toTypedArray()
         if (key == "%lld participants" || key == "%lld documents attached"),

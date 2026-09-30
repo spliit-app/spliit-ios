@@ -96,6 +96,8 @@ private fun checkLocalization() {
         }
         check(resolve("%2\$@ / %1\$@", locale, "Ana", "Bruno") == "Bruno / Ana")
         check(resolve("%lld%% for %@", locale, 50L, "Ana") == "50% for Ana")
+        check(resolve("Percent", locale) == if (locale == "fr") "%" else "Percent")
+        check(resolve("100%%", locale) == "100%")
     }
     android.util.Log.i("SpliitLocalizationCheck", "PASS: en/fr plurals, reordered arguments, percent escaping")
 }

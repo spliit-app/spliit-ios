@@ -219,7 +219,7 @@ struct BalanceRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 AdaptiveHStack {
                     HStack(spacing: 6) {
-                        Text(participant.name)
+                        Text(verbatim: participant.name)
                             .accessibilityIdentifier(
                                 AccessibilityID.Balances.participantName(participant.id)
                             )

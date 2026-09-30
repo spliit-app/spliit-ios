@@ -30,12 +30,17 @@ class AndroidAppMain : Application() {
 }
 
 class MainActivity : AppCompatActivity() {
+    // singleTask reuses this activity for incoming links. Skip's onOpenURL reads the cold
+    // intent and registers a ComponentActivity onNewIntent listener for subsequent links.
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         UIApplication.launch(this)
         // adb shell am start -S -n app.spliit.android.prototype/spliit.ui.MainActivity --ez checkLocalization true
-        if (BuildConfig.DEBUG && intent.getBooleanExtra("checkLocalization", false)) {
+        if (BuildConfig.DEBUG && intent?.getBooleanExtra("checkLocalization", false) == true) {
             checkLocalization()
+        }
+        if (BuildConfig.DEBUG && intent?.getBooleanExtra("checkLinks", false) == true) {
+            checkLinkRegistration(this)
         }
         enableEdgeToEdge()
 
@@ -47,6 +52,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+}
+
+// Check the installed manifest's actual resolver behavior, without adding another URL parser.
+private fun checkLinkRegistration(activity: ComponentActivity) {
+    fun resolves(link: String): android.content.pm.ActivityInfo? {
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link))
+            .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+            .setPackage(activity.packageName)
+        return activity.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo
+    }
+    for (link in listOf("app.spliit.spliitmobile://groups/check", "https://spliit.app/groups/check/expenses")) {
+        val info = checkNotNull(resolves(link))
+        check(info.name == MainActivity::class.java.name)
+        check(info.launchMode == android.content.pm.ActivityInfo.LAUNCH_SINGLE_TASK)
+    }
+    for (link in listOf("https://spliit.app/about", "http://spliit.app/groups/check", "https://spliit.app.evil.example/groups/check")) {
+        check(resolves(link) == null)
+    }
+    android.util.Log.i("SpliitLinkCheck", "PASS: custom scheme, scoped HTTPS, singleTask, unrelated links excluded")
 }
 
 @Composable

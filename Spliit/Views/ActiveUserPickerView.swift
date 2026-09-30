@@ -67,7 +67,7 @@ struct ActiveUserPickerView: View {
             #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.ActiveUser.option(participant.id))
     }
 
@@ -90,7 +90,7 @@ struct ActiveUserPickerView: View {
             #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.ActiveUser.nobodyOption)
     }
 

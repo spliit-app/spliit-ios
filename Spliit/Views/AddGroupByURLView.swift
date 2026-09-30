@@ -17,6 +17,7 @@ struct AddGroupByURLView: View {
     @State var urlText = ""
     @State var isChecking = false
     @State var problem: String?
+    @State var checkingTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -49,8 +50,11 @@ struct AddGroupByURLView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .accessibilityIdentifier(AccessibilityID.AddByURL.cancelButton)
+                    Button("Cancel") {
+                        checkingTask?.cancel()
+                        dismiss()
+                    }
+                    .accessibilityIdentifier(AccessibilityID.AddByURL.cancelButton)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isChecking ? "Adding…" : "Add", action: add)
@@ -60,6 +64,7 @@ struct AddGroupByURLView: View {
             }
             .trackScreen(.addGroupByURL)
         }
+        .onDisappear { checkingTask?.cancel() }
     }
 
     private func add() {
@@ -75,11 +80,15 @@ struct AddGroupByURLView: View {
         let instanceURL = link.instanceURL ?? app.settings.defaultInstanceURL
 
         isChecking = true
-        Task {
-            defer { isChecking = false }
+        checkingTask = Task {
+            defer {
+                isChecking = false
+                checkingTask = nil
+            }
             do {
                 let response = try await app.client(on: instanceURL)
                     .call(Spliit.group(id: link.groupID))
+                guard !Task.isCancelled else { return }
                 guard let group = response.group else {
                     problem = String(
                         localized: "No group with that link exists on \(SettingsStore.displayName(for: instanceURL))."
@@ -93,6 +102,7 @@ struct AddGroupByURLView: View {
                 )
                 dismiss()
             } catch {
+                guard !Task.isCancelled else { return }
                 problem = error.localizedDescription
             }
         }

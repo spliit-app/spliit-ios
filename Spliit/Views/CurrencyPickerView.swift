@@ -118,7 +118,7 @@ struct CurrencyPickerView: View {
             #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(currency.code == selectedCode ? [.isSelected] : [])
+        .accessibilityAddTraits(currency.code == selectedCode ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.CurrencyPicker.row(currency.code))
     }
 
@@ -143,7 +143,7 @@ struct CurrencyPickerView: View {
             #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(selectedCode == nil ? [.isSelected] : [])
+        .accessibilityAddTraits(selectedCode == nil ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.CurrencyPicker.customOption)
     }
 
@@ -185,6 +185,18 @@ struct CurrencyPickerView: View {
     private func choose(_ currency: Currency?) {
         onSelect(currency)
         dismiss()
+    }
+}
+
+extension AccessibilityTraits {
+    // Skip's empty initializer uses an array literal, which calls that initializer again.
+    // Both pickers use this explicit empty value and avoid array literals for selected rows.
+    static var none: Self {
+        #if os(Android)
+        Self(rawValue: 0)
+        #else
+        []
+        #endif
     }
 }
 

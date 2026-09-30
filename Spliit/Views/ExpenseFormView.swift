@@ -66,6 +66,7 @@ struct ExpenseFormView: View {
     }
 
     @State var rateLookup = RateLookup.idle
+    @State var rateTask: Task<Void, Never>?
     /// The last rate this screen filled in by itself, so a rate the user typed over it is left
     /// alone by the next lookup.
     @State var autoFilledRate: String?
@@ -114,6 +115,7 @@ struct ExpenseFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.cancelButton)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -142,7 +144,8 @@ struct ExpenseFormView: View {
         }
         .task { await load() }
         .onChange(of: categories) { reconcileCategory() }
-        .task(id: rateRequest) { await lookUpRate() }
+        .onChange(of: rateRequest, initial: true) { startRateLookup() }
+        .onDisappear { rateTask?.cancel() }
         .task(id: categoryQuestion) { await suggestCategory() }
         .interactiveDismissDisabled(isSaving)
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
@@ -379,7 +382,7 @@ struct ExpenseFormView: View {
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.conversionRateStatus)
 
             if canRefreshRate(form) {
-                Button("Use the published rate") { Task { await refreshRate() } }
+                Button("Use the published rate") { startRateLookup(replacingManualRate: true) }
                     .font(.footnote)
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.refreshRateButton)
             }
@@ -745,7 +748,16 @@ struct ExpenseFormView: View {
         )
     }
 
-    private func lookUpRate() async {
+    /// Own the native task: the pinned Skip bridge does not forward `.task(id:)` cancellation.
+    /// Automatic lookups and explicit refreshes replace the same task so neither can apply an
+    /// older answer after the currency/date changed or a newer refresh completed.
+    private func startRateLookup(replacingManualRate: Bool = false) {
+        rateTask?.cancel()
+        rateTask = Task { await lookUpRate(replacingManualRate: replacingManualRate) }
+    }
+
+    private func lookUpRate(replacingManualRate: Bool) async {
+        guard !Task.isCancelled else { return }
         guard let request = rateRequest else {
             rateLookup = .idle
             return
@@ -755,35 +767,20 @@ struct ExpenseFormView: View {
             let rate = try await rates.rate(
                 on: request.day, from: request.base, to: request.target
             )
+            guard !Task.isCancelled, rateRequest == request else { return }
             rateLookup = .found(rate)
             // Only into a field the user has not made their own. The rate a card was actually
             // charged at beats a published one, and typing it must not be undone by a lookup
             // that arrives afterwards.
-            if form?.conversionRateText.isEmpty == true
+            if replacingManualRate || form?.conversionRateText.isEmpty == true
                 || form?.conversionRateText == autoFilledRate {
                 apply(rate.rate)
             }
         } catch ExchangeRates.Failure.noRateForCurrency {
+            guard !Task.isCancelled, rateRequest == request else { return }
             rateLookup = .noRate
         } catch {
-            rateLookup = .unavailable
-        }
-    }
-
-    /// Asks again, and takes the answer whatever is in the field — this is the way back from a
-    /// rate typed by hand, and the retry after a lookup that failed.
-    private func refreshRate() async {
-        guard let request = rateRequest else { return }
-        rateLookup = .loading
-        do {
-            let rate = try await rates.rate(
-                on: request.day, from: request.base, to: request.target
-            )
-            rateLookup = .found(rate)
-            apply(rate.rate)
-        } catch ExchangeRates.Failure.noRateForCurrency {
-            rateLookup = .noRate
-        } catch {
+            guard !Task.isCancelled, rateRequest == request else { return }
             rateLookup = .unavailable
         }
     }

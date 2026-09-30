@@ -1,7 +1,7 @@
 # Android integration with Skip
 
 Status: phases 1 and 2 complete in `skip-integration-plan`, based on upstream commit
-`80b2e984b3dc07782983f24586d7e4568ada2a02`. Phase 1 is pushed; subsequent work is local.
+`80b2e984b3dc07782983f24586d7e4568ada2a02`. Phases 1 and 2 are pushed. Phase 3 is in progress.
 The shared expense flow works on Android and iOS. Phase 3 product coverage and the
 platform libraries remain to be verified.
 
@@ -359,12 +359,107 @@ The debug host includes a small check against the actual generated localization 
 packaged string tables, and Android ICU. After installing the APK, run:
 
 ```sh
-adb -s emulator-5554 shell am start -S \
+adb -s emulator-5556 shell am start -S \
   -n app.spliit.android.prototype/spliit.ui.MainActivity --ez checkLocalization true
-adb -s emulator-5554 logcat -d -s SpliitLocalizationCheck:I '*:S'
+adb -s emulator-5556 logcat -d -s SpliitLocalizationCheck:I '*:S'
 ```
 
 A successful run logs `PASS`; failed assertions stop the debug launch. The check covers
 English/French plural counts 0, 1, and 2, reordered arguments, and escaped percent signs.
 Native Swift participant interpolation, French validation, and normal UI locale selection
 were also exercised in the shared-flow checks above.
+
+### Phase 3 — product and lifecycle coverage
+
+The Android host now declares the inherited `app.spliit.spliitmobile` scheme and unverified
+`https://spliit.app/groups/…` links. `singleTask` delivers subsequent links to the existing
+activity. Skip's existing `onOpenURL` implementation consumes the cold-launch intent and
+listens for `ComponentActivity.onNewIntent`; the shared `IncomingLink`/`GroupLink` validation
+and per-group instance routing remain the only URL parser. Self-hosted instances retain
+**Add by link**; the manifest does not register arbitrary web hosts or inbound text shares.
+
+These are not verified App Links. The prototype cannot publish `spliit.app`'s association,
+and Android 12+ normally sends unapproved HTTPS links to the browser. A package-targeted
+test exercises dispatch without claiming ordinary browser links open the app by default.
+The existing group menu's `ShareLink` already uses Skip's Android `ACTION_SEND` text/plain
+chooser, with the URL derived from that group's instance, including its subdirectory.
+
+The installed debug APK passes this check of its actual resolver and launch mode:
+
+```sh
+adb -s emulator-5556 shell am start -S \
+  -n app.spliit.android.prototype/spliit.ui.MainActivity --ez checkLinks true
+adb -s emulator-5556 logcat -d -s SpliitLinkCheck:I '*:S'
+```
+
+The check asserts that the custom scheme and official HTTPS group path resolve to the
+single-task activity, while unrelated paths, insecure official URLs, and lookalike hosts
+do not. Existing `IncomingLinkTests` and `GroupLinkTests` cover payload validation. For cold
+and warm delivery, set these to two group IDs on the app's configured default instance:
+
+```sh
+SPLIIT_FIRST_GROUP_ID=replace-with-first-group-id
+SPLIIT_SECOND_GROUP_ID=replace-with-second-group-id
+adb -s emulator-5556 shell am start -S -W -a android.intent.action.VIEW \
+  -d "app.spliit.spliitmobile://groups/$SPLIIT_FIRST_GROUP_ID" app.spliit.android.prototype
+adb -s emulator-5556 shell am start -W -a android.intent.action.VIEW \
+  -d "app.spliit.spliitmobile://groups/$SPLIIT_SECOND_GROUP_ID" app.spliit.android.prototype
+```
+
+Cold launch, warm delivery, repeated custom-scheme links, and the native share chooser
+pass on the dedicated Android emulator. The shared text retains the group’s selected local
+instance. Ordinary browser dispatch for unverified HTTPS links is not claimed.
+
+
+The repeatable Android UI/API smoke check uses Python's standard library and the existing
+server seeder. Install the debug APK, keep the e2e server on port 3009 running, then run:
+
+```sh
+python3 Scripts/android-smoke.py --serial emulator-5556
+```
+
+It creates isolated groups and restores the original app locale. It does not clear app data
+or stop the server. `--lifecycle-only` runs the delayed-response checks; `--navigation-only`
+runs group management, links, search, and sharing. Use this prototype's dedicated emulator.
+
+Verified so far against the real local backend:
+
+- All four split modes save the expected integer amounts and participant shares.
+- Editing preserves the changed title and amount; list-swipe Undo retains the expense;
+  editor deletion removes it. Balances agree before and after deletion and process restart.
+- Android Back during a delayed add-by-link lookup leaves the group list unchanged.
+- Totals loads after switching away during a delayed response and returning. The proxy
+  forwards HTTP errors too, preserving the server's stats endpoint fallback.
+- Create and edit group work on a selected self-hosted instance; Totals, activity navigation,
+  search, cold/warm/repeated links, and native sharing pass.
+- The expense draft survives an actual landscape rotation. A GBP 5 expense at a manual
+  rate of 1.25 saves as USD 6.25, retaining GBP 500 original minor units and the chosen rate.
+- Participant selection works, and marking the suggested payment as paid saves a reimbursement
+  and returns the balances to settled.
+
+Leaving a Compose screen does not currently forward Skip's cooperative task cancellation
+through the native Swift `.task` bridge. Do not infer canceled networking from tab changes.
+Android hardware Back during a write and activity recreation with an unsaved form still
+need coverage; disabling the Cancel button alone does not settle those cases.
+
+
+The shared models now retain pagination cursors on cancellation, allow a canceled Totals
+request to retry, reject stale Totals completions, and invalidate superseded search debounces
+before their equality shortcut. Exchange-rate lookup and Add by link own native task handles;
+rate replacement/disappearance cancels both automatic and manual requests, and completion
+checks the selected pair/date before updating the form. Cancel buttons are disabled while
+saving group and expense forms. Android debug/release and iOS builds pass after these changes;
+all app/core/shortcut/category strings remain translated in French.
+
+
+`Scripts/check-group-model.swift` compiles the actual shared model against the existing host
+core build (commands are at the top of the file). It fails against the previous model and
+passes with these changes: canceled Totals retry, older success/error/cancellation arriving
+last, pagination cursor preservation, and uncanceled search debounce/response ordering.
+This covers retry after cancellation unwinds; immediate pagination reentry before the old
+loader clears its in-flight flag remains a separate lifecycle gap.
+
+Opening a currency or participant picker also exposed a native stack overflow: the pinned
+Skip accessibility-traits empty initializer recursively constructs itself through an array
+literal. Both pickers now use an explicit zero raw value on Android and retain the selected
+trait; Apple platforms use their normal empty value.

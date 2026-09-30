@@ -140,6 +140,7 @@ struct GroupFormView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel", action: onCancel)
+                    .disabled(isSaving)
                     .accessibilityIdentifier(AccessibilityID.GroupForm.cancelButton)
             }
             ToolbarItem(placement: .confirmationAction) {
@@ -320,6 +321,7 @@ struct GroupSettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .trackScreen(.groupSettings)
         }
+        .interactiveDismissDisabled(isSaving)
         .task { await load() }
     }
 

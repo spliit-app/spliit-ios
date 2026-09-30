@@ -366,6 +366,7 @@ private func groupSlice(of value: Int, in groupTotal: Int) -> Double? {
 /// VoiceOver still gets it, as a value on the name.
 struct CategoryRow: View {
 
+    @Environment(\.locale) var locale
     let spending: CategorySpending
     let groupTotal: Int
     let formatter: MoneyFormatter
@@ -426,7 +427,7 @@ struct CategoryRow: View {
     /// What the bar says, for the reader who cannot see a length.
     private var shareDescription: Text {
         guard let slice = groupSlice(of: spending.total, in: groupTotal) else { return Text("") }
-        return Text("\(slice.formatted(.percent.precision(.fractionLength(0)))) of the group")
+        return Text("\(slice.formatted(.percent.precision(.fractionLength(0)).locale(locale))) of the group")
     }
 }
 
@@ -436,6 +437,7 @@ struct CategoryRow: View {
 /// percentage is written out beside it, and the bar is what VoiceOver skips.
 struct ShareOfGroup: View {
 
+    @Environment(\.locale) var locale
     let fraction: Double
     /// Carried down to the caption rather than set on this view: an identifier on the stack
     /// would be stamped onto the bar as well, and the bar is the half that is meant to be
@@ -461,7 +463,7 @@ struct ShareOfGroup: View {
             .frame(height: barHeight)
             .accessibilityHidden(true)
 
-            Text("\(fraction.formatted(.percent.precision(.fractionLength(0)))) of the group")
+            Text("\(fraction.formatted(.percent.precision(.fractionLength(0)).locale(locale))) of the group")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier(identifier)

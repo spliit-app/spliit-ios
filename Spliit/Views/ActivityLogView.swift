@@ -146,6 +146,7 @@ struct ActivityLogView: View {
 
 /// One line of the log: what happened, and when.
 struct ActivityRow: View {
+    @Environment(\.locale) var locale
 
     let activity: Activity
     /// Whoever did it, already resolved against the group. Nil when the client that made the
@@ -236,9 +237,9 @@ struct ActivityRow: View {
     /// The time, plus the date when the heading above has not already given it. Both are left
     /// to Foundation, which knows how the reader's locale writes them.
     private var timestamp: String {
-        showsDate
-            ? activity.time.formatted(date: .abbreviated, time: .shortened)
-            : activity.time.formatted(date: .omitted, time: .shortened)
+        activity.time.formatted(Date.FormatStyle(
+            date: showsDate ? .abbreviated : .omitted, time: .shortened, locale: locale
+        ))
     }
 }
 

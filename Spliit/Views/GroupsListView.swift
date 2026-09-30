@@ -10,6 +10,7 @@ import SwiftUI
 struct GroupsListView: View {
 
     @Environment(AppModel.self) var app
+    @Environment(\.locale) var locale
     @State var model = GroupsListModel()
     @State var path: [String] = []
     @State var sheet: Sheet?
@@ -42,7 +43,7 @@ struct GroupsListView: View {
                 .trackScreen(.home)
         }
         .task(id: reloadToken) {
-            await model.load(summaryRequests)
+            await model.load(summaryRequests, locale: locale)
         }
         // An intent can land before this view exists — a cold launch from Spotlight — or while
         // it is already on screen, so the destination is read on appearance and on every change
@@ -185,7 +186,7 @@ struct GroupsListView: View {
         case .settings:
             SettingsView()
         case .createGroup:
-            CreateGroupView(instanceURL: app.settings.defaultInstanceURL) { group in
+            CreateGroupView(instanceURL: app.settings.defaultInstanceURL, locale: locale) { group in
                 app.recentGroups.remember(group)
                 path = [group.groupId]
             }
@@ -343,7 +344,7 @@ struct GroupsListView: View {
             }
         }
         .refreshable {
-            await model.load(summaryRequests)
+            await model.load(summaryRequests, locale: locale)
         }
     }
 
@@ -419,6 +420,7 @@ struct GroupsListView: View {
 struct GroupRow: View {
     let group: RecentGroup
     let summary: GroupSummary?
+    @Environment(\.locale) var locale
 
     var body: some View {
         AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
@@ -437,10 +439,12 @@ struct GroupRow: View {
                             AccessibilityID.GroupsList.rowParticipants(group.groupId)
                         )
                     if let createdAt = summary?.createdAt {
-                        Label(createdAt.formatted(date: .abbreviated, time: .omitted),
-                              systemImage: "calendar")
+                        let date = createdAt.formatted(
+                            Date.FormatStyle(date: .abbreviated, time: .omitted, locale: locale)
+                        )
+                        Label(date, systemImage: "calendar")
                             .accessibilityLabel(
-                                Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+                                Text("Created \(date)")
                             )
                     }
                 }
@@ -487,7 +491,7 @@ final class GroupsListModel {
     /// list still fills in, and the names are local anyway. The note names the servers that
     /// didn't answer, because with a list spanning more than one of them "the server" is no
     /// longer a thing anybody can act on.
-    func load(_ requests: [Request]) async {
+    func load(_ requests: [Request], locale: Locale) async {
         guard !requests.isEmpty else {
             summaries = [:]
             errorMessage = nil
@@ -526,7 +530,7 @@ final class GroupsListModel {
         // build: how two of them are joined is the translation's business.
         let names = unreachable
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-            .formatted(.list(type: .and))
+            .formatted(.list(type: .and).locale(locale))
         errorMessage = String(
             localized: "Couldn’t reach \(names), so group details may be out of date."
         )

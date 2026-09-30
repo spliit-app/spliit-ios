@@ -14,6 +14,7 @@ struct ExpenseFormView: View {
 
     @Environment(AppModel.self) var app
     @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) var locale
     @AppTextSize private var dynamicTypeSize
 
     /// Wide enough for "100.00" at the body size, and it has to grow with the text or the
@@ -166,7 +167,7 @@ struct ExpenseFormView: View {
     /// there still was one and stayed open on nothing.
     private var liveForm: Binding<ExpenseFormDraft> {
         Binding(
-            get: { self.form ?? ExpenseFormDraft() },
+            get: { self.form ?? ExpenseFormDraft(locale: locale) },
             set: { self.form = $0 }
         )
     }
@@ -433,7 +434,7 @@ struct ExpenseFormView: View {
             return String(localized: "Getting the exchange rate…")
         case .found(let rate):
             let quote = String(
-                localized: "\(base) 1 = \(target) \(ExpenseFormDraft.text(forRate: rate.rate))"
+                localized: "\(base) 1 = \(target) \(ExpenseFormDraft.text(forRate: rate.rate, locale: locale))"
             )
             guard let day = rate.date, !Calendar.autoupdatingCurrent.isDate(
                 day, inSameDayAs: form.expenseDate
@@ -443,7 +444,9 @@ struct ExpenseFormView: View {
             // Rates are published on working days, so a Sunday or a date still to come answers
             // with the last day there is one. Saying which day avoids the reasonable suspicion
             // that the number is simply wrong.
-            let dayText = day.formatted(date: .abbreviated, time: .omitted)
+            let dayText = day.formatted(
+                Date.FormatStyle(date: .abbreviated, time: .omitted, locale: locale)
+            )
             return String(localized: "\(quote) — the rate on \(dayText).")
         case .noRate:
             return String(localized: "No published rate for this pair. Enter the rate yourself.")
@@ -460,11 +463,11 @@ struct ExpenseFormView: View {
     }
 
     private func originalCurrency(_ form: ExpenseFormDraft) -> Currency? {
-        form.originalCurrencyCode.flatMap { Currency.named($0) }
+        form.originalCurrencyCode.flatMap { Currency.named($0, in: locale) }
     }
 
     private var groupFormatter: MoneyFormatter {
-        MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode)
+        MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode, locale: locale)
     }
 
     /// The expense's ID, which is what decides who is offered the odd cent of an uneven split —
@@ -636,7 +639,7 @@ struct ExpenseFormView: View {
         switch form.splitMode {
         case .byAmount:
             let formatter = MoneyFormatter(
-                currencySymbol: group.currency, currencyCode: group.currencyCode
+                currencySymbol: group.currency, currencyCode: group.currencyCode, locale: locale
             )
             return remainder > 0
                 ? String(localized: "\(formatter.string(minorUnits: remainder)) still to allocate.")
@@ -644,8 +647,8 @@ struct ExpenseFormView: View {
         case .byPercentage:
             let percent = Decimal(abs(remainder)) / 100
             return remainder > 0
-                ? String(localized: "\(percent.formatted())% still to allocate.")
-                : String(localized: "\(percent.formatted())% over 100%.")
+                ? String(localized: "\(percent.formatted(.number.locale(locale)))% still to allocate.")
+                : String(localized: "\(percent.formatted(.number.locale(locale)))% over 100%.")
         case .evenly, .byShares:
             return ""
         }
@@ -663,7 +666,7 @@ struct ExpenseFormView: View {
     }
 
     private var decimalSeparator: String {
-        Locale.autoupdatingCurrent.decimalSeparator ?? "."
+        locale.decimalSeparator ?? "."
     }
 
     // MARK: - Actions
@@ -809,7 +812,7 @@ struct ExpenseFormView: View {
             let response = try await client.call(
                 Spliit.expense(groupId: group.id, expenseId: expenseID)
             )
-            form = ExpenseFormDraft(editing: response.expense, group: group)
+            form = ExpenseFormDraft(editing: response.expense, group: group, locale: locale)
         } catch {
             failure = error.localizedDescription
         }

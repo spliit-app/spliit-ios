@@ -21,10 +21,11 @@ struct CurrencyPickerView: View {
     let onSelect: (Currency?) -> Void
 
     @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) var locale
     @State var query = ""
 
-    private let currencies = Currency.all()
-    private let suggested = Currency.suggested()
+    private var currencies: [Currency] { Currency.all(in: locale) }
+    private var suggested: [Currency] { Currency.suggested(in: locale) }
 
     var body: some View {
         Group {
@@ -167,7 +168,7 @@ struct CurrencyPickerView: View {
 
     /// The handful offered above the full list, with the caller's own candidate first.
     private var suggestions: [Currency] {
-        guard let promoted = promotedCode.flatMap({ Currency.named($0) }) else { return suggested }
+        guard let promoted = promotedCode.flatMap({ Currency.named($0, in: locale) }) else { return suggested }
         return [promoted] + suggested.filter { $0.code != promoted.code }
     }
 

@@ -58,6 +58,9 @@ private struct CheckGroupModel {
         ))
 
         let model = GroupDetailModel(groupID: "group")
+        model.formattingLocale = Locale(identifier: "fr_FR")
+        precondition(model.moneyFormatter.string(minorUnits: 1234).contains("12,34"))
+        model.formattingLocale = .autoupdatingCurrent
         let canceled = Task { await model.loadStats(for: nil, using: client) }
         _ = try await HeldRequest.next()
         canceled.cancel()

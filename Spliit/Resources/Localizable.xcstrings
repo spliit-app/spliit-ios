@@ -1931,6 +1931,16 @@
         }
       }
     },
+    "Search": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher"
+          }
+        }
+      }
+    },
     "Search expenses": {
       "localizations": {
         "fr": {

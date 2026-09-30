@@ -8,6 +8,7 @@ import SwiftUI
 /// is red before you have typed anything reads as broken rather than helpful.
 struct GroupFormView: View {
 
+    @Environment(\.locale) var locale
     @Binding var draft: GroupFormDraft
     /// Participants who appear on an expense; the server refuses to remove these.
     var participantsWithExpenses: Set<String> = []
@@ -177,7 +178,7 @@ struct GroupFormView: View {
     /// What the picker row shows on the right: the currency and the symbol it will put beside
     /// every amount, or just the symbol when that is all the group has.
     private var currencySummary: String {
-        if let currency = draft.selectedCurrency() {
+        if let currency = draft.selectedCurrency(in: locale) {
             "\(currency.name) (\(currency.symbol))"
         } else if let code = draft.currencyCode, !code.isEmpty {
             // Stored by something else and not a currency this system knows. Showing it is more
@@ -205,7 +206,7 @@ struct CreateGroupView: View {
     @Environment(AppModel.self) var app
     @Environment(\.dismiss) var dismiss
 
-    @State var draft = GroupFormDraft(newGroupIn: .autoupdatingCurrent)
+    @State var draft: GroupFormDraft
     @State var instance: InstanceChoice
     @State var isSaving = false
     @State var failure: String?
@@ -215,7 +216,8 @@ struct CreateGroupView: View {
 
     /// - Parameter instanceURL: where the form opens — the last instance a group was created on.
     ///   Passed in rather than read here, because the environment isn't available yet.
-    init(instanceURL: URL, onCreated: @escaping (RecentGroup) -> Void) {
+    init(instanceURL: URL, locale: Locale, onCreated: @escaping (RecentGroup) -> Void) {
+        _draft = State(initialValue: GroupFormDraft(newGroupIn: locale))
         _instance = State(initialValue: InstanceChoice(url: instanceURL))
         self.onCreated = onCreated
     }

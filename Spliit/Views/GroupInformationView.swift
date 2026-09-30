@@ -21,6 +21,7 @@ import SwiftUI
 struct GroupInformationView: View {
 
     @Environment(AppModel.self) var app
+    @Environment(\.locale) var locale
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -192,7 +193,9 @@ struct GroupInformationView: View {
             }
 
             LabeledContent("Created") {
-                Text(group.createdAt.formatted(date: .abbreviated, time: .omitted))
+                Text(group.createdAt.formatted(
+                    Date.FormatStyle(date: .abbreviated, time: .omitted, locale: locale)
+                ))
             }
 
             // Which server this group is on. It is a fact about the group rather than about the

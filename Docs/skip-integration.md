@@ -323,11 +323,10 @@ remain in their later phases.
   performance, or physical-device startup. No ANR occurred during the recovered-device checks.
 
 Phase 2's shared-flow exit criterion is **met**. Next is phase 3's broader product and
-Android lifecycle coverage. Distribution readiness is not claimed. Known later-phase gaps:
-missing Android symbol fallbacks, an untranslated Search tab, and native Foundation output
-that still uses English list/date/currency conventions under the French app locale.
-Decimal-comma amount entry and French core validation are verified; full locale parity,
-attachments/OCR, recovery, and physical-device coverage remain outstanding.
+Android lifecycle coverage. Distribution readiness is not claimed. The missing Android
+symbols, Search translation, and English Foundation formatting observed at this milestone
+are addressed by the phase 3 polish below. Attachments/OCR, recovery, accessibility, and
+physical-device coverage remain outstanding.
 
 The host `make test` and `make test-live` commands also select the native SwiftPM build
 system: Swift 6.4's default swiftbuild backend rejects the pinned Skip graph for duplicated
@@ -476,3 +475,43 @@ the idle form after acknowledging the error. The pending form and failure dialog
 verified in the optimized release APK on the dedicated API 36 emulator.
 The same guard is applied to create/edit group forms. Android debug/release builds and
 iOS builds/string checks pass.
+
+### Android symbols and app-locale formatting
+
+The Android host bundles 52 Google Material icons as Skip-readable symbol assets. They use
+the existing system-image lookup, so shared views retain their SF Symbol names and iOS
+keeps its native symbols. Assets are pinned to the revision in `Android/MaterialIcons.json`;
+the Apache-2.0 license and source/change notice ship alongside them. No icon library is added.
+
+```sh
+python3 Scripts/android-icons.py          # offline asset and shape-conversion checks
+python3 Scripts/android-icons.py --update # regenerate from the pinned upstream SVGs
+```
+
+Skip's SVG reader accepts filled paths; the importer expands rectangles, circles, and
+polygons before wrapping them as symbolsets. The emulator loads the packaged assets through
+`Bundle.main`; tab and expense icons render without missing-symbol warnings in the exercised
+screens. This does not claim every icon has been visually reviewed.
+
+The shared UI now passes its environment locale to native Foundation formatting. This is
+necessary because native Swift's process locale can differ from Android's per-app language.
+Dates, participant lists, currency names, money, percentages, rates, and new/edit/reimbursement drafts
+use the selected app locale. Drafts receive the locale at construction, before their amount
+strings are formatted. Search has an explicit catalog label while retaining its iOS role.
+
+French emulator checks show `Rechercher`, French currency names and month abbreviations,
+`Dana et Eli`, and comma-decimal expenses and Totals. The existing model check also asserts
+French money formatting. Android debug/release and iOS builds pass; the string check reports
+262 app, 19 core, 4 shortcut, and 46 category keys, all translated in French.
+
+The French UI/API regression check is repeatable against isolated groups:
+
+```sh
+python3 Scripts/android-smoke.py --serial emulator-5556 --locale-only
+```
+
+It checks the new-group EUR default, French currency selection/summary and Search label,
+participant lists, `12,34` entry saved as 1234 minor units, edit prefill, a `72,34` total,
+localized percentages, and the `30,17` settlement saved as 3017 minor units. The original
+app locale is restored when the check finishes. The previously supplied `fdf403b` APK is
+retained separately so physical-device feedback can identify which build was tested.

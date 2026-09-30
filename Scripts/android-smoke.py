@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--serial", required=True)
     parser.add_argument("--lifecycle-only", action="store_true", help="Only run delayed-response cancellation checks")
     parser.add_argument("--navigation-only", action="store_true", help="Only run group, links, search, and sharing checks")
+    parser.add_argument("--locale-only", action="store_true", help="Only run French labels, decimal entry, totals, and settlement checks")
     args = parser.parse_args()
     sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Library/Android/sdk"))
     adb = shutil.which("adb") or str(sdk / "platform-tools/adb")
@@ -113,8 +114,82 @@ def main():
     group = seeded["groups"]["empty"]
     group_id = group["id"]
     fen, gil = (group["participants"][name] for name in ("Fen", "Gil"))
-    print(f"Testing isolated Book club group {group_id}", flush=True)
+    if not args.locale_only:
+        print(f"Testing isolated Book club group {group_id}", flush=True)
     try:
+        if args.locale_only:
+            group = seeded["groups"]["flat"]
+            group_id = group["id"]
+            dana = group["participants"]["Dana"]
+            print(f"Testing French locale with isolated Flat 3B group {group_id}", flush=True)
+            shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "fr-FR")
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+
+            def visible_text(node):
+                return " ".join(value for child in node.iter("node")
+                                for value in (child.get("text"), child.get("content-desc")) if value)
+
+            # Establish the default local instance through the UI, even on a fresh install.
+            tap("plus")
+            tap("groups.create")
+            assert "€" in visible_text(find("groupForm.currencyButton"))
+            tap("groupForm.currencyButton")
+            assert "livre sterling" in visible_text(find("currencyPicker.row.GBP")).lower()
+            tap("currencyPicker.row.GBP")
+            assert "livre sterling" in visible_text(find("groupForm.currencyButton")).lower()
+            name = f"Locale smoke {int(time.time())}"
+            enter("groupForm.name", name)
+            tap("groupForm.serverPicker")
+            tap("Autre serveur")
+            enter("groupForm.server", "http://10.0.2.2:3009")
+            tap("groupForm.save")
+            find(name)
+            find("expenses.emptyAdd")
+            print("PASS French currency names and new-group EUR default", flush=True)
+
+            shell("am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+                  f"app.spliit.spliitmobile://groups/{group_id}", APP)
+            find("Flat 3B")
+            find("Rechercher")
+            internet = details("Internet")
+            assert "60,00" in visible_text(find(f"expenses.row.{internet['id']}.amount"))
+            assert "Dana et Eli" in visible_text(find(f"expenses.row.{internet['id']}.paidBy"))
+            print("PASS French search label, money separators, and participant list", flush=True)
+
+            title = "Locale decimal"
+            tap("expenses.add")
+            enter("expenseForm.title", title)
+            enter("expenseForm.amount", "12,34")
+            tap("expenseForm.paidBy")
+            tap("Dana")
+            tap("expenseForm.split.EVENLY")
+            tap("expenseForm.save")
+            find(title)
+            saved = details(title)
+            assert saved["amount"] == 1234 and saved["splitMode"] == "EVENLY", saved
+            assert saved["paidBy"]["id"] == dana, saved
+            tap(title)
+            assert find("expenseForm.amount").get("text") == "12,34"
+            tap("expenseForm.cancel")
+            find(title)
+            tap("Totaux")
+            assert "72,34" in visible_text(find("stats.groupTotal", timeout=25))
+            tap("activeUser.stats")
+            tap(f"activeUser.option.{dana}")
+            assert "100\u00a0%" in visible_text(find("stats.yourSpending.fraction"))
+            print("PASS French decimal save, edit prefill, and totals", flush=True)
+
+            tap("Soldes")
+            tap("balances.markAsPaid.0", scroll=True)
+            # Internet is seeded 60/40: Eli owes 24.00 plus half of the new 12.34 expense.
+            assert find("expenseForm.amount").get("text") == "30,17"
+            tap("expenseForm.save")
+            find("balances.settled")
+            reimbursements = [expense for expense in expenses() if expense["isReimbursement"]]
+            assert len(reimbursements) == 1 and reimbursements[0]["amount"] == 3017, reimbursements
+            print("PASS French settlement prefill, saved minor units, and settled balances", flush=True)
+            return
+
         shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "en-US")
         shell("am", "start", "-W", "-S", "-n", ACTIVITY)
         if not args.lifecycle_only and not args.navigation_only:

@@ -6,6 +6,7 @@ import SwiftUI
 struct GroupDetailView: View {
 
     @Environment(AppModel.self) var app
+    @Environment(\.locale) var locale
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -85,7 +86,8 @@ struct GroupDetailView: View {
             // The search role is what puts the magnifying glass in its own capsule beside the
             // tab bar, and what docks the field at the bottom of the screen — above the
             // keyboard, where the thumb already is — instead of in the navigation bar.
-            Tab(value: GroupTab.search, role: .search) {
+            // Supply our catalog label: Skip's implicit search-role label stays in English.
+            Tab("Search", systemImage: "magnifyingglass", value: GroupTab.search, role: .search) {
                 ExpenseSearchView(
                     model: model,
                     query: $query,
@@ -106,6 +108,7 @@ struct GroupDetailView: View {
         #endif
         .navigationTitle(Text(verbatim: model.group?.name ?? ""))
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: locale, initial: true) { model.formattingLocale = locale }
         // Leaving the screen closes the undo window rather than dropping the delete: this model
         // goes away with the view, and with it the request that was still waiting.
         .onDisappear { model.flushPendingDeletion(using: client) }
@@ -169,7 +172,8 @@ struct GroupDetailView: View {
         var draft = ExpenseFormDraft(
             creatingIn: group,
             paidBy: activeParticipant?.participantID,
-            defaultSplit: app.recentGroups.defaultSplit(inGroup: model.groupID)
+            defaultSplit: app.recentGroups.defaultSplit(inGroup: model.groupID),
+            locale: locale
         )
         if let title = prefill?.title, !title.isEmpty { draft.title = title }
         if let amount = prefill?.amount, !amount.isEmpty { draft.amountText = amount }
@@ -251,7 +255,8 @@ struct GroupDetailView: View {
                     draft: ExpenseFormDraft(
                         settling: reimbursement,
                         group: group,
-                        title: String(localized: "Reimbursement")
+                        title: String(localized: "Reimbursement"),
+                        locale: locale
                     ),
                     onFinished: { await noteSettlement() }
                 )

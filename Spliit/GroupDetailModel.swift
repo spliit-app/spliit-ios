@@ -79,8 +79,13 @@ final class GroupDetailModel {
         self.groupID = groupID
     }
 
+    var formattingLocale: Locale = .autoupdatingCurrent
+
     var moneyFormatter: MoneyFormatter {
-        MoneyFormatter(currencySymbol: group?.currency ?? "", currencyCode: group?.currencyCode)
+        MoneyFormatter(
+            currencySymbol: group?.currency ?? "", currencyCode: group?.currencyCode,
+            locale: formattingLocale
+        )
     }
 
     func participant(_ id: String) -> Participant? {

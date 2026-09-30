@@ -147,7 +147,7 @@ struct ExpenseFormView: View {
         .onChange(of: rateRequest, initial: true) { startRateLookup() }
         .onDisappear { rateTask?.cancel() }
         .task(id: categoryQuestion) { await suggestCategory() }
-        .interactiveDismissDisabled(isSaving)
+        .savingDismissDisabled(isSaving)
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
         .sensoryFeedback(Haptics.refused, trigger: refusedCount)
     }

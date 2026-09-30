@@ -136,6 +136,98 @@ private struct CheckGroupModel {
         ))
         await staleSearch.value
         precondition(model.filter == "latest" && !model.hasMoreSearchResults)
-        print("PASS: totals cancellation/retry and stale responses; pagination cursor retry; uncanceled search debounce and response ordering")
+
+        // Exercise the three real sentinel loaders with their first pages already loaded.
+        let reload = Task { await model.reload(using: client) }
+        let fixtures = ["groups.get": "groups-get", "groups.balances.list": "balances-list",
+                        "categories.list": "categories-list"]
+        let expensesPage = Data(#"{"result":{"data":{"json":{"expenses":[],"hasMore":true,"nextCursor":20}}}}"#.utf8)
+        let activityPage = Data(#"{"result":{"data":{"json":{"activities":[],"hasMore":true,"nextCursor":20}}}}"#.utf8)
+        for _ in 0..<4 {
+            let request = try await HeldRequest.next()
+            let procedure = request.request.url!.lastPathComponent
+            if procedure == "groups.expenses.list" {
+                request.respond(expensesPage)
+            } else {
+                let fixture = fixtures[procedure]!
+                request.respond(try Data(contentsOf: URL(fileURLWithPath:
+                    "Packages/SpliitKit/Tests/SpliitAPITests/Fixtures/\(fixture).json"
+                )))
+            }
+        }
+        await reload.value
+        let activities = Task { await model.loadActivitiesIfNeeded(using: client) }
+        try await HeldRequest.next().respond(activityPage)
+        await activities.value
+        let search = Task { await model.search("pages", using: client) }
+        try await HeldRequest.next().respond(expensesPage)
+        await search.value
+
+        let loaders: [(String, @MainActor () async -> Void, @MainActor () -> Bool,
+                       @MainActor () -> Bool, Data)] = [
+            ("expenses", { await model.loadNextPage(using: client) },
+             { model.hasMoreExpenses }, { model.isLoadingMore }, expensesPage),
+            ("activity", { await model.loadNextActivityPage(using: client) },
+             { model.hasMoreActivities }, { model.isLoadingMoreActivities }, activityPage),
+            ("search", { await model.loadNextSearchPage(using: client) },
+             { model.hasMoreSearchResults }, { model.isLoadingMoreSearchResults }, expensesPage),
+        ]
+        for (name, load, hasMore, isLoading, response) in loaders {
+            for outcome in ["cancellation", "success", "failure"] {
+                let old = Task { await load() }
+                let oldRequest = try await HeldRequest.next()
+                // Start reentry while its predecessor is still running, before cancellation unwinds.
+                let replacement = Task { await load() }
+                let replacementRequest = try await HeldRequest.next()
+                precondition(oldRequest.request.url == replacementRequest.request.url, name)
+                switch outcome {
+                case "cancellation": old.cancel()
+                case "success":
+                    oldRequest.respond(Data(String(decoding: response, as: UTF8.self)
+                        .replacingOccurrences(of: "true", with: "false").utf8))
+                default: oldRequest.fail()
+                }
+                await old.value
+                precondition(hasMore() && isLoading(), name)
+                replacementRequest.respond(response)
+                await replacement.value
+                precondition(hasMore() && !isLoading(), name)
+            }
+
+            // First-page replacement invalidates reads started both before and during refresh.
+            let beforeRefresh = Task { await load() }
+            let beforeRequest = try await HeldRequest.next()
+            let refresh = Task {
+                switch name {
+                case "expenses": await model.reload(using: client)
+                case "activity": await model.refreshActivities(using: client)
+                default: await model.search("refreshed", using: client)
+                }
+            }
+            var firstRequest: HeldRequest?
+            for _ in 0..<(name == "expenses" ? 3 : 1) {
+                let request = try await HeldRequest.next()
+                let procedure = request.request.url!.lastPathComponent
+                if procedure == "groups.expenses.list" || procedure == "groups.activities.list" {
+                    firstRequest = request
+                } else {
+                    request.respond(try Data(contentsOf: URL(fileURLWithPath:
+                        "Packages/SpliitKit/Tests/SpliitAPITests/Fixtures/\(fixtures[procedure]!).json"
+                    )))
+                }
+            }
+            let duringRefresh = Task { await load() }
+            let duringRequest = try await HeldRequest.next()
+            firstRequest!.respond(Data(String(decoding: response, as: UTF8.self)
+                .replacingOccurrences(of: "true", with: "false").utf8))
+            await refresh.value
+            precondition(!hasMore() && !isLoading(), name)
+            beforeRequest.respond(response)
+            duringRequest.respond(response)
+            await beforeRefresh.value
+            await duringRefresh.value
+            precondition(!hasMore() && !isLoading(), name)
+        }
+        print("PASS: totals cancellation/stale responses; all pagination loaders reenter safely; uncanceled search ordering")
     }
 }

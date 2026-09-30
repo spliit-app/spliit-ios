@@ -439,8 +439,8 @@ Verified so far against the real local backend:
 
 Leaving a Compose screen does not currently forward Skip's cooperative task cancellation
 through the native Swift `.task` bridge. Do not infer canceled networking from tab changes.
-Android hardware Back during a write and activity recreation with an unsaved form still
-need coverage; disabling the Cancel button alone does not settle those cases.
+Activity recreation with an unsaved form and delayed out-of-order exchange-rate responses
+still need device coverage. Android Back during a failed save is now covered below.
 
 
 The shared models now retain pagination cursors on cancellation, allow a canceled Totals
@@ -456,10 +456,23 @@ all app/core/shortcut/category strings remain translated in French.
 core build (commands are at the top of the file). It fails against the previous model and
 passes with these changes: canceled Totals retry, older success/error/cancellation arriving
 last, pagination cursor preservation, and uncanceled search debounce/response ordering.
-This covers retry after cancellation unwinds; immediate pagination reentry before the old
-loader clears its in-flight flag remains a separate lifecycle gap.
+It also covers immediate pagination reentry before the previous loader unwinds, for expense,
+activity, and search pages. Each loader accepts the replacement read and only its request ID
+may update the cursor, results, or loading flag. First-page refreshes invalidate pages started
+before or during the refresh. The previous implementation fails this expanded check.
 
 Opening a currency or participant picker also exposed a native stack overflow: the pinned
 Skip accessibility-traits empty initializer recursively constructs itself through an array
 literal. Both pickers now use an explicit zero raw value on Android and retain the selected
 trait; Apple platforms use their normal empty value.
+
+
+Android save forms now register a small Back callback on their own dialog's dispatcher,
+using the existing Compose bridge. The callback is enabled only while saving and removed
+when its view leaves composition; normal idle Back and the existing gesture guard remain.
+The lifecycle smoke check delays a deliberately failed write without creating an expense:
+Back leaves the pending form visible, the error appears, the draft survives, and Back dismisses
+the idle form after acknowledging the error. The pending form and failure dialog are also
+verified in the optimized release APK on the dedicated API 36 emulator.
+The same guard is applied to create/edit group forms. Android debug/release builds and
+iOS builds/string checks pass.

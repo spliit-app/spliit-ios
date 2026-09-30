@@ -240,7 +240,7 @@ struct CreateGroupView: View {
                 Text(failure ?? "")
             }
         }
-        .interactiveDismissDisabled(isSaving)
+        .savingDismissDisabled(isSaving)
     }
 
     private func save() {
@@ -321,7 +321,7 @@ struct GroupSettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .trackScreen(.groupSettings)
         }
-        .interactiveDismissDisabled(isSaving)
+        .savingDismissDisabled(isSaving)
         .task { await load() }
     }
 

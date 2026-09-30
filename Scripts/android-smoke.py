@@ -265,7 +265,7 @@ def main():
                 return
 
         # Delay actual server responses, not synthetic fixtures, to exercise cancellation.
-        group_started, group_finished, stats_started = (threading.Event() for _ in range(3))
+        group_started, group_finished, stats_started, save_started = (threading.Event() for _ in range(4))
         delay_group = True
         stats_requests = 0
 
@@ -298,6 +298,21 @@ def main():
                 finally:
                     if is_group:
                         group_finished.set()
+
+            def do_POST(self):
+                # Deliberately fail without writing an expense: Back must retain the draft/error.
+                self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                save_started.set()
+                time.sleep(8)
+                data = json.dumps({"error": {"json": {
+                    "message": "Deliberate smoke-test save failure", "code": -32603,
+                    "data": {"code": "INTERNAL_SERVER_ERROR", "httpStatus": 503}
+                }}}).encode()
+                self.send_response(503)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
 
             def log_message(self, *_):
                 pass
@@ -338,6 +353,20 @@ def main():
             shell("input", "tap", *tab_points["Totals"])
             find("stats.groupTotal", timeout=25)
             print(f"PASS Totals loads after leaving during a delayed response ({stats_requests} requests)", flush=True)
+            tap("Expenses")
+            tap("expenses.add")
+            enter("expenseForm.title", "Retain draft")
+            enter("expenseForm.amount", "5")
+            tap("expenseForm.save")
+            assert save_started.wait(5), "The deliberately failed save never started"
+            shell("input", "keyevent", "4")
+            assert find("expenseForm.title").get("text") == "Retain draft"
+            find("Couldn’t save the expense", timeout=20)
+            tap("OK")
+            assert find("expenseForm.title").get("text") == "Retain draft"
+            shell("input", "keyevent", "4")
+            find("expenses.add")
+            print("PASS Back retains a pending save and its error, then dismisses the idle form", flush=True)
         finally:
             proxy.shutdown()
             proxy.server_close()

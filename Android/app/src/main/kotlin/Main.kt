@@ -30,10 +30,21 @@ class AndroidAppMain : Application() {
 }
 
 class MainActivity : AppCompatActivity() {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        if (BuildConfig.DEBUG && intent.getBooleanExtra("recreateActivity", false)) {
+            android.util.Log.i("SpliitLifecycleCheck", "Recreating activity in process ${android.os.Process.myPid()}")
+            recreate()
+        }
+    }
+
     // singleTask reuses this activity for incoming links. Skip's onOpenURL reads the cold
     // intent and registers a ComponentActivity onNewIntent listener for subsequent links.
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BuildConfig.DEBUG) {
+            android.util.Log.i("SpliitLifecycleCheck", "Created activity in process ${android.os.Process.myPid()}, restored=${savedInstanceState != null}")
+        }
         UIApplication.launch(this)
         // adb shell am start -S -n app.spliit.android.prototype/spliit.ui.MainActivity --ez checkLocalization true
         if (BuildConfig.DEBUG && intent?.getBooleanExtra("checkLocalization", false) == true) {

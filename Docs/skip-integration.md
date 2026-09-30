@@ -438,8 +438,9 @@ Verified so far against the real local backend:
 
 Leaving a Compose screen does not currently forward Skip's cooperative task cancellation
 through the native Swift `.task` bridge. Do not infer canceled networking from tab changes.
-Activity recreation with an unsaved form and delayed out-of-order exchange-rate responses
-still need device coverage. Android Back during a failed save is now covered below.
+Expense-form activity recreation and process death are covered by the recovery work below.
+Group-form restoration and delayed out-of-order exchange-rate responses still need device
+coverage. Android Back during a failed save is covered below.
 
 
 The shared models now retain pagination cursors on cancellation, allow a canceled Totals
@@ -515,3 +516,55 @@ participant lists, `12,34` entry saved as 1234 minor units, edit prefill, a `72,
 localized percentages, and the `30,17` settlement saved as 3017 minor units. The original
 app locale is restored when the check finishes. The previously supplied `fdf403b` APK is
 retained separately so physical-device feedback can identify which build was tested.
+
+### Expense draft recovery
+
+Actual `Activity.recreate()` and a background `am kill` both exposed lost expense drafts;
+the earlier rotation test did not recreate the activity. Android now checkpoints the raw
+expense form in one local atomic JSON file beside the recent-groups file. It preserves
+unfinished input, participant shares, conversion fields, locale, edit identity, the minted
+expense ID, and the full instance URL. It does not copy native Swift pointers or Compose
+state into Android bundles; the existing saveable-state suppression remains necessary.
+
+A restored activity reconstructs the matching expense form. Cancel/Back and successful writes
+clear only their owned recovery UUID; activity destruction leaves it intact. A write still
+running in the same process keeps the restored form disabled until its result arrives.
+Inputs and automatic rate replacement are held while saving. Pending writes are checkpointed
+before the request and are never automatically resubmitted after process death. A manual
+retry requires confirmation and gives a new create attempt a fresh ID. Older servers can
+ignore supplied IDs, so recovery cannot infer that a missing ID means nothing was saved.
+An edit fetch owns a native task canceled on disappearance, preventing a late response from
+checkpointing an edit the user already dismissed.
+
+Unreadable or conflicting drafts remain intact until explicitly discarded. Failure to write
+the checkpoint prevents a new request; storage errors are surfaced. Recovery is local to this
+Android prototype, not cloud sync or the planned cross-install group migration. Group-form
+drafts, scroll position, keyboard focus, and the selected tab are not restored by this change.
+Android cloud-backup and device-transfer rules exclude this temporary checkpoint so a stale
+backup cannot resurrect an already completed expense; the recent-group backup policy is
+unchanged. The rules use the platform's [backup exclusions](https://developer.android.com/identity/data/autobackup).
+
+The store's eight tests and existing form tests pass (63 selected host tests). Repeat the
+Android lifecycle check using the debug APK and dedicated emulator:
+
+```sh
+python3 Scripts/android-smoke.py --serial emulator-5556 --recreation-only
+```
+
+The debug host exposes the `recreateActivity` launch extra and logs the old/new activity's
+process ID, so the check distinguishes activity recreation from process death. The release
+host ignores that extra. The smoke flow checks new/edit draft recovery, normal dismissal,
+pending-write retention, and explicit retry after interrupted writes against isolated groups.
+The delayed-response check also cancels an edit before its response arrives and verifies that
+the dismissed form does not reappear after process death (`--lifecycle-only`).
+The dedicated debug emulator also retained an injected malformed draft until the explicit
+discard action, created a readable replacement, and removed that replacement on Cancel.
+The iOS build/string check passes with 268 app, 19 core, 4 shortcut, and 46 category keys,
+all translated in French. The release APK contains both backup-exclusion resources.
+The final release APK also restored a new draft after background process death and saved
+exactly one expense with the expected amount against the local backend.
+
+After adding a core source file, the root SwiftPM iOS-device build retained an old source list
+even though the Android and Xcode builds saw the file. Touching `Packages/SpliitKit/Package.swift`
+refreshed that graph. Check the native prebuild output as well as Gradle's final status: Skip's
+prebuild command can print Swift errors while Gradle still reports success.

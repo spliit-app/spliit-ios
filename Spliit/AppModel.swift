@@ -14,6 +14,10 @@ final class AppModel {
     let settings: SettingsStore
     let recentGroups: RecentGroupsStore
     let reviewPrompt: ReviewPromptStore
+    let expenseDrafts: ExpenseDraftStore
+    // Writes outlive an Android activity; a restored form must wait for their actual result.
+    var expenseWrites: Set<UUID> = []
+    var expenseWriteFailures: [UUID: String] = [:]
 
     #if canImport(Darwin)
     /// What the first-launch migration found, kept for logging.
@@ -35,6 +39,9 @@ final class AppModel {
         settings = SettingsStore(defaults: defaults)
         recentGroups = RecentGroupsStore(fileURL: recentGroupsFileURL, cloud: cloud)
         reviewPrompt = ReviewPromptStore(defaults: defaults)
+        expenseDrafts = ExpenseDraftStore(
+            fileURL: recentGroupsFileURL.deletingLastPathComponent().appending(path: "expense-draft.json")
+        )
     }
 
     /// Where the recent-groups list is mirrored, or nil to keep it on this device.

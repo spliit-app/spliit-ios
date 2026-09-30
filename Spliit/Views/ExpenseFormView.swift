@@ -33,17 +33,37 @@ struct ExpenseFormView: View {
     let onFinished: () async -> Void
 
     @State var form: ExpenseFormDraft?
+    @State var loadTask: Task<Void, Never>?
     @State var hasAttemptedSave = false
-    @State var isSaving = false
+    @State var localIsSaving = false
     @State var failure: String?
+    @State var recoveryID: UUID?
+    @State var conflictingDraftID: UUID?
+    @State var confirmInterruptedWrite = false
+
+    private var keepsDrafts: Bool {
+        #if os(Android)
+        true
+        #else
+        false
+        #endif
+    }
+
+    private var isSaving: Bool {
+        localIsSaving || recoveryID.map { app.expenseWrites.contains($0) } == true
+    }
+
+    private var interruptedWrite: Bool {
+        recoveryID == app.expenseDrafts.record?.id
+            && app.expenseDrafts.record?.phase == .submitting && !isSaving
+    }
     @FocusState var calculationField: CalculationField?
 
     /// The ID a new expense is created under. Minted here rather than left to the server so
     /// the form has it before saving, which is what makes the split it previews the one the
     /// expense is saved with — see `expenseID`. Fresh for every presentation of the form, and
-    /// fresh again after a save that failed: the server may have written the expense and only
-    /// the answer been lost, and a retry under the same ID would then collide with it rather
-    /// than create anything. The web form does the same.
+    /// fresh again for a retry: the server may have written the expense and only the answer
+    /// been lost. Android retains the attempted ID until the user confirms that retry.
     @State var mintedExpenseID = NanoID.generate()
 
     /// Counters rather than flags: the same outcome twice in a row is still two outcomes, and a
@@ -97,6 +117,7 @@ struct ExpenseFormView: View {
             Group {
                 if form != nil {
                     formBody(liveForm)
+                        .disabled(isSaving)
                 } else if failure != nil {
                     EmptyState(
                         art: .icon("exclamationmark.triangle"),
@@ -124,7 +145,7 @@ struct ExpenseFormView: View {
                     // the instance has answered with its address, and a save before that would
                     // write the expense without it. The shortcut that attaches one opens the form
                     // with the upload already running, which is exactly when somebody saves.
-                    Button(isSaving ? "Saving…" : "Save", action: save)
+                    Button(isSaving ? "Saving…" : "Save") { save() }
                         .disabled(isSaving || isUploading || form == nil)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
@@ -139,14 +160,42 @@ struct ExpenseFormView: View {
             }
             .alert("Couldn’t save the expense", isPresented: .constant(failure != nil && form != nil)) {
                 Button("OK", role: .cancel) { failure = nil }
+                if keepsDrafts && (app.expenseDrafts.hasUnreadableFile || conflictingDraftID != nil) {
+                    Button("Discard saved draft", role: .destructive) { discardConflictingDraft() }
+                        .disabled(conflictingDraftID.map { app.expenseWrites.contains($0) } == true)
+                }
             } message: {
                 Text(failure ?? "")
             }
+            .alert("Save these details?", isPresented: $confirmInterruptedWrite) {
+                Button("Cancel", role: .cancel) {}
+                Button("Save anyway") { save(confirmedRetry: true) }
+            } message: {
+                Text("The previous request may already have completed. Check the group before saving these details.")
+            }
         }
-        .task { await load() }
+        .task {
+            loadTask?.cancel()
+            loadTask = Task { await load() }
+        }
+        #if os(Android)
+        .onChange(of: form) { checkpoint() }
+        .onChange(of: app.expenseDrafts.record?.id) {
+            // A write from the previous activity finished while this form was restored.
+            if recoveryID != nil, app.expenseDrafts.record == nil, !localIsSaving {
+                Task { await onFinished(); dismiss() }
+            }
+        }
+        .onChange(of: recoveryID.flatMap { app.expenseWriteFailures[$0] }) {
+            if let recoveryID { failure = app.expenseWriteFailures[recoveryID] }
+        }
+        #endif
         .onChange(of: categories) { reconcileCategory() }
         .onChange(of: rateRequest, initial: true) { startRateLookup() }
-        .onDisappear { rateTask?.cancel() }
+        .onDisappear {
+            loadTask?.cancel()
+            rateTask?.cancel()
+        }
         .task(id: categoryQuestion) { await suggestCategory() }
         .savingDismissDisabled(isSaving)
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
@@ -175,6 +224,11 @@ struct ExpenseFormView: View {
     @ViewBuilder
     private func formBody(_ form: Binding<ExpenseFormDraft>) -> some View {
         Form {
+            if interruptedWrite {
+                Section {
+                    Text("The previous request may already have completed. Check the group before saving these details.")
+                }
+            }
             #if os(iOS)
             // Only on a new expense. Scanning a receipt is how an expense gets written down, not
             // how one gets corrected, and an expense already saved has an amount somebody typed
@@ -789,17 +843,32 @@ struct ExpenseFormView: View {
     }
 
     private func apply(_ rate: Decimal) {
+        guard !isSaving else { return }
         form?.use(rate: rate)
         autoFilledRate = form?.conversionRateText
     }
 
     private func load() async {
+        guard !Task.isCancelled else { return }
+        #if os(Android)
+        if let saved = app.expenseDrafts.record,
+           saved.groupID == group.id,
+           saved.instanceURL == SettingsStore.normalize(instanceURL.absoluteString),
+           saved.editingExpenseID == editingExpenseID {
+            recoveryID = saved.id
+            mintedExpenseID = saved.mintedExpenseID
+            form = saved.draft
+            failure = app.expenseWriteFailures[saved.id]
+            return
+        }
+        #endif
         if !mode.isEditing, suggestsCategories {
             categorySuggester.prepare()
         }
         if let draft {
             form = draft
             reconcileCategory()
+            beginCheckpoint()
             #if os(iOS)
             for photo in photosToAttach {
                 attach(photo)
@@ -812,8 +881,11 @@ struct ExpenseFormView: View {
             let response = try await client.call(
                 Spliit.expense(groupId: group.id, expenseId: expenseID)
             )
+            guard !Task.isCancelled else { return }
             form = ExpenseFormDraft(editing: response.expense, group: group, locale: locale)
+            beginCheckpoint()
         } catch {
+            guard !Task.isCancelled else { return }
             failure = error.localizedDescription
         }
     }
@@ -824,7 +896,7 @@ struct ExpenseFormView: View {
     /// variable — not necessarily the one this group is on. The list arrives in its own time, so
     /// this runs both when the draft is loaded and when the categories are.
     private func reconcileCategory() {
-        guard let categoryID = form?.categoryID, !categories.isEmpty,
+        guard !isSaving, let categoryID = form?.categoryID, !categories.isEmpty,
               !categories.contains(where: { $0.id == categoryID })
         else { return }
         form?.categoryID = 0
@@ -895,7 +967,12 @@ struct ExpenseFormView: View {
     }
     #endif
 
-    private func save() {
+    private func save(confirmedRetry: Bool = false) {
+        guard !isSaving else { return }
+        if interruptedWrite && !confirmedRetry {
+            confirmInterruptedWrite = true
+            return
+        }
         hasAttemptedSave = true
         guard let form, let values = form.formValues else {
             // Refused before anything was sent. The problems appear beside the fields that have
@@ -904,9 +981,10 @@ struct ExpenseFormView: View {
             return
         }
 
-        isSaving = true
+        if confirmedRetry, case .create = mode { mintedExpenseID = NanoID.generate() }
+        guard beginWrite() else { return }
         Task {
-            defer { isSaving = false }
+            defer { endWrite() }
             do {
                 switch mode {
                 case .create:
@@ -935,10 +1013,16 @@ struct ExpenseFormView: View {
                 // Before the reload, so it lands with the save rather than after the list has
                 // caught up — and while this view is still on screen to play it.
                 savedCount += 1
+                guard clearCheckpoint() else { return }
                 await onFinished()
                 dismiss()
             } catch {
+                #if os(Android)
+                // Keep the attempted identity and pending marker: a lost reply is ambiguous.
+                if let recoveryID { app.expenseWriteFailures[recoveryID] = error.localizedDescription }
+                #else
                 if case .create = mode { mintedExpenseID = NanoID.generate() }
+                #endif
                 failure = error.localizedDescription
             }
         }
@@ -951,21 +1035,115 @@ struct ExpenseFormView: View {
     }
 
     private func delete(_ expenseID: String) {
-        isSaving = true
+        guard !isSaving, beginWrite() else { return }
         Task {
-            defer { isSaving = false }
+            defer { endWrite() }
             do {
                 _ = try await client.call(
                     Spliit.deleteExpense(
                         groupId: group.id, expenseId: expenseID, by: actorID
                     )
                 )
+                guard clearCheckpoint() else { return }
                 await onFinished()
                 dismiss()
             } catch {
+                #if os(Android)
+                if let recoveryID { app.expenseWriteFailures[recoveryID] = error.localizedDescription }
+                #endif
                 failure = error.localizedDescription
             }
         }
+    }
+
+    private var editingExpenseID: String? {
+        if case .edit(let id) = mode { id } else { nil }
+    }
+
+    private func beginCheckpoint() {
+        // Compile these strings on Apple too so its catalogue extraction sees the Android UI.
+        guard keepsDrafts, let form else { return }
+        if app.expenseDrafts.hasUnreadableFile {
+            failure = String(localized: "The saved draft can’t be read. You can discard it to start a new one. Check the group for any previous save first.")
+            return
+        }
+        if let saved = app.expenseDrafts.record {
+            conflictingDraftID = saved.id
+            var message = String(localized: "Finish or discard the expense in \(saved.groupName) first.")
+            if saved.phase == .submitting {
+                message += "\n\n" + String(localized: "The previous request may already have completed. Check the group before saving these details.")
+            }
+            failure = message
+            return
+        }
+        let saved = ExpenseDraftSnapshot(
+            instanceURL: instanceURL, groupID: group.id, groupName: group.name,
+            editingExpenseID: editingExpenseID, mintedExpenseID: mintedExpenseID, draft: form
+        )
+        if app.expenseDrafts.save(saved) {
+            recoveryID = saved.id
+            conflictingDraftID = nil
+        }
+        else { failure = app.expenseDrafts.failure }
+    }
+
+    private func discardConflictingDraft() {
+        let cleared: Bool
+        if app.expenseDrafts.hasUnreadableFile {
+            cleared = app.expenseDrafts.discardUnreadableFile()
+        } else if let conflictingDraftID, !app.expenseWrites.contains(conflictingDraftID) {
+            cleared = app.expenseDrafts.clear(id: conflictingDraftID)
+            if cleared { app.expenseWriteFailures[conflictingDraftID] = nil }
+        } else {
+            return
+        }
+        guard cleared else { failure = app.expenseDrafts.failure; return }
+        conflictingDraftID = nil
+        failure = nil
+        beginCheckpoint()
+    }
+
+    @discardableResult private func checkpoint(submitting: Bool = false) -> Bool {
+        #if os(Android)
+        guard let form, let recoveryID, var saved = app.expenseDrafts.record,
+              saved.id == recoveryID else { return false }
+        saved.draft = form
+        saved.mintedExpenseID = mintedExpenseID
+        if submitting { saved.phase = .submitting }
+        let savedToDisk = app.expenseDrafts.save(saved)
+        if !savedToDisk { failure = app.expenseDrafts.failure }
+        return savedToDisk
+        #else
+        return true
+        #endif
+    }
+
+    private func beginWrite() -> Bool {
+        #if os(Android)
+        if recoveryID == nil { beginCheckpoint() }
+        #endif
+        guard checkpoint(submitting: true) else { return false }
+        localIsSaving = true
+        if let recoveryID {
+            app.expenseWriteFailures[recoveryID] = nil
+            app.expenseWrites.insert(recoveryID)
+        }
+        return true
+    }
+
+    private func endWrite() {
+        if let recoveryID { app.expenseWrites.remove(recoveryID) }
+        localIsSaving = false
+    }
+
+    private func clearCheckpoint() -> Bool {
+        guard let recoveryID else { return true }
+        guard app.expenseDrafts.clear(id: recoveryID) else {
+            failure = app.expenseDrafts.failure
+            return false
+        }
+        app.expenseWriteFailures[recoveryID] = nil
+        return true
     }
 }
 

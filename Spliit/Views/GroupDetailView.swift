@@ -15,6 +15,9 @@ struct GroupDetailView: View {
     @State var tab: GroupTab = .expenses
     @State var sheet: Sheet?
     @State var query = ""
+    #if os(Android)
+    @State var checkedExpenseRecovery = false
+    #endif
     /// What an intent knew about the expense before the form opened. Held apart from `Sheet` so
     /// the sheet's identity stays a plain string and it does not reopen when this changes.
     @State var prefill: ExpensePrefill?
@@ -121,8 +124,11 @@ struct GroupDetailView: View {
         // photographs a second time. Only when nothing is taking the sheet's place, though: an
         // intent arriving while the settings sheet is open swaps it for the form, and the
         // outgoing sheet's dismissal must not clear what the incoming one is about to read.
-        .sheet(item: $sheet, onDismiss: { if sheet == nil { prefill = nil } }, content: sheetContent)
+        .sheet(item: presentedSheet, onDismiss: { if sheet == nil { prefill = nil } }, content: sheetContent)
         .task { await model.loadIfNeeded(using: client) }
+        #if os(Android)
+        .onChange(of: model.group?.id, initial: true) { presentRecoveredExpense() }
+        #endif
         // The store belongs to the view layer, so the model is told who the user is rather than
         // asking. It is what attributes the delete that waits out its undo window, and it has to
         // survive both the group arriving — which is what makes an identity resolvable — and the
@@ -183,14 +189,74 @@ struct GroupDetailView: View {
     }
 
     private func collectRoutedIntent() {
-        switch Router.shared.takeDestination(for: model.groupID) {
+        let destination = Router.shared.takeDestination(for: model.groupID)
+        switch destination {
         case .newExpense(_, let prefill):
+            #if os(Android)
+            checkedExpenseRecovery = true
+            #endif
             self.prefill = prefill
             sheet = .createExpense
-        case .group, .none:
+        case .group:
+            #if os(Android)
+            presentRecoveredExpense()
+            #endif
+            break
+        case .none:
             break
         }
     }
+
+    /// Dismissal owns the UUID from this presentation, never whichever draft was saved later.
+    /// Activity destruction does not set this binding and must leave recovery data intact.
+    private var presentedSheet: Binding<Sheet?> {
+        #if os(Android)
+        let presentedID = sheet?.id
+        let recoveryID = recoveryRecord(for: sheet)?.id
+        return Binding(get: { self.sheet }, set: { value in
+            guard self.sheet?.id == presentedID else { return }
+            if value == nil, let recoveryID, let currentID = app.expenseDrafts.record?.id,
+               recoveryID != currentID { return }
+            if value == nil, let recoveryID, app.expenseDrafts.record?.id == recoveryID {
+                guard !app.expenseWrites.contains(recoveryID) else { return }
+                guard app.expenseDrafts.clear(id: recoveryID) else {
+                    app.expenseWriteFailures[recoveryID] = app.expenseDrafts.failure
+                    return
+                }
+                app.expenseWriteFailures[recoveryID] = nil
+            }
+            self.sheet = value
+        })
+        #else
+        return $sheet
+        #endif
+    }
+
+    #if os(Android)
+    private func recoveryRecord(for sheet: Sheet?) -> ExpenseDraftSnapshot? {
+        guard let saved = app.expenseDrafts.record, saved.groupID == model.groupID,
+              SettingsStore.normalize(app.instanceURL(forGroup: model.groupID).absoluteString)
+                == saved.instanceURL else { return nil }
+        switch sheet {
+        case .createExpense, .settle:
+            return saved.editingExpenseID == nil ? saved : nil
+        case .editExpense(let id):
+            return saved.editingExpenseID == id ? saved : nil
+        case .settings, .identity, .none:
+            return nil
+        }
+    }
+
+    private func presentRecoveredExpense() {
+        guard !checkedExpenseRecovery, model.group != nil, sheet == nil,
+              Router.shared.destination == nil, Router.shared.pendingURL == nil else { return }
+        checkedExpenseRecovery = true
+        guard let saved = app.expenseDrafts.record else { return }
+        let recoveredSheet: Sheet = saved.editingExpenseID.map(Sheet.editExpense) ?? .createExpense
+        guard recoveryRecord(for: recoveredSheet) != nil else { return }
+        sheet = recoveredSheet
+    }
+    #endif
 
     /// Who the user said they are in this group, resolved against the participants the group
     /// still has — someone who was removed is nobody in particular again.

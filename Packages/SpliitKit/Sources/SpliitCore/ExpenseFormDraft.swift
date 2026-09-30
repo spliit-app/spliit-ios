@@ -2,7 +2,7 @@ import Foundation
 import SpliitAPI
 
 /// One participant's row in the "Paid for" list.
-public struct ParticipantShareDraft: Identifiable, Equatable, Sendable {
+public struct ParticipantShareDraft: Codable, Identifiable, Equatable, Sendable {
     /// The server-side participant ID.
     public let id: String
     public var name: String
@@ -23,7 +23,7 @@ public struct ParticipantShareDraft: Identifiable, Equatable, Sendable {
 ///
 /// Mirrors `expenseFormSchema` in the web app, including the split-mode sum rules that are the
 /// easiest thing to get subtly wrong.
-public struct ExpenseFormDraft: Equatable, Sendable {
+public struct ExpenseFormDraft: Codable, Equatable, Sendable {
 
     public var title: String
     public var expenseDate: Date

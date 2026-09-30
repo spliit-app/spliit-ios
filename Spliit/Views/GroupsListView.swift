@@ -14,6 +14,9 @@ struct GroupsListView: View {
     @State var model = GroupsListModel()
     @State var path: [String] = []
     @State var sheet: Sheet?
+    #if os(Android)
+    @State var checkedExpenseRecovery = false
+    #endif
     /// Not one of the sheets: the camera takes the whole screen, and the cover is attached to
     /// the stack rather than to `content` — which swaps identity the moment the list stops
     /// being empty, taking any presentation hanging off it with it.
@@ -49,8 +52,17 @@ struct GroupsListView: View {
         // it is already on screen, so the destination is read on appearance and on every change
         // rather than only once.
         .onAppear {
+            #if os(Android)
+            let hasIncomingRoute = router.destination != nil || router.pendingURL != nil
+            #endif
             openRoutedGroup()
             if let url = router.takePendingURL() { open(url) }
+            #if os(Android)
+            if !checkedExpenseRecovery {
+                checkedExpenseRecovery = true
+                if !hasIncomingRoute { openRecoveredExpenseGroup() }
+            }
+            #endif
         }
         .onChange(of: router.destination) { openRoutedGroup() }
         .onOpenURL { open($0) }
@@ -132,6 +144,16 @@ struct GroupsListView: View {
             path = [groupID]
         }
     }
+
+    #if os(Android)
+    private func openRecoveredExpenseGroup() {
+        guard path.isEmpty, let saved = app.expenseDrafts.record,
+              app.recentGroups.groups.contains(where: { $0.groupId == saved.groupID }),
+              SettingsStore.normalize(app.instanceURL(forGroup: saved.groupID).absoluteString)
+                == saved.instanceURL else { return }
+        path = [saved.groupID]
+    }
+    #endif
 
     /// Reloads when the remembered groups change — including when one of them turns out to be
     /// on a different instance than the list thought.

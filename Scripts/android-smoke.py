@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--lifecycle-only", action="store_true", help="Only run delayed-response cancellation checks")
     parser.add_argument("--navigation-only", action="store_true", help="Only run group, links, search, and sharing checks")
     parser.add_argument("--locale-only", action="store_true", help="Only run French labels, decimal entry, totals, and settlement checks")
+    parser.add_argument("--recreation-only", action="store_true", help="Debug APK: recover drafts across activity recreation and process death, then check pending writes")
     args = parser.parse_args()
     sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Library/Android/sdk"))
     adb = shutil.which("adb") or str(sdk / "platform-tools/adb")
@@ -47,18 +48,21 @@ def main():
 
     def dump():
         target = "/data/local/tmp/spliit-smoke.xml"
-        shell("rm", "-f", target)
-        result = shell("uiautomator", "dump", "--compressed", target)
-        assert "dumped to:" in result, result
-        return ET.fromstring(shell("cat", target))
+        for _ in range(3):
+            shell("rm", "-f", target)
+            result = shell("uiautomator", "dump", "--compressed", target)
+            if "dumped to:" in result:
+                return ET.fromstring(shell("cat", target))
+            time.sleep(0.2)  # Android can briefly have no accessibility root during recreation.
+        raise AssertionError(result)
 
-    def find(selector, scroll=False, timeout=12):
+    def find(selector, scroll=False, timeout=12, enabled=True):
         deadline = time.monotonic() + timeout
         for _ in range(8 if scroll else 20):
             root = dump()
             for node in root.iter("node"):
                 if selector in (node.get("resource-id"), node.get("text"), node.get("content-desc")):
-                    if node.get("enabled") == "true":
+                    if not enabled or node.get("enabled") == "true":
                         return node
             if time.monotonic() >= deadline:
                 break
@@ -77,10 +81,12 @@ def main():
 
     def enter(selector, value, scroll=False):
         tap(selector, scroll)
+        find(selector)  # Wait for focus before sending Ctrl+A; otherwise only one character is deleted.
         shell("input", "keycombination", "113", "29")  # Ctrl+A
         shell("input", "keyevent", "67")  # Delete the selection.
         shell("input", "text", value.replace(" ", "%s"))
         shell("input", "keyevent", "4")  # Dismiss the keyboard.
+        assert find(selector).get("text") == value, f"Text entry failed for {selector}"
 
     def swipe_delete(title):
         node = find(title)
@@ -106,6 +112,32 @@ def main():
         return json.loads(subprocess.check_output(
             ["node", str(ROOT / "e2e/seed.mjs")], text=True, timeout=90
         ))
+
+    def recreate():
+        before = shell("pidof", APP).strip()
+        logs = shell("logcat", "-d", "-s", "SpliitLifecycleCheck:I", "*:S")
+        count = logs.count("restored=true")
+        shell("am", "start", "-W", "-n", ACTIVITY, "--ez", "recreateActivity", "true")
+        for _ in range(30):
+            logs = shell("logcat", "-d", "-s", "SpliitLifecycleCheck:I", "*:S")
+            if logs.count("restored=true") > count:
+                break
+            time.sleep(0.1)
+        assert logs.count("restored=true") > count, "Use a debug APK with the recreation trigger"
+        assert shell("pidof", APP).strip() == before, "Activity recreation restarted the process"
+
+    def kill_background_process():
+        before = shell("pidof", APP).strip()
+        shell("input", "keyevent", "3")
+        time.sleep(1)
+        shell("am", "kill", APP)
+        for _ in range(30):
+            if not shell("sh", "-c", f"pidof {APP} || true").strip():
+                break
+            time.sleep(0.1)
+        assert not shell("sh", "-c", f"pidof {APP} || true").strip(), "Background process did not exit"
+        shell("am", "start", "-W", "-n", ACTIVITY)
+        assert shell("pidof", APP).strip() != before, "Process-death test kept the old process"
 
     # Read the original locale before changing it; restore it even on a failed assertion.
     locales = shell("cmd", "locale", "get-app-locales", APP, "--user", "0")
@@ -192,7 +224,56 @@ def main():
 
         shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "en-US")
         shell("am", "start", "-W", "-S", "-n", ACTIVITY)
-        if not args.lifecycle_only and not args.navigation_only:
+        if args.recreation_only:
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", f"http://10.0.2.2:3009/groups/{group_id}")
+            tap("addByURL.add")
+            tap(f"groups.row.{group_id}.title")
+            # Android may replay this original VIEW intent after recreation/process death.
+            shell("am", "start", "-W", "-S", "-a", "android.intent.action.VIEW", "-d",
+                  f"app.spliit.spliitmobile://groups/{group_id}", APP)
+            tap("expenses.add")
+            enter("expenseForm.title", "Recovered draft")
+            enter("expenseForm.amount", "12.34")
+            recreate()
+            assert find("expenseForm.title").get("text") == "Recovered draft"
+            assert find("expenseForm.amount").get("text") == "12.34"
+            print("PASS same-process activity recreation preserves the draft", flush=True)
+            kill_background_process()
+            assert find("expenseForm.title").get("text") == "Recovered draft"
+            assert find("expenseForm.amount").get("text") == "12.34"
+            tap("expenseForm.save")
+            find("Recovered draft")
+            assert details("Recovered draft")["amount"] == 1234
+            assert len(expenses()) == 1
+            print("PASS process death preserves the draft; one expense saved", flush=True)
+
+            tap("Recovered draft")
+            enter("expenseForm.title", "Recovered edit")
+            enter("expenseForm.amount", "23.45")
+            kill_background_process()
+            assert find("expenseForm.title").get("text") == "Recovered edit"
+            assert find("expenseForm.amount").get("text") == "23.45"
+            tap("expenseForm.save")
+            find("Recovered edit")
+            assert details("Recovered edit")["amount"] == 2345
+            assert len(expenses()) == 1
+            print("PASS editing identity survives process death without creating a duplicate", flush=True)
+
+            tap("expenses.add")
+            enter("expenseForm.title", "Discarded draft")
+            shell("input", "keyevent", "4")
+            find("expenses.add")
+            kill_background_process()
+            # The original group link can reopen the group, but must not reopen the discarded form.
+            find("expenses.add")
+            tap("expenses.add")
+            assert find("expenseForm.title").get("text") == ""
+            tap("expenseForm.cancel")
+            print("PASS Back discards the draft and does not resurrect it after process death", flush=True)
+
+        if not args.lifecycle_only and not args.navigation_only and not args.recreation_only:
             tap("plus")
             tap("groups.addByURL")
             enter("addByURL.field", f"http://10.0.2.2:3009/groups/{group_id}")
@@ -254,7 +335,7 @@ def main():
             assert find(f"balances.row.{fen}.amount").get("text") == "£210.00"
             assert find(f"balances.row.{gil}.amount").get("text") == "-£210.00"
             print("PASS restart persistence and final balances", flush=True)
-        if not args.lifecycle_only:
+        if not args.lifecycle_only and not args.recreation_only:
             shell("am", "start", "-W", "-S", "-n", ACTIVITY)
             tap("plus")
             tap("groups.create")
@@ -341,16 +422,22 @@ def main():
 
         # Delay actual server responses, not synthetic fixtures, to exercise cancellation.
         group_started, group_finished, stats_started, save_started = (threading.Event() for _ in range(4))
+        edit_started, edit_finished = threading.Event(), threading.Event()
         delay_group = True
         stats_requests = 0
+        save_requests = 0
 
         class Proxy(BaseHTTPRequestHandler):
             def do_GET(self):
                 nonlocal stats_requests
                 is_group = self.path.startswith("/api/trpc/groups.get?") and delay_group
+                is_edit = self.path.startswith("/api/trpc/groups.expenses.get?")
                 try:
                     if is_group:
                         group_started.set()
+                        time.sleep(5)
+                    if is_edit:
+                        edit_started.set()
                         time.sleep(5)
                     if self.path.startswith("/api/trpc/groups.stats."):
                         stats_requests += 1
@@ -373,12 +460,16 @@ def main():
                 finally:
                     if is_group:
                         group_finished.set()
+                    if is_edit:
+                        edit_finished.set()
 
             def do_POST(self):
                 # Deliberately fail without writing an expense: Back must retain the draft/error.
+                nonlocal save_requests
                 self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                save_requests += 1
                 save_started.set()
-                time.sleep(8)
+                time.sleep(15 if args.recreation_only else 8)
                 data = json.dumps({"error": {"json": {
                     "message": "Deliberate smoke-test save failure", "code": -32603,
                     "data": {"code": "INTERNAL_SERVER_ERROR", "httpStatus": 503}
@@ -387,7 +478,10 @@ def main():
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
-                self.wfile.write(data)
+                try:
+                    self.wfile.write(data)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass  # Expected when the test kills the client process mid-request.
 
             def log_message(self, *_):
                 pass
@@ -429,16 +523,43 @@ def main():
             find("stats.groupTotal", timeout=25)
             print(f"PASS Totals loads after leaving during a delayed response ({stats_requests} requests)", flush=True)
             tap("Expenses")
+            tap("Internet")
+            assert edit_started.wait(5), "The delayed edit request never started"
+            tap("expenseForm.cancel")
+            assert edit_finished.wait(10), "The delayed edit response never finished"
+            kill_background_process()
+            shell("am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+                  f"app.spliit.spliitmobile://groups/{other['id']}", APP)
+            find("expenses.add")
+            print("PASS canceled edit load does not resurrect a draft after its response arrives", flush=True)
             tap("expenses.add")
             enter("expenseForm.title", "Retain draft")
             enter("expenseForm.amount", "5")
             tap("expenseForm.save")
             assert save_started.wait(5), "The deliberately failed save never started"
+            if args.recreation_only:
+                recreate()
+                assert find("expenseForm.title", enabled=False).get("text") == "Retain draft"
             shell("input", "keyevent", "4")
-            assert find("expenseForm.title").get("text") == "Retain draft"
+            assert find("expenseForm.title", enabled=False).get("text") == "Retain draft"
             find("Couldn’t save the expense", timeout=20)
             tap("OK")
             assert find("expenseForm.title").get("text") == "Retain draft"
+            if args.recreation_only:
+                print("PASS recreation retains a running write, its error, and the draft", flush=True)
+                save_started.clear()
+                tap("expenseForm.save")
+                find("Save these details?")
+                tap("Save anyway")
+                assert save_started.wait(5)
+                kill_background_process()
+                assert find("expenseForm.title").get("text") == "Retain draft"
+                find("The previous request may already have completed. Check the group before saving these details.")
+                tap("expenseForm.save")
+                find("Save these details?")
+                tap("Cancel")
+                assert save_requests == 2, "Recovery automatically resubmitted the write"
+                print("PASS process death during a write preserves the draft and requires explicit retry", flush=True)
             shell("input", "keyevent", "4")
             find("expenses.add")
             print("PASS Back retains a pending save and its error, then dismisses the idle form", flush=True)

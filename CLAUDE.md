@@ -445,10 +445,13 @@ signature does not.
 No third-party dependencies without a good reason — it keeps builds fast, CI simple and the
 review surface small.
 
-All user-facing strings are `LocalizedStringKey` or `String(localized:)`. In `SpliitCore` they
-need `bundle: Bundle.module`, or they resolve against the app bundle and can never be
-translated. The app ships English and French, so **a new string needs its French in the same
-commit** — `make strings` is what tells you which ones are outstanding.
+App strings use `LocalizedStringKey` or `String(localized:)`. In `SpliitCore`, use
+`NSLocalizedString("…", bundle: Bundle.module, comment: "")` and keep the English and French
+tables in `Resources/en.lproj/Localizable.strings` and `Resources/fr.lproj/Localizable.strings`.
+Native SwiftPM on Android supports these tables but does not compile `.xcstrings` catalogs;
+`String(localized:)` is also unavailable there. Keep the app's catalogs unchanged.
+The app ships English and French, so **a new string needs its French in the same commit** —
+`make strings` checks both the app catalogs and core tables for missing or stale keys and translations.
 
 Never build a sentence by concatenation, and never pick a plural form with a ternary: word
 order and plural categories are both the translation's business, not the call site's. Interpolate

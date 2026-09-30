@@ -4,7 +4,8 @@
 Xcode does this for you in the IDE; nothing does it from the command line, which is how the
 app catalogue came to hold 21 of its 166 keys. The compiler writes a `.stringsdata` beside
 every object file (see `SWIFT_EMIT_LOC_STRINGS` in project.yml), so a build knows the answer
-exactly — this reads those and compares them with what is committed.
+exactly — this reads those and compares them with what is committed. Core's native
+NSLocalizedString calls are extracted by Xcode's extractLocStrings tool instead.
 
 Reports three things, and exits non-zero for any of them:
 
@@ -15,10 +16,13 @@ Reports three things, and exits non-zero for any of them:
 
 Usage: check-strings.py <derived-data-path>
 """
+from __future__ import annotations
+
 import json
 import plistlib
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # Every language the app ships beyond the source one. Adding to this is what makes the check
@@ -28,11 +32,11 @@ LANGUAGES = ["fr"]
 REPO = Path(__file__).resolve().parent.parent
 
 # Which catalogue a string belongs in, decided by the file it was written in. SpliitCore has a
-# catalogue of its own because it is a package: `String(localized:)` there resolves against
+# table of its own because it is a package: `NSLocalizedString` there resolves against
 # `Bundle.module`, and a translation in the app's catalogue would never be found.
 CATALOGS = {
     "app": REPO / "Spliit/Resources/Localizable.xcstrings",
-    "core": REPO / "Packages/SpliitKit/Sources/SpliitCore/Resources/Localizable.xcstrings",
+    "core": REPO / "Packages/SpliitKit/Sources/SpliitCore/Resources/en.lproj/Localizable.strings",
     "shortcuts": REPO / "Spliit/Resources/AppShortcuts.xcstrings",
     "categories": REPO / "Spliit/Resources/Categories.xcstrings",
 }
@@ -53,6 +57,19 @@ def catalog_for(source: str, table: str) -> str | None:
     except ValueError:
         return "app"
     return "core"
+
+
+def core_keys(sources: Path = CORE_SOURCES) -> set[str]:
+    """Swift compiler string extraction does not include NSLocalizedString calls."""
+    with tempfile.TemporaryDirectory() as directory:
+        subprocess.run([
+            "xcrun", "extractLocStrings", "-q", "-o", directory,
+            *map(str, sorted(sources.rglob("*.swift"))),
+        ], check=True)
+        table = Path(directory) / "Localizable.strings"
+        return set(json.loads(subprocess.check_output(
+            ["plutil", "-convert", "json", "-o", "-", str(table)]
+        ))) if table.exists() else set()
 
 
 def extracted_keys(derived: Path) -> dict[str, set[str]]:
@@ -92,12 +109,31 @@ def extracted_keys(derived: Path) -> dict[str, set[str]]:
                 for key in entry.get("values") or [entry.get("key")]:
                     if key:
                         found[catalog].add(key)
+    found["core"] = core_keys()
     return found
 
 
 def committed(path: Path) -> dict:
     if not path.exists():
         return {}
+    if path.suffix == ".strings":
+        tables = {}
+        for language in ["en", *LANGUAGES]:
+            localized = path.parent.parent / f"{language}.lproj" / path.name
+            tables[language] = json.loads(subprocess.check_output(
+                ["plutil", "-convert", "json", "-o", "-", str(localized)]
+            )) if localized.exists() else {}
+        for language in LANGUAGES:
+            extra = tables[language].keys() - tables["en"].keys()
+            if extra:
+                raise ValueError(f"{language}: translations have no English key: {sorted(extra)}")
+        return {
+            key: {"localizations": {
+                language: {"stringUnit": {"value": tables[language].get(key)}}
+                for language in LANGUAGES
+            }}
+            for key in tables["en"]
+        }
     return json.loads(path.read_text(encoding="utf-8")).get("strings", {})
 
 
@@ -126,7 +162,12 @@ def main() -> int:
     problems = 0
 
     for name, path in CATALOGS.items():
-        entries = committed(path)
+        try:
+            entries = committed(path)
+        except ValueError as error:
+            print(f"{path.relative_to(REPO)} — {error}")
+            problems += 1
+            continue
         source_keys = found[name]
         relative = path.relative_to(REPO)
 

@@ -654,41 +654,41 @@ extension ExpenseFormDraft.Problem {
     public var message: String {
         switch self {
         case .titleTooShort:
-            String(localized: "Enter at least two characters.", bundle: Bundle.module)
+            NSLocalizedString("Enter at least two characters.", bundle: Bundle.module, comment: "")
         case .amountMissing:
-            String(localized: "You must enter an amount.", bundle: Bundle.module)
+            NSLocalizedString("You must enter an amount.", bundle: Bundle.module, comment: "")
         case .amountNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
         case .amountZero:
-            String(localized: "The amount must not be zero.", bundle: Bundle.module)
+            NSLocalizedString("The amount must not be zero.", bundle: Bundle.module, comment: "")
         case .amountTooLarge:
-            String(localized: "The amount must be lower than 10,000,000.", bundle: Bundle.module)
+            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: Bundle.module, comment: "")
         case .originalAmountMissing:
-            String(localized: "Enter what was actually paid.", bundle: Bundle.module)
+            NSLocalizedString("Enter what was actually paid.", bundle: Bundle.module, comment: "")
         case .originalAmountNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
         case .originalAmountZero:
-            String(localized: "The amount must not be zero.", bundle: Bundle.module)
+            NSLocalizedString("The amount must not be zero.", bundle: Bundle.module, comment: "")
         case .originalAmountTooLarge:
-            String(localized: "The amount must be lower than 10,000,000.", bundle: Bundle.module)
+            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: Bundle.module, comment: "")
         case .conversionRateMissing:
-            String(localized: "Enter an exchange rate.", bundle: Bundle.module)
+            NSLocalizedString("Enter an exchange rate.", bundle: Bundle.module, comment: "")
         case .conversionRateNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
         case .conversionRateNotPositive:
-            String(localized: "The rate must be strictly greater than zero.", bundle: Bundle.module)
+            NSLocalizedString("The rate must be strictly greater than zero.", bundle: Bundle.module, comment: "")
         case .payerMissing:
-            String(localized: "You must select a participant.", bundle: Bundle.module)
+            NSLocalizedString("You must select a participant.", bundle: Bundle.module, comment: "")
         case .noParticipantsSelected:
-            String(localized: "The expense must be paid for at least one participant.", bundle: Bundle.module)
+            NSLocalizedString("The expense must be paid for at least one participant.", bundle: Bundle.module, comment: "")
         case .shareNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
         case .shareNotPositive:
-            String(localized: "All shares must be higher than 0.", bundle: Bundle.module)
+            NSLocalizedString("All shares must be higher than 0.", bundle: Bundle.module, comment: "")
         case .amountsDoNotSumToTotal:
-            String(localized: "Sum of amounts must equal the expense amount.", bundle: Bundle.module)
+            NSLocalizedString("Sum of amounts must equal the expense amount.", bundle: Bundle.module, comment: "")
         case .percentagesDoNotSumTo100:
-            String(localized: "Sum of percentages must equal 100.", bundle: Bundle.module)
+            NSLocalizedString("Sum of percentages must equal 100.", bundle: Bundle.module, comment: "")
         }
     }
 }

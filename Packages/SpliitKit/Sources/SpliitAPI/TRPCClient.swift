@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Talks to a Spliit instance's tRPC endpoint.
 ///
@@ -31,7 +34,9 @@ public struct TRPCClient: Sendable {
         configuration.timeoutIntervalForRequest = 20
         configuration.timeoutIntervalForResource = 30
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        #if canImport(Darwin)
         configuration.waitsForConnectivity = false
+        #endif
         return URLSession(configuration: configuration)
     }()
 

@@ -56,7 +56,7 @@ ASC_KEY_ID    ?= 3NJ328MR4F
 ASC_ISSUER_ID ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots frames run shot sim sim-clean clean lint archive ipa testflight
+.PHONY: help setup generate build build-device device strings test test-live android-build android-test e2e e2e-up e2e-down e2e-seed fixtures screenshots frames run shot sim sim-clean clean lint archive ipa testflight
 
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -102,6 +102,13 @@ strings: build ## Check the string catalogues against the strings in the source
 
 test: ## Run the unit suites on the host (no simulator)
 	@cd Packages/SpliitKit && swift test
+
+android-build: ## Build SpliitKit for Android (requires Skip and the Swift Android SDK)
+	@cd Packages/SpliitKit && skip android build
+
+# Skip 1.9.11 runs only one of Swift 6.4 swiftbuild's per-target test runners.
+android-test: ## Run SpliitKit tests on an Android emulator/device
+	@cd Packages/SpliitKit && skip android test --testing-library testing --build-system native
 
 test-live: ## Run the API suites against the local instance (needs `make e2e-up`)
 	@cd Packages/SpliitKit && SPLIIT_LIVE_BASE_URL=$(E2E_URL) swift test --filter Live

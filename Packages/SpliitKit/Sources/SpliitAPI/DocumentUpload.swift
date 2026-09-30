@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Puts a document where the instance keeps them, and says when it keeps them nowhere.
 ///

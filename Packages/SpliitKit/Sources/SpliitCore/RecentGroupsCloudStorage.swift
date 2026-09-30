@@ -12,6 +12,7 @@ public protocol RecentGroupsCloudStorage: AnyObject {
     func observeExternalChanges(_ handler: @escaping @MainActor () -> Void)
 }
 
+#if canImport(Darwin)
 /// The recent-groups list in iCloud's key-value store.
 ///
 /// Key-value rather than CloudKit because of what this list is: a few dozen short rows, no
@@ -78,3 +79,4 @@ public final class UbiquitousRecentGroupsCloudStorage: RecentGroupsCloudStorage 
         }
     }
 }
+#endif

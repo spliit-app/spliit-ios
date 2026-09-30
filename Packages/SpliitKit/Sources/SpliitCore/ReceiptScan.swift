@@ -283,6 +283,7 @@ public enum ReceiptText {
     /// expiry instead of the purchase date is making the same mistake the detector would, and it
     /// is caught in the same place.
     public static func date(in transcript: String, today: Date = .now) -> Date? {
+        #if canImport(Darwin)
         // The data detector reads far more written forms than a list of formats would, in every
         // language the phone knows — which is the point, since a receipt is printed in the
         // language of wherever it was bought.
@@ -300,6 +301,11 @@ public enum ReceiptText {
         return matches.lazy
             .compactMap(\.date)
             .first { $0 >= earliest && $0 <= latest }
+        #else
+        // ponytail: no NSDataDetector on Android; add date recognition with the OCR integration.
+        // A missing date leaves the expense form's date untouched.
+        return nil
+        #endif
     }
 
     // MARK: - The merchant

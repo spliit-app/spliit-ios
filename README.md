@@ -178,10 +178,11 @@ they cover the other half, which is that the app says so plainly.
 
 ## Languages
 
-English and French. Both come from String Catalogs — `Spliit/Resources/Localizable.xcstrings`
-for the app, `AppShortcuts.xcstrings` for the phrases Siri listens for, `Categories.xcstrings`
-for the expense categories, and one inside `SpliitCore` for the form validation messages, which
-needs to be its own because `String(localized:)` there resolves against `Bundle.module`.
+English and French. The app uses String Catalogs — `Spliit/Resources/Localizable.xcstrings`,
+`AppShortcuts.xcstrings` for the phrases Siri listens for, and `Categories.xcstrings` for the
+expense categories. Core form validation uses `Resources/en.lproj/Localizable.strings` and
+`Resources/fr.lproj/Localizable.strings` inside `SpliitCore`, read through `NSLocalizedString`
+with `Bundle.module`. These standard tables also work with native Swift on Android.
 
 **Categories are translated on the client**, because the server does not translate them:
 `categories.list` returns "Groceries" to everyone. The web app has the same problem and solves

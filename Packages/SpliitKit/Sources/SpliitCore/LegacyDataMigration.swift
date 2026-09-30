@@ -1,3 +1,4 @@
+#if canImport(Darwin)
 import Foundation
 
 /// Pulls the React Native app's two stored keys into values the SwiftUI app understands.
@@ -59,3 +60,4 @@ public enum LegacyDataMigration {
         let baseUrl: String?
     }
 }
+#endif

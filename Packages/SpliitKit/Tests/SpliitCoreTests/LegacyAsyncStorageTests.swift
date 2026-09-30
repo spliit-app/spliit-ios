@@ -1,3 +1,4 @@
+#if canImport(Darwin)
 import Foundation
 import Testing
 
@@ -123,3 +124,4 @@ struct LegacyAsyncStorageTests {
         #expect(storage.value(forKey: "recent-groups")?.contains("Current") == true)
     }
 }
+#endif

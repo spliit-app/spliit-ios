@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// A conversion rate, and the day it is actually from.
 public struct ExchangeRate: Equatable, Sendable {

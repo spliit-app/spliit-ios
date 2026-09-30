@@ -30,7 +30,9 @@ struct EmptyState<Actions: View>: View {
             ScrollView {
                 content.frame(maxWidth: .infinity, minHeight: proxy.size.height)
             }
+            #if os(iOS)
             .scrollBounceBehavior(.basedOnSize)
+            #endif
         }
     }
 
@@ -67,7 +69,7 @@ struct EmptyState<Actions: View>: View {
     private var artwork: some View {
         switch art {
         case .logo:
-            Image("Logo")
+            Image("Logo", bundle: UIResources.bundle)
                 .resizable()
                 .scaledToFit()
                 .frame(height: 60)
@@ -93,6 +95,7 @@ extension EmptyState where Actions == EmptyView {
     }
 }
 
+#if os(iOS)
 #Preview("Welcome") {
     EmptyState(
         art: .logo,
@@ -119,3 +122,4 @@ extension EmptyState where Actions == EmptyView {
         Button("Try again") {}.buttonStyle(.borderedProminent)
     }
 }
+#endif

@@ -654,41 +654,41 @@ extension ExpenseFormDraft.Problem {
     public var message: String {
         switch self {
         case .titleTooShort:
-            NSLocalizedString("Enter at least two characters.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at least two characters.", bundle: CoreResources.bundle, comment: "")
         case .amountMissing:
-            NSLocalizedString("You must enter an amount.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("You must enter an amount.", bundle: CoreResources.bundle, comment: "")
         case .amountNotANumber:
-            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .amountZero:
-            NSLocalizedString("The amount must not be zero.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("The amount must not be zero.", bundle: CoreResources.bundle, comment: "")
         case .amountTooLarge:
-            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountMissing:
-            NSLocalizedString("Enter what was actually paid.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter what was actually paid.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountNotANumber:
-            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountZero:
-            NSLocalizedString("The amount must not be zero.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("The amount must not be zero.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountTooLarge:
-            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: CoreResources.bundle, comment: "")
         case .conversionRateMissing:
-            NSLocalizedString("Enter an exchange rate.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter an exchange rate.", bundle: CoreResources.bundle, comment: "")
         case .conversionRateNotANumber:
-            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .conversionRateNotPositive:
-            NSLocalizedString("The rate must be strictly greater than zero.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("The rate must be strictly greater than zero.", bundle: CoreResources.bundle, comment: "")
         case .payerMissing:
-            NSLocalizedString("You must select a participant.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("You must select a participant.", bundle: CoreResources.bundle, comment: "")
         case .noParticipantsSelected:
-            NSLocalizedString("The expense must be paid for at least one participant.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("The expense must be paid for at least one participant.", bundle: CoreResources.bundle, comment: "")
         case .shareNotANumber:
-            NSLocalizedString("Invalid number.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .shareNotPositive:
-            NSLocalizedString("All shares must be higher than 0.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("All shares must be higher than 0.", bundle: CoreResources.bundle, comment: "")
         case .amountsDoNotSumToTotal:
-            NSLocalizedString("Sum of amounts must equal the expense amount.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Sum of amounts must equal the expense amount.", bundle: CoreResources.bundle, comment: "")
         case .percentagesDoNotSumTo100:
-            NSLocalizedString("Sum of percentages must equal 100.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Sum of percentages must equal 100.", bundle: CoreResources.bundle, comment: "")
         }
     }
 }

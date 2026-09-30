@@ -48,6 +48,12 @@ BY_TABLE = {"AppShortcuts": "shortcuts", "Categories": "categories"}
 
 
 def catalog_for(source: str, table: str) -> str | None:
+    # Package targets also emit strings now. Skip's own keys belong to its own bundles.
+    if not source or not any(
+        Path(source).resolve().is_relative_to(root)
+        for root in (REPO / "Spliit", REPO / "iOS", CORE_SOURCES)
+    ):
+        return None
     if table in BY_TABLE:
         return BY_TABLE[table]
     if table != "Localizable":

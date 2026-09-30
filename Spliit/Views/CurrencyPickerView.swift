@@ -20,8 +20,8 @@ struct CurrencyPickerView: View {
     /// The chosen currency, or nil for "custom symbol".
     let onSelect: (Currency?) -> Void
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
+    @Environment(\.dismiss) var dismiss
+    @State var query = ""
 
     private let currencies = Currency.all()
     private let suggested = Currency.suggested()
@@ -34,11 +34,15 @@ struct CurrencyPickerView: View {
                 list
             }
         }
+        #if os(iOS)
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: Text("Name or code")
         )
+        #else
+        .searchable(text: $query, prompt: Text("Name or code"))
+        #endif
         .navigationTitle("Currency")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -109,7 +113,9 @@ struct CurrencyPickerView: View {
 
                 checkmark(isSelected: currency.code == selectedCode)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(currency.code == selectedCode ? [.isSelected] : [])
@@ -132,7 +138,9 @@ struct CurrencyPickerView: View {
 
                 checkmark(isSelected: selectedCode == nil)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selectedCode == nil ? [.isSelected] : [])
@@ -180,8 +188,10 @@ struct CurrencyPickerView: View {
     }
 }
 
+#if os(iOS)
 #Preview {
     NavigationStack {
         CurrencyPickerView(selectedCode: "CHF") { _ in }
     }
 }
+#endif

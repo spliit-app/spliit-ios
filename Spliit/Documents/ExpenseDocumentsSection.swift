@@ -1,3 +1,4 @@
+#if os(iOS)
 import PhotosUI
 import SpliitAPI
 import SpliitCore
@@ -202,3 +203,4 @@ struct ExpenseDocumentsSection: View {
         uploads.attach(photo, to: instanceURL, app: app) { documents.append($0) }
     }
 }
+#endif

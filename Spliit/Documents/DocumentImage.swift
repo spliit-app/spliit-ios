@@ -1,3 +1,4 @@
+#if os(iOS)
 import ImageIO
 import UIKit
 
@@ -115,3 +116,4 @@ extension UIImage.Orientation {
         }
     }
 }
+#endif

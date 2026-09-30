@@ -9,18 +9,20 @@ import SwiftUI
 /// server details fill in. A server that can't be reached costs detail, not the list.
 struct GroupsListView: View {
 
-    @Environment(AppModel.self) private var app
-    @State private var model = GroupsListModel()
-    @State private var path: [String] = []
-    @State private var sheet: Sheet?
+    @Environment(AppModel.self) var app
+    @State var model = GroupsListModel()
+    @State var path: [String] = []
+    @State var sheet: Sheet?
     /// Not one of the sheets: the camera takes the whole screen, and the cover is attached to
     /// the stack rather than to `content` — which swaps identity the moment the list stops
     /// being empty, taking any presentation hanging off it with it.
+    #if os(iOS)
     @State private var isScanningQRCode = false
-    @State private var linkFailure: String?
+    #endif
+    @State var linkFailure: String?
     private var router: Router { Router.shared }
 
-    private enum Sheet: String, Identifiable {
+    enum Sheet: String, Identifiable {
         case settings, createGroup, addByURL
         var id: String { rawValue }
     }
@@ -51,9 +53,11 @@ struct GroupsListView: View {
         }
         .onChange(of: router.destination) { openRoutedGroup() }
         .onOpenURL { open($0) }
+        #if os(iOS)
         .fullScreenCover(isPresented: $isScanningQRCode) {
             ScanGroupQRCodeView { app.recentGroups.remember($0) }
         }
+        #endif
         .alert(
             "Couldn’t open that link",
             isPresented: .constant(linkFailure != nil)
@@ -155,10 +159,12 @@ struct GroupsListView: View {
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
                 Button("Add by link", systemImage: "link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+                #if os(iOS)
                 Button("Add by QR code", systemImage: "qrcode.viewfinder") {
                     isScanningQRCode = true
                 }
                 .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                #endif
             } label: {
                 Label("Add group", systemImage: "plus")
             }
@@ -222,9 +228,13 @@ struct GroupsListView: View {
     @ToolbarContentBuilder
     private var wordmarkToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) { wordmark }
+            #if os(iOS)
             .sharedBackgroundVisibility(.hidden)
+            #endif
         ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
+            #if os(iOS)
             .sharedBackgroundVisibility(.hidden)
+            #endif
     }
 
     /// The asset is 522×180, and both numbers are needed here. A height on its own is not enough:
@@ -237,7 +247,7 @@ struct GroupsListView: View {
     /// Fixed size, like the welcome screen's: the navigation bar is 44pt whatever the text size,
     /// so a mark that grew with Dynamic Type would only be clipped by it.
     private var wordmark: some View {
-        Image("Logo")
+        Image("Logo", bundle: UIResources.bundle)
             .resizable()
             .scaledToFit()
             .frame(width: Self.wordmarkWidth, height: Self.wordmarkHeight)
@@ -285,12 +295,14 @@ struct GroupsListView: View {
                     }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
 
+                    #if os(iOS)
                     Button { isScanningQRCode = true } label: {
                         Text("Add by QR code")
                             .frame(maxWidth: .infinity)
                             .multilineTextAlignment(.center)
                     }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                    #endif
                 }
                 .buttonStyle(.bordered)
             }
@@ -404,7 +416,7 @@ struct GroupsListView: View {
     }
 }
 
-private struct GroupRow: View {
+struct GroupRow: View {
     let group: RecentGroup
     let summary: GroupSummary?
 
@@ -434,7 +446,11 @@ private struct GroupRow: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                #if os(iOS)
                 .labelStyle(.compact)
+                #else
+                .labelStyle(.titleAndIcon)
+                #endif
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -451,6 +467,7 @@ private struct GroupRow: View {
 }
 
 /// Fetches the server-side detail for the remembered groups.
+@MainActor
 @Observable
 final class GroupsListModel {
 

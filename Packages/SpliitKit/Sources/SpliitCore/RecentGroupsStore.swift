@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+#if SKIP_BRIDGE
+import SkipFuse
+#endif
 import SpliitAPI
 
 /// Who the person holding this phone is, in one group.

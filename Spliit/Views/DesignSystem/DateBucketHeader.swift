@@ -22,6 +22,6 @@ struct DateBucketHeader: View {
             // still hear "This week". This has to be the string overload — `textCase` is an
             // environment value, so a `Text` passed here comes back uppercased along with the
             // one on screen, which is exactly the trap this comment exists to describe.
-            .accessibilityLabel(title)
+            .accessibilityLabel(title, isEnabled: true)
     }
 }

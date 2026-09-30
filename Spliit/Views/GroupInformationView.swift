@@ -20,7 +20,7 @@ import SwiftUI
 /// has no room for a fifth.
 struct GroupInformationView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -40,7 +40,10 @@ struct GroupInformationView: View {
         // Everything here is the group, so unlike the expense and balance tabs there is no second
         // request to wait on and nothing to draw while the first one is out.
         if model.isLoadingGroup {
-            ProgressView().controlSize(.large)
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
         } else if model.didFailToLoad {
             EmptyState(
                 art: .icon("wifi.exclamationmark"),
@@ -78,7 +81,9 @@ struct GroupInformationView: View {
                 Text(note)
                     // What people put here is a meeting point, an IBAN, a link — things that are
                     // written down in order to be copied back out.
+                    #if os(iOS)
                     .textSelection(.enabled)
+                    #endif
                     .accessibilityIdentifier(AccessibilityID.GroupInformation.note)
             } else {
                 Text("No information yet.")

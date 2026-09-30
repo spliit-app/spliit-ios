@@ -9,14 +9,14 @@ import SwiftUI
 /// lets somebody be handed a group on an instance this device has never talked to.
 struct AddGroupByURLView: View {
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
 
     let onAdded: (RecentGroup) -> Void
 
-    @State private var urlText = ""
-    @State private var isChecking = false
-    @State private var problem: String?
+    @State var urlText = ""
+    @State var isChecking = false
+    @State var problem: String?
 
     var body: some View {
         NavigationStack {

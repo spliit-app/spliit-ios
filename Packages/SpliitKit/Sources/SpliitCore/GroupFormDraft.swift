@@ -184,26 +184,26 @@ extension GroupFormDraft.Problem {
     public var message: String {
         switch self {
         case .nameTooShort:
-            NSLocalizedString("Enter at least two characters.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at least two characters.", bundle: CoreResources.bundle, comment: "")
         case .nameTooLong:
-            NSLocalizedString("Enter at most 50 characters.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at most 50 characters.", bundle: CoreResources.bundle, comment: "")
         case .currencyMissing:
-            NSLocalizedString("Enter at least one character.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at least one character.", bundle: CoreResources.bundle, comment: "")
         case .currencyTooLong:
-            NSLocalizedString("Enter at most five characters.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at most five characters.", bundle: CoreResources.bundle, comment: "")
         case .currencyCodeInvalid:
             NSLocalizedString(
                 "This group’s currency code isn’t valid. Pick a currency, or choose a custom symbol.",
-                bundle: Bundle.module, comment: ""
+                bundle: CoreResources.bundle, comment: ""
             )
         case .noParticipants:
-            NSLocalizedString("A group needs at least one participant.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("A group needs at least one participant.", bundle: CoreResources.bundle, comment: "")
         case .participantNameTooShort:
-            NSLocalizedString("Enter at least two characters.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at least two characters.", bundle: CoreResources.bundle, comment: "")
         case .participantNameTooLong:
-            NSLocalizedString("Enter at most 50 characters.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Enter at most 50 characters.", bundle: CoreResources.bundle, comment: "")
         case .duplicateParticipantName:
-            NSLocalizedString("Another participant already has this name.", bundle: Bundle.module, comment: "")
+            NSLocalizedString("Another participant already has this name.", bundle: CoreResources.bundle, comment: "")
         }
     }
 }

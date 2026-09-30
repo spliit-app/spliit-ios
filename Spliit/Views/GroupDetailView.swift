@@ -5,29 +5,29 @@ import SwiftUI
 /// A single group: its expenses and its balances, with the group-level actions in the toolbar.
 struct GroupDetailView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
     private var client: TRPCClient { app.client(forGroup: model.groupID) }
-    @State private var model: GroupDetailModel
-    @State private var tab: GroupTab = .expenses
-    @State private var sheet: Sheet?
-    @State private var query = ""
+    @State var model: GroupDetailModel
+    @State var tab: GroupTab = .expenses
+    @State var sheet: Sheet?
+    @State var query = ""
     /// What an intent knew about the expense before the form opened. Held apart from `Sheet` so
     /// the sheet's identity stays a plain string and it does not reopen when this changes.
-    @State private var prefill: ExpensePrefill?
+    @State var prefill: ExpensePrefill?
 
     init(groupID: String) {
         _model = State(initialValue: GroupDetailModel(groupID: groupID))
     }
 
     /// Named to stay clear of SwiftUI's own `Tab`, which `TabView` needs below.
-    private enum GroupTab: Hashable {
+    enum GroupTab: Hashable {
         case expenses, balances, stats, information, search
     }
 
-    private enum Sheet: Identifiable {
+    enum Sheet: Identifiable {
         case createExpense
         case editExpense(String)
         case settle(Reimbursement)
@@ -101,7 +101,9 @@ struct GroupDetailView: View {
         // Reading a long list of expenses is the one thing this screen is for, and the tab bar is
         // not needed while it happens. ROADMAP §4 asked for this at the start; nothing had
         // applied it.
+        #if os(iOS)
         .tabBarMinimizeBehavior(.onScrollDown)
+        #endif
         .navigationTitle(model.group?.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         // Leaving the screen closes the undo window rather than dropping the delete: this model
@@ -209,6 +211,7 @@ struct GroupDetailView: View {
         switch sheet {
         case .createExpense:
             if let group = model.group {
+                #if os(iOS)
                 ExpenseFormView(
                     mode: .create,
                     group: group,
@@ -217,6 +220,15 @@ struct GroupDetailView: View {
                     photosToAttach: prefill?.photos ?? [],
                     onFinished: { await model.reloadAfterExpenseChange(using: client) }
                 )
+                #else
+                ExpenseFormView(
+                    mode: .create,
+                    group: group,
+                    categories: model.categories,
+                    draft: prefilledDraft(for: group),
+                    onFinished: { await model.reloadAfterExpenseChange(using: client) }
+                )
+                #endif
             }
 
         case .editExpense(let expenseID):

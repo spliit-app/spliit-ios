@@ -37,4 +37,15 @@ with tempfile.TemporaryDirectory() as directory:
     source.write_text('let ordinary = "Not localized"\n')
     assert checker["core_keys"](root) == set()
 
+for source, table, expected in [
+    ("Spliit/Views/ExpenseRow.swift", "Localizable", "app"),
+    ("Spliit/Shared/ExpenseCategoryName.swift", "Categories", "categories"),
+    ("Spliit/Intents/SpliitIntents.swift", "AppShortcuts", "shortcuts"),
+    ("Packages/SpliitKit/Sources/SpliitCore/ExpenseFormDraft.swift", "Localizable", "core"),
+    (".build/checkouts/skip-ui/Sources/SkipUI/Text.swift", "Localizable", None),
+    (".build/checkouts/skip-ui/Sources/SkipUI/Text.swift", "Categories", None),
+]:
+    assert checker["catalog_for"](str(checker["REPO"] / source), table) == expected
+assert checker["catalog_for"]("", "Localizable") is None
+
 print("String table checks passed.")

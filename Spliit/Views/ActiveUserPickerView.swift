@@ -15,7 +15,7 @@ struct ActiveUserPickerView: View {
     let selection: ActiveParticipant?
     let onSelect: (ActiveParticipant) -> Void
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationStack {
@@ -62,7 +62,9 @@ struct ActiveUserPickerView: View {
 
                 checkmark(isSelected: isSelected)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -83,7 +85,9 @@ struct ActiveUserPickerView: View {
 
                 checkmark(isSelected: isSelected)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -107,6 +111,7 @@ struct ActiveUserPickerView: View {
     }
 }
 
+#if os(iOS)
 #Preview {
     ActiveUserPickerView(
         group: SpliitAPI.Group(
@@ -126,3 +131,4 @@ struct ActiveUserPickerView: View {
         onSelect: { _ in }
     )
 }
+#endif

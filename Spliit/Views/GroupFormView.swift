@@ -21,9 +21,9 @@ struct GroupFormView: View {
     let onSave: () -> Void
     let onCancel: () -> Void
 
-    @State private var hasAttemptedSave = false
-    @State private var blockedParticipant: String?
-    @FocusState private var focusedParticipant: ParticipantDraft.ID?
+    @State var hasAttemptedSave = false
+    @State var blockedParticipant: String?
+    @FocusState var focusedParticipant: ParticipantDraft.ID?
 
     var body: some View {
         Form {
@@ -83,7 +83,11 @@ struct GroupFormView: View {
                     text: $draft.information,
                     axis: .vertical
                 )
+                #if os(iOS)
                 .lineLimit(3...6)
+                #else
+                .lineLimit(6)
+                #endif
                 .accessibilityIdentifier(AccessibilityID.GroupForm.informationField)
             }
 
@@ -197,13 +201,13 @@ struct GroupFormView: View {
 /// "Create group", presented as a sheet from the group list.
 struct CreateGroupView: View {
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
 
-    @State private var draft = GroupFormDraft(newGroupIn: .autoupdatingCurrent)
-    @State private var instance: InstanceChoice
-    @State private var isSaving = false
-    @State private var failure: String?
+    @State var draft = GroupFormDraft(newGroupIn: .autoupdatingCurrent)
+    @State var instance: InstanceChoice
+    @State var isSaving = false
+    @State var failure: String?
 
     /// Called with the new group so the caller can remember it and open it.
     let onCreated: (RecentGroup) -> Void
@@ -268,8 +272,8 @@ struct CreateGroupView: View {
 /// "Group settings" — the same form, loaded from the server so participant IDs survive.
 struct GroupSettingsView: View {
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
 
     let groupID: String
     let onSaved: (String) -> Void
@@ -278,14 +282,14 @@ struct GroupSettingsView: View {
     /// ever reads it.
     private var client: TRPCClient { app.client(forGroup: groupID) }
 
-    @State private var draft: GroupFormDraft?
-    @State private var participantsWithExpenses: Set<String> = []
+    @State var draft: GroupFormDraft?
+    @State var participantsWithExpenses: Set<String> = []
     /// Who was in the group when this form opened, kept only to resolve who is saving it. The
     /// draft's own list is being edited, and someone removing themselves here is still the one
     /// who made the change.
-    @State private var participants: [Participant] = []
-    @State private var isSaving = false
-    @State private var failure: String?
+    @State var participants: [Participant] = []
+    @State var isSaving = false
+    @State var failure: String?
 
     var body: some View {
         NavigationStack {
@@ -306,7 +310,10 @@ struct GroupSettingsView: View {
                         description: Text(failure ?? "")
                     )
                 } else {
-                    ProgressView().controlSize(.large)
+                    ProgressView()
+                        #if os(iOS)
+                        .controlSize(.large)
+                        #endif
                 }
             }
             .navigationTitle("Group settings")

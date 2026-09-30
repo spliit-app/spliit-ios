@@ -1,3 +1,4 @@
+#if os(iOS)
 import PhotosUI
 import SpliitAPI
 import SpliitCore
@@ -189,3 +190,4 @@ struct ReceiptScanSection: View {
         #endif
     }
 }
+#endif

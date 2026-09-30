@@ -1,3 +1,4 @@
+#if os(iOS)
 import AppIntents
 import Foundation
 import SpliitAPI
@@ -101,3 +102,4 @@ extension CategoryEntityQuery: EntityStringQuery {
         }
     }
 }
+#endif

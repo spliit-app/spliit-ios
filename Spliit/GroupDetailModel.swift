@@ -1,10 +1,14 @@
 import Foundation
 import Observation
+#if SKIP_BRIDGE
+import SkipFuse
+#endif
 import SpliitAPI
 import SpliitCore
 
 /// Everything one group's screens need, loaded once and shared by both tabs so that adding an
 /// expense updates the balances without either tab knowing about the other.
+@MainActor
 @Observable
 final class GroupDetailModel {
 

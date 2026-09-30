@@ -1,9 +1,13 @@
 import Foundation
 import Observation
+#if SKIP_BRIDGE
+import SkipFuse
+#endif
 import SpliitAPI
 import SpliitCore
 
 /// The composition root: the stores the app reads from, and the client it talks through.
+@MainActor
 @Observable
 final class AppModel {
 
@@ -11,8 +15,10 @@ final class AppModel {
     let recentGroups: RecentGroupsStore
     let reviewPrompt: ReviewPromptStore
 
+    #if canImport(Darwin)
     /// What the first-launch migration found, kept for logging.
     private(set) var migration: LegacyDataMigration.Result?
+    #endif
 
     private let defaults: UserDefaults
 
@@ -37,10 +43,14 @@ final class AppModel {
     /// simulator signed into somebody's iCloud account would otherwise hand it a second list
     /// nobody asked for.
     static func cloudStorage() -> (any RecentGroupsCloudStorage)? {
+        #if canImport(Darwin)
         #if DEBUG
         if UITestSupport.isRunningUITests { return nil }
         #endif
         return UbiquitousRecentGroupsCloudStorage()
+        #else
+        return nil
+        #endif
     }
 
     /// The instance a group is on: the address stored with it, or the default for a group that
@@ -102,12 +112,15 @@ final class AppModel {
 
     /// Everything that has to happen once, before the first screen reads a store.
     func prepare() {
+        #if canImport(Darwin)
         migrateFromReactNativeIfNeeded()
+        #endif
         // After the migration, which is what can still change the default: a list brought over
         // from the React Native app is a list of groups on whatever instance *it* was pointed at.
         recentGroups.stampInstances(with: settings.defaultInstanceURL)
     }
 
+    #if canImport(Darwin)
     /// Brings the React Native app's data across, once, on the first launch after the update.
     ///
     /// Deliberately conservative: it never overwrites data this app already has, and it leaves
@@ -133,4 +146,5 @@ final class AppModel {
         defaults.set(true, forKey: Key.didMigrate)
         migration = result
     }
+    #endif
 }

@@ -92,14 +92,15 @@ assumptions; recorded ones prove it agrees with the server.
 `.accessibilityIdentifier` applies to every descendant of the view it modifies, and an outer
 one silently replaces the identifiers set inside it — a screen-level identifier on a
 `NavigationStack` erases the identifier of every button beneath it. All identifiers live in
-[`Shared/AccessibilityID.swift`](Shared/AccessibilityID.swift), shared by the app and the test
+[`Spliit/Shared/AccessibilityID.swift`](Spliit/Shared/AccessibilityID.swift), shared by the app and the test
 bundle, and are added in the same commit as the view they belong to.
 
 ## Layout
 
 ```
-Spliit/              the app: SwiftUI views, assets, the string catalogues
-Shared/              code shared with the UI test bundle (accessibility identifiers)
+iOS/                thin iOS app host
+Spliit/             shared SpliitUI module: views, assets, string catalogues
+  Shared/           code shared with the UI test bundle (accessibility identifiers)
 Packages/SpliitKit/
   SpliitAPI/         tRPC client, superjson coding, models, endpoints
   SpliitCore/        stores, the React Native migration, formatting

@@ -32,6 +32,14 @@ Packages/*/.build/
 .env
 .env.local
 
+# Android build output and local signing
+Android/.gradle/
+Android/.kotlin/
+Android/local.properties
+Android/app/keystore.properties
+*.keystore
+*.jks
+
 # The Spliit server, checked out by CI to run the end-to-end suite
 .spliit-server/
 

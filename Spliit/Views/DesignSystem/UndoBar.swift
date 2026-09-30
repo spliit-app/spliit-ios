@@ -26,7 +26,11 @@ struct UndoBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        #if os(iOS)
         .glassEffect(.regular, in: .capsule)
+        #else
+        .background(.regularMaterial, in: Capsule())
+        #endif
         .padding(.horizontal, 16)
     }
 }
@@ -42,38 +46,50 @@ extension View {
     }
 }
 
-private struct ExpenseUndoBar: ViewModifier {
+struct ExpenseUndoBar: ViewModifier {
 
     let model: GroupDetailModel
 
     /// Undo and the window closing both end with nothing pending, so the pending value alone
     /// cannot tell them apart. Counting the undos does.
-    @State private var undoCount = 0
+    @State var undoCount = 0
 
     func body(content: Content) -> some View {
-        content
-            .safeAreaBar(edge: .bottom) {
-                if let pending = model.pendingDeletion {
-                    UndoBar(message: Text("Deleted “\(pending.expense.title)”")) {
-                        undoCount += 1
-                        model.undoDelete()
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
+        Group {
+            #if os(iOS)
+            content.safeAreaBar(edge: .bottom) { pendingBar }
+            #else
+            VStack(spacing: 0) {
+                content.frame(maxWidth: .infinity, maxHeight: .infinity)
+                pendingBar
             }
-            .animation(Motion.base, value: model.pendingDeletion)
-            // Only on the way in. Going quiet again is the window closing, which is not an event
-            // anyone did — and a buzz five seconds after a swipe belongs to nothing on screen.
-            .sensoryFeedback(trigger: model.pendingDeletion) { previous, current in
-                previous == nil && current != nil ? Haptics.deleted : nil
+            #endif
+        }
+        .animation(Motion.base, value: model.pendingDeletion)
+        // Only on the way in: the window closing isn't another deletion.
+        .sensoryFeedback(trigger: model.pendingDeletion) { previous, current in
+            previous == nil && current != nil ? Haptics.deleted : nil
+        }
+        .sensoryFeedback(Haptics.undone, trigger: undoCount)
+    }
+
+    @ViewBuilder
+    private var pendingBar: some View {
+        if let pending = model.pendingDeletion {
+            UndoBar(message: Text("Deleted “\(pending.expense.title)”")) {
+                undoCount += 1
+                model.undoDelete()
             }
-            .sensoryFeedback(Haptics.undone, trigger: undoCount)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 }
 
+#if os(iOS)
 #Preview {
     Color(.systemGroupedBackground)
         .safeAreaBar(edge: .bottom) {
             UndoBar(message: Text("Deleted “Pizza night”")) {}
         }
 }
+#endif

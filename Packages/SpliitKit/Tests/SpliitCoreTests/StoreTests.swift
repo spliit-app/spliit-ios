@@ -7,9 +7,10 @@ import Testing
 @Suite("Settings")
 struct SettingsStoreTests {
 
-    private func makeDefaults() throws -> UserDefaults {
+    private func makeDefaults() throws -> Foundation.UserDefaults {
         let name = "settings-tests-\(UUID().uuidString)"
-        return try #require(UserDefaults(suiteName: name))
+        let defaults = Foundation.UserDefaults(suiteName: name)
+        return try #require(defaults)
     }
 
     @Test("A fresh install creates groups on the official instance")

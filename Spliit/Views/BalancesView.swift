@@ -5,12 +5,12 @@ import SwiftUI
 /// Who is up and who is down, and the shortest set of payments that settles it.
 struct BalancesView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
     private var client: TRPCClient { app.client(forGroup: model.groupID) }
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AppTextSize private var dynamicTypeSize
     let model: GroupDetailModel
     let onSettle: (Reimbursement) -> Void
     /// Opens the "who are you?" picker, which this screen shares with the information tab.
@@ -25,7 +25,10 @@ struct BalancesView: View {
         // Balances arrive separately from the group, and a participant list drawn before them
         // is a row of zeroes that reads as "everyone is settled up".
         if model.isLoadingGroup || model.isLoadingBalances {
-            ProgressView().controlSize(.large)
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
         } else if model.didFailToLoad || model.didFailToLoadBalances {
             EmptyState(
                 art: .icon("wifi.exclamationmark"),
@@ -199,7 +202,7 @@ struct BalancesView: View {
 }
 
 /// A diverging bar: owed to the right of centre, owing to the left.
-private struct BalanceRow: View {
+struct BalanceRow: View {
     let participant: Participant
     let position: Int
     let balance: Balance
@@ -230,7 +233,11 @@ private struct BalanceRow: View {
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
+                                #if os(iOS)
                                 .background(.quaternary, in: .capsule)
+                                #else
+                                .background(Color.secondary.opacity(0.15), in: .capsule)
+                                #endif
                                 .accessibilityIdentifier(
                                     AccessibilityID.ActiveUser.badge(participant.id)
                                 )
@@ -261,7 +268,11 @@ private struct BalanceRow: View {
 
             ZStack(alignment: .leading) {
                 Rectangle()
+                    #if os(iOS)
                     .fill(.quaternary)
+                    #else
+                    .fill(Color.secondary.opacity(0.15))
+                    #endif
                     .frame(width: 1)
                     .offset(x: half)
 
@@ -295,7 +306,7 @@ private struct BalanceRow: View {
     }
 }
 
-private struct ReimbursementRow: View {
+struct ReimbursementRow: View {
     let index: Int
     let reimbursement: Reimbursement
     let from: Participant?

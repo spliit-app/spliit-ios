@@ -12,20 +12,20 @@ import SwiftUI
 extension Color {
 
     /// Owed to you. Emerald, darkened in light mode to clear AA against white.
-    static let moneyPositive = Color("MoneyPositive")
+    static let moneyPositive = Color("MoneyPositive", bundle: UIResources.bundle)
 
     /// You owe. The logo's coral, darkened for light mode and lightened for dark.
-    static let moneyNegative = Color("MoneyNegative")
+    static let moneyNegative = Color("MoneyNegative", bundle: UIResources.bundle)
 
     /// Pink-700. Rare by design — the monogram palette, and the occasional non-money accent.
-    static let brandSecondary = Color("BrandSecondary")
+    static let brandSecondary = Color("BrandSecondary", bundle: UIResources.bundle)
 
     /// The accent at a whisper, for the tile an empty state's icon sits in. A tint rather than a
     /// translucency, so it does not change with whatever happens to be behind it.
-    static let brandAccentSoft = Color("BrandAccentSoft")
+    static let brandAccentSoft = Color("BrandAccentSoft", bundle: UIResources.bundle)
 
     /// One of the eight monogram colours, by the index `MonogramPalette` derives from an ID.
     static func monogram(_ index: Int) -> Color {
-        Color("Monogram\((index % MonogramPalette.count) + 1)")
+        Color("Monogram\((index % MonogramPalette.count) + 1)", bundle: UIResources.bundle)
     }
 }

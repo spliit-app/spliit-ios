@@ -1,6 +1,6 @@
 # The Xcode project is generated from this file — never edit Spliit.xcodeproj by hand, and
 # never commit it. Run `make generate` after adding a target, a build setting or a resource.
-# Adding source files needs nothing: the whole Spliit/ folder is picked up.
+# Shared sources live in the SpliitUI package under Spliit/; iOS/ is the app host.
 
 name: Spliit
 
@@ -13,8 +13,8 @@ options:
   generateEmptyDirectories: true
 
 packages:
-  SpliitKit:
-    path: Packages/SpliitKit
+  SpliitUI:
+    path: .
 
 settings:
   base:
@@ -35,13 +35,16 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: Spliit
-      - path: Shared
+      - path: iOS
+      # Compile the same resource sources into the app bundle: existing iOS String(localized:),
+      # Text, named colors/images, permission text and shortcuts use its default bundle.
+      - path: Spliit/Resources
+        buildPhase: resources
+      - path: Spliit/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
-      - package: SpliitKit
-        product: SpliitAPI
-      - package: SpliitKit
-        product: SpliitCore
+      - package: SpliitUI
+        product: SpliitUI
     settings:
       base:
         # The App Store record this replaces. Changing it would ship a second, separate app
@@ -119,7 +122,7 @@ targets:
     platform: iOS
     sources:
       - path: SpliitUITests
-      - path: Shared
+      - path: Spliit/Shared
     dependencies:
       - target: Spliit
     settings:

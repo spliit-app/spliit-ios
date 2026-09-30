@@ -7,7 +7,7 @@ import SwiftUI
 /// only ever be wrong for every group that isn't on it.
 struct SettingsView: View {
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationStack {

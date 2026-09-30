@@ -1,3 +1,4 @@
+#if os(iOS)
 import CoreGraphics
 import ImageIO
 import SwiftUI
@@ -121,3 +122,4 @@ struct DocumentCamera: UIViewControllerRepresentable {
         }
     }
 }
+#endif

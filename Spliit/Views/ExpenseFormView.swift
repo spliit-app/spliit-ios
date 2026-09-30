@@ -12,9 +12,9 @@ struct ExpenseFormView: View {
         var isEditing: Bool { if case .edit = self { true } else { false } }
     }
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
+    @AppTextSize private var dynamicTypeSize
 
     /// Wide enough for "100.00" at the body size, and it has to grow with the text or the
     /// digits are clipped long before the largest sizes.
@@ -25,15 +25,17 @@ struct ExpenseFormView: View {
     let categories: [ExpenseCategory]
     /// Prefilled for a new expense; nil when editing, since it is fetched.
     let draft: ExpenseFormDraft?
+    #if os(iOS)
     /// Photographs a shortcut handed over with the expense, uploaded as soon as the form is up.
     var photosToAttach: [ReceiptPhoto] = []
+    #endif
     let onFinished: () async -> Void
 
-    @State private var form: ExpenseFormDraft?
-    @State private var hasAttemptedSave = false
-    @State private var isSaving = false
-    @State private var failure: String?
-    @FocusState private var calculationField: CalculationField?
+    @State var form: ExpenseFormDraft?
+    @State var hasAttemptedSave = false
+    @State var isSaving = false
+    @State var failure: String?
+    @FocusState var calculationField: CalculationField?
 
     /// The ID a new expense is created under. Minted here rather than left to the server so
     /// the form has it before saving, which is what makes the split it previews the one the
@@ -41,22 +43,32 @@ struct ExpenseFormView: View {
     /// fresh again after a save that failed: the server may have written the expense and only
     /// the answer been lost, and a retry under the same ID would then collide with it rather
     /// than create anything. The web form does the same.
-    @State private var mintedExpenseID = NanoID.generate()
+    @State var mintedExpenseID = NanoID.generate()
 
     /// Counters rather than flags: the same outcome twice in a row is still two outcomes, and a
     /// flag that is already true does not trigger anything.
-    @State private var savedCount = 0
-    @State private var refusedCount = 0
+    @State var savedCount = 0
+    @State var refusedCount = 0
 
+    #if os(iOS)
     /// The receipts on their way to the bucket. The form's, not the documents section's, so an
     /// upload starts whether or not that section — the last row of a long form — has been built
     /// yet. See `DocumentUploads`.
     @State private var uploads = DocumentUploads()
+    #endif
 
-    @State private var rateLookup = RateLookup.idle
+    private var isUploading: Bool {
+        #if os(iOS)
+        uploads.isUploading
+        #else
+        false
+        #endif
+    }
+
+    @State var rateLookup = RateLookup.idle
     /// The last rate this screen filled in by itself, so a rate the user typed over it is left
     /// alone by the next lookup.
-    @State private var autoFilledRate: String?
+    @State var autoFilledRate: String?
 
     /// What the on-device model has guessed for the category from the title, and whether it is
     /// still the form's to change. See `CategorySuggestion`.
@@ -72,7 +84,7 @@ struct ExpenseFormView: View {
     private var client: TRPCClient { app.client(on: instanceURL) }
 
     private var rates: ExchangeRates {
-        #if DEBUG
+        #if DEBUG && os(iOS)
         if let stubbed = UITestSupport.stubbedExchangeRates() { return stubbed }
         #endif
         return ExchangeRates()
@@ -90,7 +102,10 @@ struct ExpenseFormView: View {
                         description: Text(failure ?? "")
                     )
                 } else {
-                    ProgressView().controlSize(.large)
+                    ProgressView()
+                        #if os(iOS)
+                        .controlSize(.large)
+                        #endif
                 }
             }
             .navigationTitle(mode.isEditing ? "Edit expense" : "New expense")
@@ -107,7 +122,7 @@ struct ExpenseFormView: View {
                     // write the expense without it. The shortcut that attaches one opens the form
                     // with the upload already running, which is exactly when somebody saves.
                     Button(isSaving ? "Saving…" : "Save", action: save)
-                        .disabled(isSaving || uploads.isUploading || form == nil)
+                        .disabled(isSaving || isUploading || form == nil)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
             }
@@ -156,6 +171,7 @@ struct ExpenseFormView: View {
     @ViewBuilder
     private func formBody(_ form: Binding<ExpenseFormDraft>) -> some View {
         Form {
+            #if os(iOS)
             // Only on a new expense. Scanning a receipt is how an expense gets written down, not
             // how one gets corrected, and an expense already saved has an amount somebody typed
             // on purpose.
@@ -169,6 +185,7 @@ struct ExpenseFormView: View {
                     form.wrappedValue.apply(scan)
                 }
             }
+            #endif
 
             Section {
                 TextField("What was it for?", text: form.title)
@@ -242,10 +259,15 @@ struct ExpenseFormView: View {
 
             Section("Notes") {
                 TextField("Anything worth remembering?", text: form.notes, axis: .vertical)
+                    #if os(iOS)
                     .lineLimit(2...5)
+                    #else
+                    .lineLimit(5)
+                    #endif
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.notesField)
             }
 
+            #if os(iOS)
             // Below the expense itself, and on an edit as well as a create: unlike scanning,
             // which is how an expense gets written down, a receipt is worth attaching to one
             // that was written down last week — and one attached from the web app has to be
@@ -255,6 +277,7 @@ struct ExpenseFormView: View {
                 uploads: uploads,
                 instanceURL: instanceURL
             )
+            #endif
 
             if case .edit(let expenseID) = mode {
                 Section {
@@ -475,7 +498,9 @@ struct ExpenseFormView: View {
                     Toggle(isOn: $participant.isIncluded) {
                         Text(participant.name)
                     }
+                    #if os(iOS)
                     .toggleStyle(.checkbox)
+                    #endif
                     .accessibilityIdentifier(
                         AccessibilityID.ExpenseForm.participantToggle(participant.id)
                     )
@@ -693,7 +718,7 @@ struct ExpenseFormView: View {
         .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationOperator(symbol))
     }
 
-    private enum RateLookup: Equatable {
+    enum RateLookup: Equatable {
         case idle
         case loading
         case found(ExchangeRate)
@@ -775,9 +800,11 @@ struct ExpenseFormView: View {
         if let draft {
             form = draft
             reconcileCategory()
+            #if os(iOS)
             for photo in photosToAttach {
                 attach(photo)
             }
+            #endif
             return
         }
         guard case .edit(let expenseID) = mode else { return }
@@ -857,6 +884,7 @@ struct ExpenseFormView: View {
         }
     }
 
+    #if os(iOS)
     /// Starts a receipt on its way to the bucket, and puts it on the expense once it lands.
     /// `self.form` rather than the draft in hand, for the reason `liveForm` gives: two uploads
     /// finishing in turn each have to append to the array the other left.
@@ -865,6 +893,7 @@ struct ExpenseFormView: View {
             self.form?.documents.append(document)
         }
     }
+    #endif
 
     private func save() {
         hasAttemptedSave = true
@@ -999,6 +1028,7 @@ extension SplitMode {
     }
 }
 
+#if os(iOS)
 /// A leading checkbox, closer to the old app's list than a trailing switch and much less
 /// cramped once a value field shares the row.
 private struct CheckboxToggleStyle: ToggleStyle {
@@ -1033,3 +1063,4 @@ private struct CheckboxToggleStyle: ToggleStyle {
 extension ToggleStyle where Self == CheckboxToggleStyle {
     static var checkbox: CheckboxToggleStyle { CheckboxToggleStyle() }
 }
+#endif

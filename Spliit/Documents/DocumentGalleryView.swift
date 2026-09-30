@@ -1,3 +1,4 @@
+#if os(iOS)
 import SpliitAPI
 import SwiftUI
 
@@ -227,3 +228,4 @@ final class ZoomingScrollView: UIScrollView, UIScrollViewDelegate {
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) { centreImage() }
 }
+#endif

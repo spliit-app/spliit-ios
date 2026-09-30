@@ -19,7 +19,7 @@ import SwiftUI
 /// the web app by someone who never said who they were reads "Someone" here — accurately.
 struct ActivityLogView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -29,10 +29,10 @@ struct ActivityLogView: View {
     /// The expense a row opened, if any. Held here rather than handed up to `GroupDetailView`:
     /// this screen is pushed over that one, and a sheet presented from a view that is no longer
     /// the visible one is a sheet that may never appear.
-    @State private var editingExpense: EditedExpense?
+    @State var editingExpense: EditedExpense?
 
     /// `sheet(item:)` needs something `Identifiable`, and an expense ID is a bare `String`.
-    private struct EditedExpense: Identifiable {
+    struct EditedExpense: Identifiable {
         let id: String
     }
 
@@ -61,7 +61,10 @@ struct ActivityLogView: View {
     @ViewBuilder
     private var content: some View {
         if model.isLoadingActivities {
-            ProgressView().controlSize(.large)
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
         } else if model.didFailToLoad || model.didFailToLoadActivities {
             EmptyState(
                 art: .icon("wifi.exclamationmark"),
@@ -142,7 +145,7 @@ struct ActivityLogView: View {
 }
 
 /// One line of the log: what happened, and when.
-private struct ActivityRow: View {
+struct ActivityRow: View {
 
     let activity: Activity
     /// Whoever did it, already resolved against the group. Nil when the client that made the
@@ -172,11 +175,19 @@ private struct ActivityRow: View {
                     // Only where there is something to open: a hint on every row would promise
                     // a destination for the ones whose expense has been deleted. The empty
                     // branch is `verbatim` so that "" is not extracted as a string to translate.
+                    #if os(iOS)
                     .accessibilityHint(
                         opensExpense
                             ? Text("Opens this expense for editing")
                             : Text(verbatim: "")
                     )
+                    #else
+                    .accessibilityValue(
+                        opensExpense
+                            ? Text("Opens this expense for editing")
+                            : Text(verbatim: "")
+                    )
+                    #endif
 
                 Text(timestamp)
                     .font(.caption)
@@ -186,7 +197,9 @@ private struct ActivityRow: View {
             // Fills the row, so the whole width is the tap target rather than just the words.
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        #if os(iOS)
         .contentShape(.rect)
+        #endif
     }
 
     /// The same glyphs the app uses for these actions elsewhere: `plus` adds an expense,

@@ -1,3 +1,4 @@
+#if os(iOS)
 import SpliitAPI
 import SwiftUI
 
@@ -86,3 +87,4 @@ struct DocumentThumbnail: View {
             .task(id: document.url) { await images.load(document.url) }
     }
 }
+#endif

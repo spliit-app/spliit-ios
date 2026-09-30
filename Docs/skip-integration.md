@@ -1,9 +1,8 @@
 # Android integration with Skip
 
-Status: phase 1 complete in `skip-integration-plan`, based on upstream
-commit `80b2e984b3dc07782983f24586d7e4568ada2a02`. The Android UI and platform libraries
-remain proposed; their capabilities below are documented capabilities, not verified
-integration with Spliit.
+Status: phase 1 complete and pushed in `skip-integration-plan`; phase 2 is in progress,
+based on upstream commit `80b2e984b3dc07782983f24586d7e4568ada2a02`. The Android expense
+flow and platform libraries are not yet verified with Spliit.
 
 ## Recommendation
 
@@ -252,3 +251,66 @@ Gradle/JDK compatibility result, app-private storage-path validation, or app res
 claimed by these native command-line tests. Validate those with the host before broader
 UI migration. Receipt date recognition, OCR/media, Android recovery, and distribution
 remain in their later phases.
+
+### Phase 2 — in progress
+
+- Added a native Skip UI package and thin Android host under the separate prototype ID
+  `app.spliit.android.prototype`. The existing iOS identity remains unchanged.
+- Gradle 9.4.1 and JDK 21 build the Android host. The resolved Android Gradle Plugin requires
+  Gradle 9.4.1; the initially installed Gradle 9.0 is insufficient.
+- A minimal host launched on Android 16. A native core store persisted to the app's private
+  `files/Spliit/recent-groups.json`, survived process restart, and updated the UI immediately
+  after enabling Skip's Observation bridge in the core module.
+- Core resources require the core Skip plugin. Swift 6.4's generated `.bundle` URL lookup
+  also bypasses the pinned Android bridge's `.resources` mapping; `CoreResources` explicitly
+  uses that mapping inside the Android JVM while preserving native command-line resources.
+  Actual French validation in the shared UI still needs verification.
+- Shared screens now belong to the `SpliitUI` package under `Spliit/`; the iOS host lives in
+  `iOS/`. XcodeGen remains the project source of truth. Apple camera, documents, review prompts,
+  and intents stay conditional; unsupported presentation APIs have Android alternatives.
+  Builds and the complete shared flow are being verified.
+- The user-provided `sudo -n -H -u srv /usr/local/bin/docker compose` starts the existing
+  `e2e/compose.yaml` database and app. Both are healthy; **14 live API checks pass** with
+  document upload excluded. MinIO's configured image could not be pulled, so attachment
+  checks remain unavailable. The shared server is left running.
+- Final affected core suite results: **402 host tests**, **388 Android tests**, including
+  the new resource helper. The host requires the native build backend described below.
+- The shared UI builds for iOS and Android. Three iOS UI checks pass against the local
+  backend: adding a group by link, creating an expense and checking balances, and retaining
+  the active user after relaunch. UI tests select English/US explicitly because their money
+  assertions use that locale. Native string extraction and its checker regression tests pass.
+- The Android debug APK is 244,267,333 bytes (about 233 MiB). Its generated localization
+  bridge passes the English/French runtime check below. The welcome and group-link screens
+  render, but first transitions trigger ANR dialogs on the shared API 36 emulator while
+  release compilation runs. A fresh, dedicated API 36 emulator with hardware graphics also
+  boots slowly and reports an ANR in Android's phone service before the prototype is installed.
+  This environment cannot yet provide reliable UI/performance evidence. The full Android
+  expense flow remains unverified.
+
+Phase 2's exit criterion has **not** been met. No complete Android expense-flow result,
+release-performance measurement, or distribution readiness is claimed yet. The initial
+placeholder debug APK was about 223 MiB; that is not a release-size measurement.
+
+The host `make test` and `make test-live` commands also select the native SwiftPM build
+system: Swift 6.4's default swiftbuild backend rejects the pinned Skip graph for duplicated
+static `SkipLib`/`SkipUnit` products. Recheck this workaround with dependency upgrades.
+The UI keeps default main-actor isolation on Apple platforms; Android models use explicit
+`@MainActor` because Skip's generated generic-view helper classes require nonisolated defaults.
+
+To build the UI prototype, select JDK 21 with `JAVA_HOME`, put Gradle 9.4.1 and Skip on
+`PATH`, set `ANDROID_HOME` to the Android SDK, and run `make android-app`. The APK is
+`.build/Android/app/outputs/apk/debug/app-debug.apk`. The native core commands above remain
+separate. Use `http://10.0.2.2:3009/` for the shared backend from the Android emulator.
+
+The debug host includes a small check against the actual generated localization bridge,
+packaged string tables, and Android ICU. After installing the APK, run:
+
+```sh
+adb -s emulator-5554 shell am start -S \
+  -n app.spliit.android.prototype/spliit.ui.MainActivity --ez checkLocalization true
+adb -s emulator-5554 logcat -d -s SpliitLocalizationCheck:I '*:S'
+```
+
+A successful run logs `PASS`; failed assertions stop the debug launch. The check covers
+English/French plural counts 0, 1, and 2, reordered arguments, and escaped percent signs.
+Native Swift interpolation and normal UI locale selection still require the shared-flow check.

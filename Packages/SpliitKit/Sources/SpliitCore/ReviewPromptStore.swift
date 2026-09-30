@@ -1,4 +1,7 @@
 import Foundation
+#if SKIP_BRIDGE
+import SkipFuse
+#endif
 
 /// Something that went well, and that the person is likely to have noticed happening.
 ///
@@ -73,12 +76,12 @@ public final class ReviewPromptStore {
     /// How long the app says nothing at all after an ask, whatever ships in between.
     public static let quietPeriod: TimeInterval = 120 * 24 * 3600
 
-    private let defaults: UserDefaults
+    private let defaults: Foundation.UserDefaults
     private let version: String
     private let now: () -> Date
 
     public init(
-        defaults: UserDefaults = .standard,
+        defaults: Foundation.UserDefaults = .standard,
         version: String = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
             as? String ?? "",
         now: @escaping () -> Date = { .now }

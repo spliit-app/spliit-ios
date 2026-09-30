@@ -1,5 +1,24 @@
 import SwiftUI
 
+@propertyWrapper
+struct AppTextSize: DynamicProperty {
+    #if os(iOS)
+    @Environment(\.dynamicTypeSize) private var size
+    #else
+    @ScaledMetric private var scale: Double = 1
+    #endif
+
+    var wrappedValue: DynamicTypeSize {
+        #if os(iOS)
+        size
+        #else
+        // ponytail: Android font scale maps to two layout sizes at 1.35; use native
+        // DynamicTypeSize when Skip supports it if individual sizes become necessary.
+        scale >= 1.35 ? .accessibility1 : .large
+        #endif
+    }
+}
+
 /// Lays its content out in a row, and in a column once the text size reaches the accessibility
 /// range.
 ///
@@ -18,17 +37,27 @@ struct AdaptiveHStack<Content: View>: View {
     var spacing: CGFloat?
     @ViewBuilder var content: Content
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AppTextSize private var dynamicTypeSize
 
     var body: some View {
+        #if os(iOS)
         layout { content }
+        #else
+        if dynamicTypeSize.stacksRows {
+            VStack(alignment: .leading, spacing: 4) { content }
+        } else {
+            HStack(alignment: verticalAlignment, spacing: spacing) { content }
+        }
+        #endif
     }
 
+    #if os(iOS)
     private var layout: AnyLayout {
         dynamicTypeSize.stacksRows
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
             : AnyLayout(HStackLayout(alignment: verticalAlignment, spacing: spacing))
     }
+    #endif
 }
 
 extension DynamicTypeSize {

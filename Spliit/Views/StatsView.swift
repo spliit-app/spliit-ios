@@ -23,7 +23,7 @@ import SwiftUI
 /// stays the web's route, `group-stats`, so the two Plausible sites still read side by side.
 struct StatsView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -66,7 +66,10 @@ struct StatsView: View {
                 )
             ) {}
         } else if model.isLoadingGroup || model.isLoadingStats {
-            ProgressView().controlSize(.large)
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
         } else if model.didFailToLoad || model.didFailToLoadStats {
             EmptyState(
                 art: .icon("wifi.exclamationmark"),
@@ -361,7 +364,7 @@ private func groupSlice(of value: Int, in groupTotal: Int) -> Double? {
 /// way it is under the two figures above: those are one number each and the caption earns its
 /// place; a dozen of them down a list is noise, and the bar is what the eye is comparing anyway.
 /// VoiceOver still gets it, as a value on the name.
-private struct CategoryRow: View {
+struct CategoryRow: View {
 
     let spending: CategorySpending
     let groupTotal: Int
@@ -406,7 +409,11 @@ private struct CategoryRow: View {
     private func bar(_ slice: Double) -> some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
+                #if os(iOS)
                 Capsule().fill(.quaternary)
+                #else
+                Capsule().fill(Color.secondary.opacity(0.15))
+                #endif
                 Capsule()
                     .fill(Color.accentColor)
                     .frame(width: max(geometry.size.width * slice, slice > 0 ? 2 : 0))
@@ -427,7 +434,7 @@ private struct CategoryRow: View {
 ///
 /// The bar alone would be decorative — a length with nothing to measure it against — so the
 /// percentage is written out beside it, and the bar is what VoiceOver skips.
-private struct ShareOfGroup: View {
+struct ShareOfGroup: View {
 
     let fraction: Double
     /// Carried down to the caption rather than set on this view: an identifier on the stack
@@ -441,7 +448,11 @@ private struct ShareOfGroup: View {
         VStack(alignment: .leading, spacing: 4) {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
+                    #if os(iOS)
                     Capsule().fill(.quaternary)
+                    #else
+                    Capsule().fill(Color.secondary.opacity(0.15))
+                    #endif
                     Capsule()
                         .fill(Color.accentColor)
                         .frame(width: max(geometry.size.width * fraction, fraction > 0 ? 2 : 0))

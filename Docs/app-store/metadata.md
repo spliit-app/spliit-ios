@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.4.0
+# App Store Connect — Spliit 2.5.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,18 +9,21 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.4.0, build 27, uploaded and attached to the 2.4 record. 2.3.0 is
+- **Version**: 2.5.0, build 28, uploaded and attached to the 2.5 record. 2.4.0 is
   `READY_FOR_SALE`, which *closes* that train — a further build for it is refused with 90186, and
   90062 beside it asking for a higher marketing version. So the first upload after a release moves
   both numbers, not just the build
-- **What shipped before**: 2.3.0 went out as build 26 — the default split — and 2.2.0 as build
+- **What shipped before**: 2.4.0 went out as build 27 — each share's amount and the fuller
+  Shortcuts action — 2.3.0 as build 26 — the default split — and 2.2.0 as build
   **25**, not the 24 this file once said: the totals fix (#47) went up while its own pull request
   was still open, replaced 24 on the 2.2 record before review, and was approved there. The build
   attached to a version record is the one that shipped it; the upload dates in App Store Connect
   are what settle a question like this, not this file. The release notes below are what landed
-  since 2.3.0 and nothing older: each share's amount (#55) and the fuller Shortcuts action (#56)
-- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.4 record, and the
-  screenshots carried forward from 2.3 unchanged — the release adds no screen worth reshooting.
+  since 2.4.0 and nothing older: the category suggested from the title (#61) and the odd cent
+  staying where the form showed it (#59). The second only holds on an instance with
+  spliit#647, which is why the note names spliit.app and up-to-date servers
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.5 record, and the
+  screenshots carried forward from 2.4 unchanged — the release adds no screen worth reshooting.
   What is left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
@@ -67,12 +70,12 @@ descriptive half belongs in the subtitle, which is what the subtitle is for.
 Split expenses with friends
 ```
 
-### Promotional text — 167 / 170
+### Promotional text — 150 / 170
 
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-See what each person's share comes to as you type, and let a shortcut hand over the whole expense, receipt included. Your groups are kept in iCloud. No account needed.
+Type a title and the category fills itself in, worked out privately on your iPhone. Your groups are kept in iCloud, and there is no account to create.
 ```
 
 It does not survive a new version: App Store Connect carries the description and the keywords
@@ -131,10 +134,10 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-Every share, worked out for you.
+A category, before you choose one.
 
-• Each participant in the expense form now has the amount their share comes to beside their name — $31.67, $31.66, $31.67 — and it follows the split as you type, so you can see who carries the odd cent before you save
-• The Add Expense action in Shortcuts takes the category, a note and a photo of the receipt as well as the title and the amount, so an automation can hand over the whole expense and leave you only the payer to confirm
+• Type a new expense's title and Spliit suggests its category — "Airport taxi" becomes Taxi. On an iPhone with Apple Intelligence it is worked out on the device, never sent anywhere, and it never replaces a category you picked yourself
+• The shares you see while adding an expense are now the ones that get saved: the odd cent stays with whoever the form showed it on, on spliit.app and up-to-date servers
 
 Still no account, and still nothing to sign in to.
 ```
@@ -149,10 +152,10 @@ Still no account, and still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 169 / 170
+### Texte promotionnel — 160 / 170
 
 ```
-Voyez la part de chacun à mesure que vous saisissez, et laissez un raccourci remettre la dépense entière, reçu compris. Vos groupes sont gardés dans iCloud. Sans compte.
+Tapez un titre et la catégorie se remplit d'elle-même, trouvée en privé sur votre iPhone. Vos groupes sont gardés dans iCloud, et il n'y a aucun compte à créer.
 ```
 
 ### Mots-clés — 93 / 100
@@ -203,10 +206,10 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Chaque part, calculée pour vous.
+Une catégorie, avant même de la choisir.
 
-• Dans le formulaire de dépense, chaque participant a désormais le montant de sa part à côté de son nom — 31,67 €, 31,66 €, 31,67 € — et il suit la répartition à mesure que vous la saisissez, pour voir qui porte le centime en trop avant d'enregistrer
-• L'action « Ajouter une dépense » dans Raccourcis prend la catégorie, une note et une photo du reçu en plus du titre et du montant : une automatisation peut remettre la dépense entière, et il ne vous reste que le payeur à confirmer
+• Tapez le titre d'une nouvelle dépense et Spliit en suggère la catégorie. Sur un iPhone avec Apple Intelligence, elle est trouvée sur l'appareil, n'est envoyée nulle part, et ne remplace jamais une catégorie que vous avez choisie vous-même
+• Les parts affichées pendant que vous ajoutez une dépense sont désormais celles qui sont enregistrées : le centime en trop reste chez la personne que le formulaire indiquait, sur spliit.app et les serveurs à jour
 
 Toujours pas de compte, et toujours rien à quoi se connecter.
 ```

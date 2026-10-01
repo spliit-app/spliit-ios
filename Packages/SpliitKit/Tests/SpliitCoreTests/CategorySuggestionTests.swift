@@ -59,6 +59,17 @@ struct CategorySuggestionTests {
         #expect(!suggestion.isShowingSuggestion(in: draft))
     }
 
+    @Test("A receipt that agrees with the guess still wins, and stays")
+    func receiptThatAgreesWithTheGuess() {
+        var draft = ExpenseFormDraft()
+        var suggestion = CategorySuggestion()
+        suggestion.apply(taxi, to: &draft)
+        suggestion.forget()
+        #expect(!suggestion.apply(dining, to: &draft))
+        #expect(draft.categoryID == taxi)
+        #expect(!suggestion.isShowingSuggestion(in: draft))
+    }
+
     @Test("A category picked by hand is never replaced — General included")
     func keepsTheUsersChoice() {
         var draft = ExpenseFormDraft()

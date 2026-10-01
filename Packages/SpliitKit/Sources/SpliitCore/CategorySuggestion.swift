@@ -64,6 +64,12 @@ public struct CategorySuggestion: Equatable, Sendable {
         userHasChosen = true
     }
 
+    /// Something other than the title set the category — a scanned receipt. Whatever is there now
+    /// is no longer the form's guess, even if it is the same category the guess was.
+    public mutating func forget() {
+        suggestedID = nil
+    }
+
     /// Whether the category on show is the form's own guess, which is when the form says so.
     /// Not for General: a guess of "nothing in particular" looks exactly like no guess at all.
     public func isShowingSuggestion(in draft: ExpenseFormDraft) -> Bool {

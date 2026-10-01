@@ -154,6 +154,9 @@ struct ExpenseFormView: View {
                 ReceiptScanSection(categories: categories) { photo in
                     attach(photo)
                 } onScan: { scan in
+                    // A receipt's category is the receipt's, even when it happens to be the one
+                    // the title suggested — or the next question would be free to replace it.
+                    if scan.categoryID != nil { categorySuggestion.forget() }
                     form.wrappedValue.apply(scan)
                 }
             }
@@ -743,10 +746,14 @@ struct ExpenseFormView: View {
     /// the identity of the suggestion task, so every edit to the title abandons the question
     /// before it and starts its own.
     ///
+    /// Nil until the categories have arrived, too: they load beside the group, and a title that
+    /// was already there when the form opened — a shortcut's — would otherwise be asked about
+    /// once, against nothing, and never again.
+    ///
     /// Only for a new expense, like the receipt scan: an expense already saved has a category
     /// somebody chose or accepted, General included, and renaming it is not a reason to refile it.
     private var categoryQuestion: String? {
-        guard !mode.isEditing, suggestsCategories, let form,
+        guard !mode.isEditing, suggestsCategories, !categories.isEmpty, let form,
               categorySuggestion.mayReplace(form.categoryID)
         else { return nil }
         return CategorySuggestion.question(for: form.title)

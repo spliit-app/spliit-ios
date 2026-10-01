@@ -168,6 +168,30 @@ struct GroupFormDraftTests {
 @Suite("Expense form")
 struct ExpenseFormDraftTests {
 
+    @Test("Expressions submit correctly even before a field loses focus")
+    func submitsCalculations() throws {
+        for mode in [SplitMode.byAmount, .byPercentage, .byShares] {
+            var form = draft(
+                amount: "40+60", splitMode: mode,
+                values: ["ana": "25*2", "bruno": "100/2"], included: ["ana", "bruno"]
+            )
+            let values = try #require(form.formValues)
+            #expect(values.amount == 10_000)
+            #expect(values.paidFor.map(\.shares) == [5000, 5000])
+            form.participants[0].valueText = "25*"
+            #expect(form.formValues == nil)
+        }
+        var form = draft(amount: "11,4+7,3")
+        #expect(form.formValues?.amount == 1870)
+        form.amountText = "11,4+"
+        #expect(form.formValues == nil)
+        form.originalCurrencyCode = "USD"
+        form.originalAmountText = "11,4+7,3"
+        form.conversionRateText = "2"
+        #expect(form.formValues?.originalAmount == 1870)
+        #expect(form.formValues?.amount == 3740)
+    }
+
     private let group = Group(
         id: "g1",
         name: "Weekend in Lisbon",

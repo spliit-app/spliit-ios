@@ -57,6 +57,11 @@ struct ExpenseFormView: View {
     /// alone by the next lookup.
     @State private var autoFilledRate: String?
 
+    /// What the on-device model has guessed for the category from the title, and whether it is
+    /// still the form's to change. See `CategorySuggestion`.
+    @State private var categorySuggestion = CategorySuggestion()
+    @State private var categorySuggester = CategorySuggester()
+
     /// Stubbed from a launch argument under UI test, so a run neither depends on reaching an
     /// external service nor gets a different answer every day.
     /// The instance this group is on. An expense is written to the same server the group is on,
@@ -114,6 +119,7 @@ struct ExpenseFormView: View {
         .task { await load() }
         .onChange(of: categories) { reconcileCategory() }
         .task(id: rateRequest) { await lookUpRate() }
+        .task(id: categoryQuestion) { await suggestCategory() }
         .interactiveDismissDisabled(isSaving)
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
         .sensoryFeedback(Haptics.refused, trigger: refusedCount)
@@ -193,7 +199,7 @@ struct ExpenseFormView: View {
                 problem(for: [.payerMissing])
 
                 if !categories.isEmpty {
-                    Picker("Category", selection: form.categoryID) {
+                    Picker("Category", selection: chosenCategory(form)) {
                         ForEach(ExpenseCategory.grouped(categories), id: \.name) { grouping in
                             Section(grouping.name) {
                                 ForEach(grouping.categories) { category in
@@ -203,6 +209,13 @@ struct ExpenseFormView: View {
                         }
                     }
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.categoryPicker)
+
+                    if categorySuggestion.isShowingSuggestion(in: form.wrappedValue) {
+                        Label("Suggested from the title", systemImage: "apple.intelligence")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier(AccessibilityID.ExpenseForm.categorySuggested)
+                    }
                 }
 
                 Toggle("This is a reimbursement", isOn: form.isReimbursement)
@@ -679,6 +692,9 @@ struct ExpenseFormView: View {
     }
 
     private func load() async {
+        if !mode.isEditing, suggestsCategories {
+            categorySuggester.prepare()
+        }
         if let draft {
             form = draft
             reconcileCategory()
@@ -708,6 +724,56 @@ struct ExpenseFormView: View {
               !categories.contains(where: { $0.id == categoryID })
         else { return }
         form?.categoryID = 0
+    }
+
+    /// The picker's selection, which is also how the form learns that a category was chosen by
+    /// hand rather than by the title — scans and shortcuts write the draft directly and never
+    /// come through here.
+    private func chosenCategory(_ form: Binding<ExpenseFormDraft>) -> Binding<Int> {
+        Binding(
+            get: { form.wrappedValue.categoryID },
+            set: {
+                categorySuggestion.noteUserChoice()
+                form.wrappedValue.categoryID = $0
+            }
+        )
+    }
+
+    /// What to ask the model about the title, and nil when nothing should be asked. Doubles as
+    /// the identity of the suggestion task, so every edit to the title abandons the question
+    /// before it and starts its own.
+    ///
+    /// Only for a new expense, like the receipt scan: an expense already saved has a category
+    /// somebody chose or accepted, General included, and renaming it is not a reason to refile it.
+    private var categoryQuestion: String? {
+        guard !mode.isEditing, suggestsCategories, let form,
+              categorySuggestion.mayReplace(form.categoryID)
+        else { return nil }
+        return CategorySuggestion.question(for: form.title)
+    }
+
+    /// Off under UI test, for the reason `ReceiptScanner.usesModel` gives: a generative answer is
+    /// not a fixture.
+    private var suggestsCategories: Bool {
+        #if DEBUG
+        if UITestSupport.isRunningUITests { return false }
+        #endif
+        return CategorySuggester.isAvailable
+    }
+
+    private func suggestCategory() async {
+        guard let question = categoryQuestion else { return }
+        // Asked while somebody is still typing, so the question waits for a pause: "Tax" on the
+        // way to "Taxi" is a different expense, and each keystroke cancels the wait before it.
+        do { try await Task.sleep(for: .milliseconds(600)) } catch { return }
+
+        guard let categoryID = await categorySuggester.suggest(for: question, in: categories),
+              !Task.isCancelled, var draft = form
+        else { return }
+        // Checked again inside `apply`: a category picked while the model was thinking wins.
+        if categorySuggestion.apply(categoryID, to: &draft) {
+            form = draft
+        }
     }
 
     /// Starts a receipt on its way to the bucket, and puts it on the expense once it lands.

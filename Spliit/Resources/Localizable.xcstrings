@@ -2058,6 +2058,16 @@
         }
       }
     },
+    "Suggested from the title": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggérée d’après le titre"
+          }
+        }
+      }
+    },
     "Suggested payments": {
       "localizations": {
         "fr": {

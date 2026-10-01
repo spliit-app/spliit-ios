@@ -139,6 +139,8 @@ enum AccessibilityID {
         static let amountField = "expenseForm.amount"
         static let dateField = "expenseForm.date"
         static let categoryPicker = "expenseForm.category"
+        /// The line under the picker saying the category was guessed from the title.
+        static let categorySuggested = "expenseForm.category.suggested"
         static let paidByPicker = "expenseForm.paidBy"
         static let notesField = "expenseForm.notes"
         static let reimbursementToggle = "expenseForm.isReimbursement"

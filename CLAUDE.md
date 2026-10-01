@@ -296,6 +296,13 @@ plausibility window, and the category has to be one `categories.list` actually r
 is also never the only reader: `ReceiptText` parses the transcript unaided, which is the whole
 feature on a phone without Apple Intelligence and the fallback under the model everywhere else.
 
+**Prove a model call on a phone, not on the Mac or in the simulator.** `CategorySuggester` first
+declared its category type inline on the property *and* again in `dependencies:`. macOS accepted
+that and answered every title; iOS throws `duplicateType` — swallowed as "no suggestion", so the
+category silently stayed General. A schema built inline needs no dependencies. The simulator, for
+its part, reports the model `available` and then never answers at all, so it can show neither the
+bug nor the fix. The UI suites run with the model off anyway; `make device` is the only check.
+
 **Decoding ignores superjson's `meta.values`.** Our models are statically typed, so a field the
 server annotates as a `Date` is already declared `Date`. This is not a shortcut: `groups.list`
 sends `createdAt` with no annotation at all, so trusting the metadata would break exactly one

@@ -309,6 +309,11 @@ Everything the RN app does today, and nothing more.
   `group-expenses`, `group-balances`, `group-create-expense`,
   `group-edit-expense`; events `create-group`, `create-expense`) — a plain
   `POST https://plausible.io/api/event`, no library needed
+- Umami beside Plausible, as the web app does since spliit#651: the same names to
+  `POST https://cloud.umami.is/api/send`, a site of the app's own, no `id`,
+  `title`, `referrer` or `data`, and a Safari-shaped User-Agent because Umami
+  drops `Spliit iOS` as a bot. Off until `AnalyticsEvent.umamiWebsiteID` is set;
+  Plausible goes once the two dashboards agree (#64)
 - Dark mode (the RN app is light-only; this comes free and should not be
   deferred)
 

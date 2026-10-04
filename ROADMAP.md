@@ -312,8 +312,8 @@ Everything the RN app does today, and nothing more.
 - Umami beside Plausible, as the web app does since spliit#651: the same names to
   `POST https://cloud.umami.is/api/send`, a site of the app's own, no `id`,
   `title`, `referrer` or `data`, and a Safari-shaped User-Agent because Umami
-  drops `Spliit iOS` as a bot. Off until `AnalyticsEvent.umamiWebsiteID` is set;
-  Plausible goes once the two dashboards agree (#64)
+  drops `Spliit iOS` as a bot. Setting `AnalyticsEvent.umamiWebsiteID` to nil
+  turns it off; Plausible goes once the two dashboards agree (#64)
 - Dark mode (the RN app is light-only; this comes free and should not be
   deferred)
 

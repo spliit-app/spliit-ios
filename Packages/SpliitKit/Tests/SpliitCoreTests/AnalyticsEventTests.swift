@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import SpliitCore
@@ -77,5 +78,82 @@ struct AnalyticsEventTests {
             AnalyticsEvent.Action.allCases.map(\.rawValue)
                 == ["create-group", "create-expense", "scan-receipt", "attach-document"]
         )
+    }
+
+    // MARK: - Umami
+
+    private static let phone = AnalyticsDevice(
+        isPad: false,
+        systemVersion: "26.0.1",
+        appVersion: "2.6.0",
+        screenWidth: 393,
+        screenHeight: 852,
+        language: "fr-CA"
+    )
+
+    /// Decoded back from the JSON that goes on the wire, so a field the encoder adds — an
+    /// optional that stops being nil, say — shows up here rather than on the dashboard.
+    private func umamiJSON(_ event: AnalyticsEvent) throws -> [String: Any] {
+        let request = event.umamiRequest(websiteID: "site", device: Self.phone)
+        let data = try JSONEncoder().encode(request)
+        return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
+    @Test("A screen view reaches Umami as a pageview: no name, at the screen's path")
+    func umamiScreenPayload() throws {
+        let json = try umamiJSON(.screen(.groupExpenses))
+        let payload = try #require(json["payload"] as? [String: String])
+
+        #expect(json["type"] as? String == "event")
+        #expect(
+            payload == [
+                "website": "site",
+                "hostname": "spliit.app",
+                "url": "/group-expenses",
+                "language": "fr-CA",
+                "screen": "393x852",
+            ]
+        )
+    }
+
+    @Test("An action reaches Umami by its name, wherever the person was")
+    func umamiActionPayload() throws {
+        let payload = try #require(try umamiJSON(.action(.createExpense))["payload"] as? [String: String])
+
+        #expect(payload["name"] == "create-expense")
+        #expect(payload["url"] == "/")
+    }
+
+    /// Umami reads `data` as custom properties and `id` as a persistent identifier for the
+    /// person; `title` and `referrer` are where the web tracker leaks a group's name or ID. None
+    /// may ever be sent, and the request type has nowhere to put them — this proves it.
+    @Test("Nothing but the site, the path, the name and the device's language and screen")
+    func umamiPayloadCarriesNothingElse() throws {
+        let events =
+            AnalyticsEvent.Screen.allCases.map { AnalyticsEvent.screen($0) }
+            + AnalyticsEvent.Action.allCases.map { AnalyticsEvent.action($0) }
+
+        for event in events {
+            let json = try umamiJSON(event)
+            let payload = try #require(json["payload"] as? [String: Any])
+
+            #expect(json.keys.sorted() == ["payload", "type"])
+            #expect(
+                Set(payload.keys).isSubset(of: ["website", "hostname", "url", "name", "language", "screen"])
+            )
+        }
+    }
+
+    @Test("The User-Agent names the OS the way Safari does, so Umami neither drops nor misfiles it")
+    func umamiUserAgent() {
+        #expect(
+            Self.phone.userAgent
+                == "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0_1 like Mac OS X) AppleWebKit/605.1.15 "
+                + "(KHTML, like Gecko) Mobile/15E148 Spliit/2.6.0"
+        )
+
+        var pad = Self.phone
+        pad.isPad = true
+        #expect(pad.userAgent.hasPrefix("Mozilla/5.0 (iPad; CPU OS 26_0_1 like Mac OS X)"))
     }
 }

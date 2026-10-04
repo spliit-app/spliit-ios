@@ -20,7 +20,7 @@ public struct AnalyticsEvent: Equatable, Sendable {
 
     /// The app's own website in Umami, kept apart from the web app's as Plausible's site is.
     /// Nil sends nothing to Umami at all.
-    public static let umamiWebsiteID: String? = nil
+    public static let umamiWebsiteID: String? = "54b61b68-c7bc-4604-9d89-fe42b66b2034"
 
     /// What Umami files every event under. It is the same for each and says only which product
     /// the event came from.

@@ -33,6 +33,7 @@ struct ExpenseFormView: View {
     @State private var hasAttemptedSave = false
     @State private var isSaving = false
     @State private var failure: String?
+    @FocusState private var calculationField: CalculationField?
 
     /// The ID a new expense is created under. Minted here rather than left to the server so
     /// the form has it before saving, which is what makes the split it previews the one the
@@ -110,6 +111,14 @@ struct ExpenseFormView: View {
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
             }
+            // Drawn here rather than as a `.keyboard` toolbar item, which the system lays flush
+            // against the top row of keys. As a bar it can keep the same gap above the keyboard
+            // that the search field does, and the two read as one design.
+            .safeAreaBar(edge: .bottom) {
+                if calculationField != nil {
+                    calculationBar
+                }
+            }
             .alert("Couldn’t save the expense", isPresented: .constant(failure != nil && form != nil)) {
                 Button("OK", role: .cancel) { failure = nil }
             } message: {
@@ -174,7 +183,11 @@ struct ExpenseFormView: View {
                             "0\(decimalSeparator)00",
                             text: form.amountText
                         )
-                        .keyboardType(.decimalPad)
+                        .modifier(CalculatingAmountInput(
+                            text: form.amountText,
+                            minorUnitDigits: form.wrappedValue.minorUnitDigits,
+                            focus: $calculationField, field: .amount
+                        ))
                         .multilineTextAlignment(.trailing)
                         .moneyInput()
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.amountField)
@@ -286,7 +299,11 @@ struct ExpenseFormView: View {
                                 "0\(decimalSeparator)00",
                                 text: form.originalAmountText
                             )
-                            .keyboardType(.decimalPad)
+                            .modifier(CalculatingAmountInput(
+                                text: form.originalAmountText,
+                                minorUnitDigits: form.wrappedValue.originalMinorUnitDigits,
+                                focus: $calculationField, field: .originalAmount
+                            ))
                             .multilineTextAlignment(.trailing)
                             .moneyInput()
                             .accessibilityIdentifier(
@@ -506,7 +523,11 @@ struct ExpenseFormView: View {
             if splitMode != .evenly {
                 HStack(spacing: 4) {
                     TextField("0", text: participant.valueText)
-                        .keyboardType(.decimalPad)
+                        .modifier(CalculatingAmountInput(
+                            text: participant.valueText,
+                            minorUnitDigits: splitMode == .byAmount ? formatter.minorUnitDigits : 2,
+                            focus: $calculationField, field: .participant(id)
+                        ))
                         .multilineTextAlignment(.trailing)
                         .moneyInput()
                         .frame(maxWidth: shareFieldWidth)
@@ -618,6 +639,59 @@ struct ExpenseFormView: View {
     }
 
     // MARK: - Actions
+
+    /// The search field's bar, in shape and spacing: glass capsules a few points apart, inset
+    /// from the screen's edges and lifted off the keyboard by the gap between them.
+    private var calculationBar: some View {
+        GlassEffectContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                HStack(spacing: 0) {
+                    calculationButton("Add", symbol: "plus", expression: "+")
+                    calculationButton("Subtract", symbol: "minus", expression: "−")
+                    calculationButton("Multiply", symbol: "multiply", expression: "×")
+                    calculationButton("Divide", symbol: "divide", expression: "÷")
+                }
+                .padding(.horizontal, 6)
+                .glassEffect(.regular, in: .capsule)
+
+                Spacer()
+
+                Button { calculationField = nil } label: {
+                    Text("Done")
+                        .padding(.horizontal, 16)
+                        .frame(height: calculationBarHeight)
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationDone)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+    }
+
+    /// The search field's height, so the two bars sit at the same size above the keyboard.
+    private let calculationBarHeight: CGFloat = 44
+
+    private func calculationButton(
+        _ title: LocalizedStringKey, symbol: String, expression: String
+    ) -> some View {
+        Button {
+            // Let the focused text field insert at its caret or replace its selection.
+            UIApplication.shared.sendAction(
+                #selector(UIKeyInput.insertText(_:)), to: nil, from: expression, for: nil
+            )
+        } label: {
+            Label(title, systemImage: symbol)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: calculationBarHeight, height: calculationBarHeight)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationOperator(symbol))
+    }
 
     private enum RateLookup: Equatable {
         case idle
@@ -863,6 +937,34 @@ struct ExpenseFormView: View {
                 failure = error.localizedDescription
             }
         }
+    }
+}
+
+private enum CalculationField: Hashable {
+    case amount, originalAmount, participant(String)
+}
+
+private struct CalculatingAmountInput: ViewModifier {
+    @Binding var text: String
+    var minorUnitDigits: Int
+    var focus: FocusState<CalculationField?>.Binding
+    var field: CalculationField
+    @Environment(\.locale) private var locale
+
+    func body(content: Content) -> some View {
+        content
+            .keyboardType(.decimalPad)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .focused(focus, equals: field)
+            .onSubmit { focus.wrappedValue = nil }
+            .onChange(of: focus.wrappedValue) { previous, current in
+                if previous == field, current != field, let result = MoneyFormatter.calculatedText(
+                    from: text, locale: locale, minorUnitDigits: minorUnitDigits
+                ) {
+                    text = result
+                }
+            }
     }
 }
 

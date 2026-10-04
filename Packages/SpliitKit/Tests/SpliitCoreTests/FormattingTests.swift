@@ -112,6 +112,34 @@ struct MoneyFormatterTests {
 @Suite("Parsing typed amounts")
 struct AmountParsingTests {
 
+    @Test("Calculations use decimal arithmetic and normal operator precedence")
+    func calculatesAmounts() {
+        let locale = Locale(identifier: "fr_FR")
+        for (expression, expected) in [
+            ("11,4+7,3", 1870), ("11.4+7.3", 1870), ("10-2*3", 400),
+            ("(10-2)/4", 200), ("2 × 3 ÷ 4", 150), ("-2 + 5", 300),
+            ("10/-2", -500), ("0.1+0.2", 30), ("1/3*3", 100),
+        ] {
+            #expect(MoneyFormatter.minorUnits(from: expression, locale: locale) == expected)
+        }
+        #expect(MoneyFormatter.calculatedText(from: "11,4+7,3", locale: locale) == "18,70")
+        #expect(MoneyFormatter.calculatedText(from: "1/3", locale: locale, minorUnitDigits: 3) == "0,333")
+        #expect(MoneyFormatter.calculatedText(from: "5/2", locale: locale, minorUnitDigits: 0) == "3")
+        #expect(MoneyFormatter.calculatedText(from: "11,4", locale: locale) == nil)
+    }
+
+    @Test("Invalid calculations cannot turn into partial amounts")
+    func rejectsInvalidCalculations() {
+        for expression in [
+            "11,4+", "11,4+7,3oops", "1/0", "1/(2-2)", "1..2", "1,2,3",
+            "2**3", "(1+2", "1+2)", "1 2", "one2", ".", "1e3", "--2",
+            String(repeating: "9", count: 200), "9999999999999999999*100",
+        ] {
+            #expect(MoneyFormatter.minorUnits(from: expression) == nil)
+            #expect(MoneyFormatter.calculatedText(from: expression) == nil)
+        }
+    }
+
     @Test("A plain decimal becomes minor units")
     func parsesDecimal() {
         #expect(MoneyFormatter.minorUnits(from: "42.50", locale: Locale(identifier: "en_US")) == 4250)

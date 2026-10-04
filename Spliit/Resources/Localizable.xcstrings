@@ -974,6 +974,16 @@
         }
       }
     },
+    "Divide": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diviser"
+          }
+        }
+      }
+    },
     "Document %lld": {
       "localizations": {
         "en": {
@@ -1348,6 +1358,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marquer comme payé"
+          }
+        }
+      }
+    },
+    "Multiply": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Multiplier"
           }
         }
       }
@@ -2044,6 +2064,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commence une nouvelle dépense dans l’un de vos groupes, prête à être vérifiée et enregistrée."
+          }
+        }
+      }
+    },
+    "Subtract": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soustraire"
           }
         }
       }

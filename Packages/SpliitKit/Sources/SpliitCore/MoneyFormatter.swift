@@ -114,10 +114,12 @@ public final class MoneyFormatter: @unchecked Sendable {
         minorUnitDigits: Int = 2
     ) -> Int? {
         guard let value = number(from: text, locale: locale) else { return nil }
-        return roundToInteger(value * pow(Decimal(10), minorUnitDigits))
+        let scaled = value * pow(Decimal(10), minorUnitDigits)
+        guard !scaled.isNaN, scaled > Decimal(Int.min), scaled < Decimal(Int.max) else { return nil }
+        return roundToInteger(scaled)
     }
 
-    /// The number someone typed, unscaled — for the values that are not money.
+    /// The number or arithmetic expression someone typed, unscaled.
     ///
     /// A conversion rate is the one of those the form has: 1.0575 is a rate and not a hundredth
     /// of anything, so it must not go through the minor-unit scaling above.
@@ -126,10 +128,26 @@ public final class MoneyFormatter: @unchecked Sendable {
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.replacingOccurrences(of: separator, with: ".")
         cleaned = cleaned.replacingOccurrences(of: ",", with: ".")
-        cleaned = cleaned.filter { $0.isNumber || $0 == "." || $0 == "-" }
+        cleaned = cleaned.replacingOccurrences(of: "×", with: "*")
+            .replacingOccurrences(of: "÷", with: "/")
+            .replacingOccurrences(of: "−", with: "-")
+        // Keep pasted currency symbols working, without discarding invalid expression text.
+        cleaned = String(cleaned.unicodeScalars.filter { $0.properties.generalCategory != .currencySymbol })
+        // Bound nesting and work for pasted expressions as well as keyboard input.
+        guard !cleaned.isEmpty, cleaned.count <= 512 else { return nil }
+        let parser = AmountExpression(cleaned)
+        guard let value = parser.sum(), parser.scanner.isAtEnd, !value.isNaN else { return nil }
+        return value
+    }
 
-        guard !cleaned.isEmpty else { return nil }
-        return Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX"))
+    /// Resolve only calculations; leave plain numbers and unfinished input as typed.
+    public static func calculatedText(
+        from text: String, locale: Locale = .autoupdatingCurrent, minorUnitDigits: Int = 2
+    ) -> String? {
+        guard text.contains(where: { "+-*/×÷−()".contains($0) }),
+              let value = minorUnits(from: text, locale: locale, minorUnitDigits: minorUnitDigits)
+        else { return nil }
+        return MoneyFormatter(minorUnitDigits: minorUnitDigits, locale: locale).plainString(minorUnits: value)
     }
 
     static func roundToInteger(_ value: Decimal) -> Int {
@@ -138,5 +156,63 @@ public final class MoneyFormatter: @unchecked Sendable {
             raiseOnExactness: false, raiseOnOverflow: false,
             raiseOnUnderflow: false, raiseOnDivideByZero: false
         )).intValue
+    }
+}
+
+/// Decimal arithmetic, with multiplication/division before addition/subtraction.
+/// The scanner must consume the entire input so a typo can never save a partial amount.
+private struct AmountExpression {
+    let scanner: Scanner
+
+    init(_ text: String) {
+        scanner = Scanner(string: text)
+    }
+
+    func sum() -> Decimal? {
+        guard var value = product() else { return nil }
+        while true {
+            if scanner.scanString("+") != nil {
+                guard let next = product() else { return nil }
+                value += next
+            } else if scanner.scanString("-") != nil {
+                guard let next = product() else { return nil }
+                value -= next
+            } else {
+                return value.isNaN ? nil : value
+            }
+        }
+    }
+
+    private func product() -> Decimal? {
+        guard var value = operand() else { return nil }
+        while true {
+            if scanner.scanString("*") != nil {
+                guard let next = operand() else { return nil }
+                value *= next
+            } else if scanner.scanString("/") != nil {
+                guard let next = operand(), next != 0 else { return nil }
+                value /= next
+            } else {
+                return value.isNaN ? nil : value
+            }
+        }
+    }
+
+    private func operand() -> Decimal? {
+        let negative = scanner.scanString("-") != nil
+        if !negative { _ = scanner.scanString("+") }
+        let value: Decimal
+        if scanner.scanString("(") != nil {
+            guard let inner = sum(), scanner.scanString(")") != nil else { return nil }
+            value = inner
+        } else {
+            guard let token = scanner.scanCharacters(from: CharacterSet(charactersIn: "0123456789.")),
+                  token.filter({ $0 == "." }).count <= 1,
+                  token.contains(where: { $0.isNumber }),
+                  let number = Decimal(string: token, locale: Locale(identifier: "en_US_POSIX"))
+            else { return nil }
+            value = number
+        }
+        return negative ? -value : value
     }
 }

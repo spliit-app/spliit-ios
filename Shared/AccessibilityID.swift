@@ -156,6 +156,10 @@ enum AccessibilityID {
         static let refreshRateButton = "expenseForm.conversionRate.refresh"
         static let selectAllButton = "expenseForm.paidFor.selectAll"
         static let saveSplitToggle = "expenseForm.saveSplitAsDefault"
+        static let calculationDone = "expenseForm.calculation.done"
+        static func calculationOperator(_ symbol: String) -> String {
+            "expenseForm.calculation.\(symbol)"
+        }
 
         /// Reading the expense off a photo of the receipt. One identifier for the row whichever
         /// it is: a menu where there is a camera to choose with, a plain button where there is

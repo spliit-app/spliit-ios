@@ -105,16 +105,13 @@ struct ExpenseFormView: View {
                         .disabled(isSaving || uploads.isUploading || form == nil)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    if calculationField != nil {
-                        calculationButton("Add", symbol: "plus", expression: "+")
-                        calculationButton("Subtract", symbol: "minus", expression: "−")
-                        calculationButton("Multiply", symbol: "multiply", expression: "×")
-                        calculationButton("Divide", symbol: "divide", expression: "÷")
-                        Spacer()
-                        Button("Done") { calculationField = nil }
-                            .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationDone)
-                    }
+            }
+            // Drawn here rather than as a `.keyboard` toolbar item, which the system lays flush
+            // against the top row of keys. As a bar it can keep the same gap above the keyboard
+            // that the search field does, and the two read as one design.
+            .safeAreaBar(edge: .bottom) {
+                if calculationField != nil {
+                    calculationBar
                 }
             }
             .alert("Couldn’t save the expense", isPresented: .constant(failure != nil && form != nil)) {
@@ -627,16 +624,56 @@ struct ExpenseFormView: View {
 
     // MARK: - Actions
 
+    /// The search field's bar, in shape and spacing: glass capsules a few points apart, inset
+    /// from the screen's edges and lifted off the keyboard by the gap between them.
+    private var calculationBar: some View {
+        GlassEffectContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                HStack(spacing: 0) {
+                    calculationButton("Add", symbol: "plus", expression: "+")
+                    calculationButton("Subtract", symbol: "minus", expression: "−")
+                    calculationButton("Multiply", symbol: "multiply", expression: "×")
+                    calculationButton("Divide", symbol: "divide", expression: "÷")
+                }
+                .padding(.horizontal, 6)
+                .glassEffect(.regular, in: .capsule)
+
+                Spacer()
+
+                Button { calculationField = nil } label: {
+                    Text("Done")
+                        .padding(.horizontal, 16)
+                        .frame(height: calculationBarHeight)
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationDone)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+    }
+
+    /// The search field's height, so the two bars sit at the same size above the keyboard.
+    private let calculationBarHeight: CGFloat = 44
+
     private func calculationButton(
         _ title: LocalizedStringKey, symbol: String, expression: String
     ) -> some View {
-        Button(title, systemImage: symbol) {
+        Button {
             // Let the focused text field insert at its caret or replace its selection.
             UIApplication.shared.sendAction(
                 #selector(UIKeyInput.insertText(_:)), to: nil, from: expression, for: nil
             )
+        } label: {
+            Label(title, systemImage: symbol)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: calculationBarHeight, height: calculationBarHeight)
+                .contentShape(.rect)
         }
-        .labelStyle(.iconOnly)
+        .buttonStyle(.plain)
         .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationOperator(symbol))
     }
 

@@ -109,10 +109,9 @@ struct LiveServerTests {
         #expect(fetched.notes == "Sent by the Swift client.")
         #expect(fetched.splitMode == .evenly)
 
-        #expect(
-            Calendar.autoupdatingCurrent.dateComponents([.year, .month, .day], from: fetched.expenseDate)
-                == DateComponents(year: 2026, month: 3, day: 17)
-        )
+        let day = Calendar.autoupdatingCurrent
+            .dateComponents([.year, .month, .day], from: fetched.expenseDate)
+        #expect(day == DateComponents(year: 2026, month: 3, day: 17))
     }
 
     /// The two halves the server has to accept: a conversion written and read back with its

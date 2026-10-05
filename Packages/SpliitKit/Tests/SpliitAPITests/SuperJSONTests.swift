@@ -61,14 +61,12 @@ struct SuperJSONTests {
         let values = try #require(meta["values"] as? [String: Any])
         #expect(values["expenseDate"] as? [String] == ["Date"])
 
-        let read = try SuperJSON.makeDecoder().decode(
-            Output.self,
-            from: Data(#"{"expenseDate":"2026-10-04T00:00:00.000Z","createdAt":"2026-10-05T00:36:05.000Z"}"#.utf8)
-        )
-        #expect(
-            Calendar.autoupdatingCurrent.dateComponents([.year, .month, .day], from: read.expenseDate)
-                == DateComponents(year: 2026, month: 10, day: 4)
-        )
+        let response = #"{"expenseDate":"2026-10-04T00:00:00.000Z","#
+            + #""createdAt":"2026-10-05T00:36:05.000Z"}"#
+        let read = try SuperJSON.makeDecoder().decode(Output.self, from: Data(response.utf8))
+        let day = Calendar.autoupdatingCurrent
+            .dateComponents([.year, .month, .day], from: read.expenseDate)
+        #expect(day == DateComponents(year: 2026, month: 10, day: 4))
         #expect(read.createdAt == (try SuperJSON.iso8601.parse("2026-10-05T00:36:05Z")))
     }
 

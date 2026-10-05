@@ -10,16 +10,16 @@ import Foundation
 ///
 /// Without that, west of UTC every expense shows as the day before, and one saved in the
 /// evening is stored as tomorrow. The web app does the same conversion since spliit#433.
-public enum CalendarDay {
+enum CalendarDay {
 
     /// Midnight UTC of the day `date` falls on in `timeZone`: what the server stores as that day.
-    public static func wire(_ date: Date, in timeZone: TimeZone = .autoupdatingCurrent) -> Date {
+    static func wire(_ date: Date, in timeZone: TimeZone = .autoupdatingCurrent) -> Date {
         let day = gregorian(timeZone).dateComponents([.year, .month, .day], from: date)
         return gregorian(.gmt).date(from: day) ?? date
     }
 
     /// Midnight in `timeZone` of the day the server sent as midnight UTC.
-    public static func local(_ date: Date, in timeZone: TimeZone = .autoupdatingCurrent) -> Date {
+    static func local(_ date: Date, in timeZone: TimeZone = .autoupdatingCurrent) -> Date {
         let day = gregorian(.gmt).dateComponents([.year, .month, .day], from: date)
         return gregorian(timeZone).date(from: day) ?? date
     }

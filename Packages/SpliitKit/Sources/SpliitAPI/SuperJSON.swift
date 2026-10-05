@@ -17,15 +17,26 @@ public enum SuperJSON {
     static let iso8601WithMilliseconds = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
     static let iso8601 = Date.ISO8601FormatStyle(includingFractionalSeconds: false)
 
+    /// Keys whose dates are calendar days rather than moments; see `CalendarDay`.
+    static let calendarDayKeys: Set<String> = ["expenseDate"]
+
+    private static func isCalendarDay(_ codingPath: [any CodingKey]) -> Bool {
+        codingPath.last.map { calendarDayKeys.contains($0.stringValue) } ?? false
+    }
+
     /// The API mixes timestamps with and without milliseconds — `expenseDate` is a bare
-    /// Postgres `date`, while `createdAt` is a full timestamp — so accept both.
+    /// Postgres `date`, while `createdAt` is a full timestamp — so accept both. A bare date
+    /// comes back as midnight where the phone is, so it shows as the day it is.
     public static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let text = try container.decode(String.self)
-            if let date = try? iso8601WithMilliseconds.parse(text) { return date }
-            if let date = try? iso8601.parse(text) { return date }
+            let day = isCalendarDay(decoder.codingPath)
+            if let date = try? iso8601WithMilliseconds.parse(text) {
+                return day ? CalendarDay.local(date) : date
+            }
+            if let date = try? iso8601.parse(text) { return day ? CalendarDay.local(date) : date }
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Expected an ISO-8601 timestamp, found “\(text)”."
@@ -36,7 +47,8 @@ public enum SuperJSON {
 
     // MARK: - Encoding
 
-    /// Wraps `value` in a superjson envelope, annotating every `Date` it contains.
+    /// Wraps `value` in a superjson envelope, annotating every `Date` it contains. A calendar
+    /// day goes out as midnight UTC of the day it is on the phone, which the server stores as is.
     ///
     /// `JSONEncoder` gives no way to learn which strings came from dates, so dates are written
     /// with a per-call random prefix and the prefix is stripped on a second pass, recording the
@@ -47,7 +59,8 @@ public enum SuperJSON {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
-            try container.encode(marker + iso8601WithMilliseconds.format(date))
+            let sent = isCalendarDay(encoder.codingPath) ? CalendarDay.wire(date) : date
+            try container.encode(marker + iso8601WithMilliseconds.format(sent))
         }
 
         let payload = try encoder.encode(value)

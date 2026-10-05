@@ -132,9 +132,10 @@ struct RequestBuildingTests {
 
     @Test("An expense mutation sends minor units and an annotated date")
     func buildsExpenseMutation() throws {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
         let values = ExpenseFormValues(
             title: "Airport taxi",
-            expenseDate: Date(timeIntervalSince1970: 1_700_000_000),
+            expenseDate: date,
             amount: 4250,
             paidBy: "p1",
             paidFor: [.init(participant: "p1", shares: 100)]
@@ -148,7 +149,11 @@ struct RequestBuildingTests {
         let form = try #require(json["expenseFormValues"] as? [String: Any])
 
         #expect(form["amount"] as? Int == 4250)
-        #expect(form["expenseDate"] as? String == "2023-11-14T22:13:20.000Z")
+        // The day it is on this machine, as midnight UTC; see `CalendarDay`.
+        #expect(
+            form["expenseDate"] as? String
+                == SuperJSON.iso8601WithMilliseconds.format(CalendarDay.wire(date))
+        )
 
         let meta = try #require(envelope["meta"] as? [String: Any])
         let values2 = try #require(meta["values"] as? [String: Any])

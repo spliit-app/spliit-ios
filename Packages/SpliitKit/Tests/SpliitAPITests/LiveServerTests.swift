@@ -73,9 +73,12 @@ struct LiveServerTests {
         let dana = try #require(group.participants.first { $0.name == "Dana" })
         let eli = try #require(group.participants.first { $0.name == "Eli" })
 
-        // Midday UTC on a fixed day, so a timezone slip would move the calendar date.
+        // Late evening on a fixed day where this machine is: west of UTC that is already the
+        // next day in UTC, so a date sent as a moment would come back a day late.
         let expenseDate = try #require(
-            Date.ISO8601FormatStyle().parseStrategy.parse("2026-03-17T12:00:00Z") as Date?
+            Calendar.autoupdatingCurrent.date(
+                from: DateComponents(year: 2026, month: 3, day: 17, hour: 23, minute: 30)
+            )
         )
 
         let expense = try await client.call(
@@ -106,10 +109,9 @@ struct LiveServerTests {
         #expect(fetched.notes == "Sent by the Swift client.")
         #expect(fetched.splitMode == .evenly)
 
-        var utc = Calendar(identifier: .gregorian)
-        utc.timeZone = TimeZone(identifier: "UTC")!
-        #expect(utc.dateComponents([.year, .month, .day], from: fetched.expenseDate)
-            == DateComponents(year: 2026, month: 3, day: 17))
+        let day = Calendar.autoupdatingCurrent
+            .dateComponents([.year, .month, .day], from: fetched.expenseDate)
+        #expect(day == DateComponents(year: 2026, month: 3, day: 17))
     }
 
     /// The two halves the server has to accept: a conversion written and read back with its

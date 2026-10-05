@@ -25,22 +25,51 @@ struct SuperJSONTests {
     func annotatesDates() throws {
         struct Input: Encodable {
             let title: String
-            let expenseDate: Date
+            let createdAt: Date
         }
         let date = Date(timeIntervalSince1970: 1_700_000_000)
 
         let envelope = try object(
-            SuperJSON.envelope(encoding: Input(title: "Taxi", expenseDate: date))
+            SuperJSON.envelope(encoding: Input(title: "Taxi", createdAt: date))
         )
 
         let json = try #require(envelope["json"] as? [String: Any])
-        #expect(json["expenseDate"] as? String == "2023-11-14T22:13:20.000Z")
+        #expect(json["createdAt"] as? String == "2023-11-14T22:13:20.000Z")
         #expect(json["title"] as? String == "Taxi")
 
         let meta = try #require(envelope["meta"] as? [String: Any])
         let values = try #require(meta["values"] as? [String: Any])
-        #expect(values["expenseDate"] as? [String] == ["Date"])
+        #expect(values["createdAt"] as? [String] == ["Date"])
         #expect(values.count == 1)
+    }
+
+    /// `expenseDate` is a calendar day: it goes out as midnight UTC of the phone's day, still
+    /// annotated, and comes back as midnight of that day where the phone is.
+    @Test("An expense date goes out and comes back as the phone's calendar day")
+    func convertsExpenseDates() throws {
+        struct Input: Encodable { let expenseDate: Date }
+        struct Output: Decodable { let expenseDate: Date; let createdAt: Date }
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+        let envelope = try object(SuperJSON.envelope(encoding: Input(expenseDate: now)))
+        let json = try #require(envelope["json"] as? [String: Any])
+        #expect(
+            json["expenseDate"] as? String
+                == SuperJSON.iso8601WithMilliseconds.format(CalendarDay.wire(now))
+        )
+        let meta = try #require(envelope["meta"] as? [String: Any])
+        let values = try #require(meta["values"] as? [String: Any])
+        #expect(values["expenseDate"] as? [String] == ["Date"])
+
+        let read = try SuperJSON.makeDecoder().decode(
+            Output.self,
+            from: Data(#"{"expenseDate":"2026-10-04T00:00:00.000Z","createdAt":"2026-10-05T00:36:05.000Z"}"#.utf8)
+        )
+        #expect(
+            Calendar.autoupdatingCurrent.dateComponents([.year, .month, .day], from: read.expenseDate)
+                == DateComponents(year: 2026, month: 10, day: 4)
+        )
+        #expect(read.createdAt == (try SuperJSON.iso8601.parse("2026-10-05T00:36:05Z")))
     }
 
     /// superjson addresses nested values with dot-separated paths, using the index for array

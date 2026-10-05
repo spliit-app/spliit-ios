@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.5.0
+# App Store Connect — Spliit 2.6.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,21 +9,22 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.5.0, build 28, uploaded and attached to the 2.5 record. 2.4.0 is
+- **Version**: 2.6.0, build 29, uploaded and attached to the 2.6 record. 2.5.0 is
   `READY_FOR_SALE`, which *closes* that train — a further build for it is refused with 90186, and
   90062 beside it asking for a higher marketing version. So the first upload after a release moves
   both numbers, not just the build
-- **What shipped before**: 2.4.0 went out as build 27 — each share's amount and the fuller
+- **What shipped before**: 2.5.0 went out as build 28 — the category suggested from the title
+  and the odd cent kept put — 2.4.0 as build 27 — each share's amount and the fuller
   Shortcuts action — 2.3.0 as build 26 — the default split — and 2.2.0 as build
   **25**, not the 24 this file once said: the totals fix (#47) went up while its own pull request
   was still open, replaced 24 on the 2.2 record before review, and was approved there. The build
   attached to a version record is the one that shipped it; the upload dates in App Store Connect
   are what settle a question like this, not this file. The release notes below are what landed
-  since 2.4.0 and nothing older: the category suggested from the title (#61) and the odd cent
-  staying where the form showed it (#59). The second only holds on an instance with
-  spliit#647, which is why the note names spliit.app and up-to-date servers
-- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.5 record, and the
-  screenshots carried forward from 2.4 unchanged — the release adds no screen worth reshooting.
+  since 2.5.0 and nothing older: calculations in the amount and share fields (#63). Umami
+  analytics beside Plausible (#65) went up in the same build and is not in the notes — nobody
+  sees it, and §6 is where it belongs
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.6 record, and the
+  screenshots carried forward from 2.5 unchanged — the release adds no screen worth reshooting.
   What is left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
@@ -70,12 +71,12 @@ descriptive half belongs in the subtitle, which is what the subtitle is for.
 Split expenses with friends
 ```
 
-### Promotional text — 150 / 170
+### Promotional text — 165 / 170
 
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-Type a title and the category fills itself in, worked out privately on your iPhone. Your groups are kept in iCloud, and there is no account to create.
+Type 24.90+12.40 in an amount and Spliit does the sum for you, with +, −, × and ÷ right above the keyboard. Your groups are kept in iCloud, and no account is needed.
 ```
 
 It does not survive a new version: App Store Connect carries the description and the keywords
@@ -134,10 +135,10 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-A category, before you choose one.
+Do the sum where you type the amount.
 
-• Type a new expense's title and Spliit suggests its category — "Airport taxi" becomes Taxi. On an iPhone with Apple Intelligence it is worked out on the device, never sent anywhere, and it never replaces a category you picked yourself
-• The shares you see while adding an expense are now the ones that get saved: the odd cent stays with whoever the form showed it on, on spliit.app and up-to-date servers
+• Amounts and shares now take a calculation — 24.90+12.40, 3×4.50, (60−15)/3 — and show the result as soon as you move to the next field
+• A bar of +, −, × and ÷ sits above the keyboard while you type an amount, so there is nothing to switch to and nothing to add up on the side
 
 Still no account, and still nothing to sign in to.
 ```
@@ -152,10 +153,10 @@ Still no account, and still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 160 / 170
+### Texte promotionnel — 163 / 170
 
 ```
-Tapez un titre et la catégorie se remplit d'elle-même, trouvée en privé sur votre iPhone. Vos groupes sont gardés dans iCloud, et il n'y a aucun compte à créer.
+Tapez 24,90+12,40 dans un montant et Spliit fait le calcul, avec +, −, × et ÷ juste au-dessus du clavier. Vos groupes sont gardés dans iCloud, sans compte à créer.
 ```
 
 ### Mots-clés — 93 / 100
@@ -206,10 +207,10 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Une catégorie, avant même de la choisir.
+Faites le calcul là où vous tapez le montant.
 
-• Tapez le titre d'une nouvelle dépense et Spliit en suggère la catégorie. Sur un iPhone avec Apple Intelligence, elle est trouvée sur l'appareil, n'est envoyée nulle part, et ne remplace jamais une catégorie que vous avez choisie vous-même
-• Les parts affichées pendant que vous ajoutez une dépense sont désormais celles qui sont enregistrées : le centime en trop reste chez la personne que le formulaire indiquait, sur spliit.app et les serveurs à jour
+• Les montants et les parts acceptent désormais un calcul — 24,90+12,40, 3×4,50, (60−15)/3 — et affichent le résultat dès que vous passez au champ suivant
+• Une barre avec +, −, × et ÷ apparaît au-dessus du clavier quand vous tapez un montant : rien à changer, et plus besoin de calculatrice à côté
 
 Toujours pas de compte, et toujours rien à quoi se connecter.
 ```
@@ -382,9 +383,12 @@ what transmits, and the two are separate actions in the app.
 Spliit has no accounts, no user identifier, and no way to list the groups a person belongs to —
 a group is reachable by its link and by nothing else.
 
-**Product Interaction** is the Plausible screen views and the two events (a group created, an
-expense created). Plausible is cookieless and stores no per-person identifier; the screen name
-is the whole payload, with no group or expense ID attached. Nothing is sent from debug builds
+**Product Interaction** is the screen views and the two events (a group created, an expense
+created), sent to Plausible and, since 2.6.0, to Umami as well — the same names to both, as the
+web app does. Neither is sent a per-person identifier: Umami's optional `id` is left out, and
+beside the screen name it gets only the hostname, the language and the screen size, with no
+group or expense ID attached. A second vendor is not a second answer — the questionnaire asks
+what is collected and why, not by whom, so the row stands as it was. Nothing is sent from debug builds
 or under UI tests.
 
 **Exchange rates are not a data type.** An expense recorded in a currency the group is not
@@ -448,9 +452,10 @@ What stays on your device. The list of groups you have opened, and the address o
 you use. Neither leaves the device.
 
 Analytics. The app reports which screens are opened, and two events — a group created and an
-expense created — to Plausible Analytics. The name of the screen is all that is sent: no group
-or expense identifier goes with it, so a report cannot be traced back to a group of yours.
-Plausible is cookieless, sets no identifier, and collects no personal data. There is no advertising, no tracking across apps or websites, and no
+expense created — to Plausible Analytics and Umami. The name of the screen is all that is sent,
+with the app's language and screen size: no group or expense identifier goes with it, so a
+report cannot be traced back to a group of yours. Neither sets an identifier or collects
+personal data. There is no advertising, no tracking across apps or websites, and no
 data sold or shared with brokers.
 
 Exchange rates. When you record an expense in a currency your group is not counted in, the app
@@ -499,13 +504,18 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [x] ~~Upload a build.~~ **2.4.0 (27) is uploaded, processed and attached to the 2.4 record** —
-      each participant's share worked out beside their name, and the Shortcuts action taking the
-      category, a note and the receipt. Both numbers moved together, 2.3.0 being approved having
-      closed that train. Apple mails you if processing fails after an upload that reported success
-- [x] ~~Fill in the listing.~~ Release notes and promotional text are on the 2.4 record in both
+- [x] ~~Upload a build.~~ **2.6.0 (29) is uploaded, processed and attached to the 2.6 record** —
+      calculations in the amount and share fields, and Umami beside Plausible. Both numbers moved
+      together, 2.5.0 being approved having closed that train. Apple mails you if processing fails after an upload that reported success
+- [x] ~~Fill in the listing.~~ Release notes and promotional text are on the 2.6 record in both
       languages; the description, the keywords and the five framed screenshots carried forward
-      from 2.3.0 untouched
+      from 2.5.0 untouched
+- [ ] The keywords live on App Store Connect are not the ones in §2 and §3: both languages still
+      end on the older set (`…ledger,tab,iou` and `…ami,note,compte`), without "receipt" and
+      "scan". 2.6.0 carried them forward as they were; filing the ones here is one edit per
+      language on the 2.6 record, if they are still the ones wanted
+- [ ] The privacy policy at spliit.app names Plausible; it should name Umami too, now that the
+      app reports to both (§7's draft does)
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0
 - [ ] Serve `apple-app-site-association` from spliit.app if Universal Links should work on day
       one ([Docs/universal-links.md](../universal-links.md))

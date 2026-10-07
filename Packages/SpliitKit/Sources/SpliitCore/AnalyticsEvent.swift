@@ -4,8 +4,8 @@ import Foundation
 ///
 /// Screen and event names match the React Native app's, so the existing Plausible dashboard
 /// reads continuously across the rewrite rather than starting again at zero. Umami receives the
-/// same names, so the two dashboards can be compared while both are fed and Plausible dropped
-/// once Umami's numbers are trusted — the move the web app made in spliit#651.
+/// same names, so the two dashboards could be compared while both were fed. Plausible is now
+/// switched off by ``sendsToPlausible`` — the move the web app made in spliit#651.
 ///
 /// The payload carries a name and a screen path and nothing else. Plausible's custom
 /// properties and Umami's `data` are the places a group or expense ID could ride along, and
@@ -17,6 +17,10 @@ public struct AnalyticsEvent: Equatable, Sendable {
 
     /// The same Plausible site the old app reported to.
     public static let domain = "spliit.app/mobile"
+
+    /// Whether anything is sent to Plausible. Off now that Umami's numbers are the ones read,
+    /// as the web app left Plausible in spliit#651; the code stays so it can be turned back on.
+    public static let sendsToPlausible = false
 
     /// The app's own website in Umami, kept apart from the web app's as Plausible's site is.
     /// Nil sends nothing to Umami at all.

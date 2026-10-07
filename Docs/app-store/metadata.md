@@ -384,10 +384,10 @@ Spliit has no accounts, no user identifier, and no way to list the groups a pers
 a group is reachable by its link and by nothing else.
 
 **Product Interaction** is the screen views and the two events (a group created, an expense
-created), sent to Plausible and, since 2.6.0, to Umami as well — the same names to both, as the
-web app does. Neither is sent a per-person identifier: Umami's optional `id` is left out, and
+created), sent to Umami — and, until 2.7.0, to Plausible as well, which is now switched off as
+the web app's was. Umami is sent no per-person identifier: its optional `id` is left out, and
 beside the screen name it gets only the hostname, the language and the screen size, with no
-group or expense ID attached. A second vendor is not a second answer — the questionnaire asks
+group or expense ID attached. Changing vendor does not change the answer — the questionnaire asks
 what is collected and why, not by whom, so the row stands as it was. Nothing is sent from debug builds
 or under UI tests.
 
@@ -452,9 +452,9 @@ What stays on your device. The list of groups you have opened, and the address o
 you use. Neither leaves the device.
 
 Analytics. The app reports which screens are opened, and two events — a group created and an
-expense created — to Plausible Analytics and Umami. The name of the screen is all that is sent,
+expense created — to Umami. The name of the screen is all that is sent,
 with the app's language and screen size: no group or expense identifier goes with it, so a
-report cannot be traced back to a group of yours. Neither sets an identifier or collects
+report cannot be traced back to a group of yours. It sets no identifier and collects no
 personal data. There is no advertising, no tracking across apps or websites, and no
 data sold or shared with brokers.
 

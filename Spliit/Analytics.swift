@@ -3,13 +3,13 @@ import SpliitCore
 import SwiftUI
 import UIKit
 
-/// Posts ``AnalyticsEvent`` to Plausible and to Umami, and nothing else.
+/// Posts ``AnalyticsEvent`` to Umami, and nothing else.
 ///
-/// Both are cookieless and store nothing per-person; what travels with a request is the screen
+/// Umami is cookieless and stores nothing per-person; what travels with a request is the screen
 /// name and no more — see ``AnalyticsEvent`` for why a group or expense ID cannot be attached
-/// to one. Umami is fed beside Plausible until its numbers can be trusted, and only once
-/// ``AnalyticsEvent/umamiWebsiteID`` names the app's site. Nothing is sent from debug builds or
-/// under UI tests: a test run should never show up as traffic.
+/// to one. It is fed only while ``AnalyticsEvent/umamiWebsiteID`` names the app's site. The
+/// Plausible path is kept but switched off by ``AnalyticsEvent/sendsToPlausible``. Nothing is
+/// sent from debug builds or under UI tests: a test run should never show up as traffic.
 @MainActor
 struct Analytics {
 
@@ -42,6 +42,13 @@ struct Analytics {
     private func send(_ event: AnalyticsEvent) {
         guard isEnabled else { return }
 
+        sendToPlausible(event)
+        sendToUmami(event)
+    }
+
+    private func sendToPlausible(_ event: AnalyticsEvent) {
+        guard AnalyticsEvent.sendsToPlausible else { return }
+
         var request = URLRequest(url: Self.plausibleEndpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -51,8 +58,6 @@ struct Analytics {
 
         // Fire and forget: analytics must never delay or fail anything the user is doing.
         URLSession.shared.dataTask(with: request).resume()
-
-        sendToUmami(event)
     }
 
     private func sendToUmami(_ event: AnalyticsEvent) {

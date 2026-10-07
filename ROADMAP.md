@@ -314,6 +314,8 @@ Everything the RN app does today, and nothing more.
   `title`, `referrer` or `data`, and a Safari-shaped User-Agent because Umami
   drops `Spliit iOS` as a bot. Setting `AnalyticsEvent.umamiWebsiteID` to nil
   turns it off; Plausible goes once the two dashboards agree (#64)
+- Plausible switched off, Umami alone: `AnalyticsEvent.sendsToPlausible` is
+  false, and the code that posts to it stays in case it is wanted back
 - Dark mode (the RN app is light-only; this comes free and should not be
   deferred)
 

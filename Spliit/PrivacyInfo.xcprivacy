@@ -76,8 +76,8 @@
 			</array>
 		</dict>
 
-		<!-- Plausible screen views and two events (a group created, an expense created).
-		     Plausible is cookieless and stores no per-person identifier, so this is not
+		<!-- Umami screen views and two events (a group created, an expense created).
+		     Umami is cookieless and is sent no per-person identifier, so this is not
 		     linked to identity and is not used for tracking. The screen name is the whole
 		     of what is sent: no group or expense ID is attached, so a report cannot be
 		     tied back to the group it came from. `AnalyticsEvent` has no parameter for

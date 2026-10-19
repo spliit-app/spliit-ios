@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.6.0
+# App Store Connect — Spliit 2.6.1
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,22 +9,24 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.6.0, build 29, uploaded and attached to the 2.6 record. 2.5.0 is
+- **Version**: 2.6.1, build 30, uploaded and attached to the 2.6.1 record. 2.6.0 is
   `READY_FOR_SALE`, which *closes* that train — a further build for it is refused with 90186, and
   90062 beside it asking for a higher marketing version. So the first upload after a release moves
   both numbers, not just the build
-- **What shipped before**: 2.5.0 went out as build 28 — the category suggested from the title
+- **What shipped before**: 2.6.0 went out as build 29 — calculations in the amount and share
+  fields — 2.5.0 as build 28 — the category suggested from the title
   and the odd cent kept put — 2.4.0 as build 27 — each share's amount and the fuller
   Shortcuts action — 2.3.0 as build 26 — the default split — and 2.2.0 as build
   **25**, not the 24 this file once said: the totals fix (#47) went up while its own pull request
   was still open, replaced 24 on the 2.2 record before review, and was approved there. The build
   attached to a version record is the one that shipped it; the upload dates in App Store Connect
   are what settle a question like this, not this file. The release notes below are what landed
-  since 2.5.0 and nothing older: calculations in the amount and share fields (#63). Umami
-  analytics beside Plausible (#65) went up in the same build and is not in the notes — nobody
-  sees it, and §6 is where it belongs
-- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.6 record, and the
-  screenshots carried forward from 2.5 unchanged — the release adds no screen worth reshooting.
+  since 2.6.0 and nothing older: expense dates no longer a day off west of UTC (#68). Plausible
+  switched off, Umami alone (#69), went up in the same build and is not in the notes — nobody
+  sees it, and §6 is where it belongs. The promotional text is 2.6.0's, still true, and filed
+  again because it does not carry forward
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.6.1 record, and the
+  screenshots carried forward from 2.6 unchanged — the release adds no screen worth reshooting.
   What is left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
@@ -135,10 +137,9 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-Do the sum where you type the amount.
+The right day, wherever you are.
 
-• Amounts and shares now take a calculation — 24.90+12.40, 3×4.50, (60−15)/3 — and show the result as soon as you move to the next field
-• A bar of +, −, × and ÷ sits above the keyboard while you type an amount, so there is nothing to switch to and nothing to add up on the side
+• An expense's date is now saved as the day you picked, not the day it already was in UTC. In the Americas, an expense added in the evening could show up a day later on spliit.app, and one added there a day earlier in the app
 
 Still no account, and still nothing to sign in to.
 ```
@@ -207,10 +208,9 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Faites le calcul là où vous tapez le montant.
+Le bon jour, où que vous soyez.
 
-• Les montants et les parts acceptent désormais un calcul — 24,90+12,40, 3×4,50, (60−15)/3 — et affichent le résultat dès que vous passez au champ suivant
-• Une barre avec +, −, × et ÷ apparaît au-dessus du clavier quand vous tapez un montant : rien à changer, et plus besoin de calculatrice à côté
+• La date d'une dépense est désormais enregistrée telle que vous l'avez choisie, et non comme le jour qu'il était déjà en UTC. Sur le continent américain, une dépense ajoutée le soir pouvait apparaître au lendemain sur spliit.app, et une dépense ajoutée là-bas, la veille dans l'app
 
 Toujours pas de compte, et toujours rien à quoi se connecter.
 ```

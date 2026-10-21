@@ -1183,12 +1183,12 @@
         }
       }
     },
-    "Find an expense by its title.": {
+    "Found in its notes": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trouvez une dépense par son intitulé."
+            "value": "Trouvée dans ses notes"
           }
         }
       }
@@ -1433,12 +1433,12 @@
         }
       }
     },
-    "No expense here has “%@” in its title.": {
+    "No expense here matches “%@”.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune dépense de ce groupe n’a « %@ » dans son intitulé."
+            "value": "Aucune dépense de ce groupe ne correspond à « %@ »."
           }
         }
       }
@@ -2441,6 +2441,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Réessayer"
+          }
+        }
+      }
+    },
+    "Type a word from the expense you’re looking for.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tapez un mot de la dépense que vous cherchez."
           }
         }
       }

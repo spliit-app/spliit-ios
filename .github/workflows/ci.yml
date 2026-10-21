@@ -76,9 +76,10 @@ jobs:
       # Pinned so a change upstream cannot turn this repo's CI red, and so the built server is
       # byte-identical from run to run and therefore cacheable. The nightly upstream-drift job
       # is what tracks the moving target. Moves forward when the app starts relying on something
-      # newer: this is spliit#647, the first server to create an expense under the ID the
-      # client minted, which `ExpenseSplitTests` needs to be true.
-      SPLIIT_SERVER_REF: 5f75ec84d63669768b2baf85510aacbaa742eac4
+      # newer: this is spliit#660, the first server to match a search against notes as well as
+      # titles, which `ExpenseSearchTests` needs to be true. It is past spliit#647 too, the first
+      # to create an expense under the ID the client minted, which `ExpenseSplitTests` needs.
+      SPLIIT_SERVER_REF: c625c11950175d3f63178e01027add5bf5682706
       MINIO_VERSION: RELEASE.2025-09-07T16-13-09Z
       MC_VERSION: RELEASE.2025-08-13T08-35-41Z
     steps:

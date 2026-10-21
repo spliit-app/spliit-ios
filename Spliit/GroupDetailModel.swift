@@ -36,8 +36,9 @@ final class GroupDetailModel {
     private(set) var isLoadingMoreSearchResults = false
 
     /// What the results currently answer to, or `nil` when nothing has been asked. The server
-    /// does the matching — `groups.expenses.list` takes a `filter`, matching titles
-    /// case-insensitively — so a search covers the whole group, not just the pages paged in.
+    /// does the matching — `groups.expenses.list` takes a `filter`, matching titles and, since
+    /// spliit#660, notes case-insensitively — so a search covers the whole group, not just the
+    /// pages paged in.
     private(set) var filter: String?
 
     /// The activity log, newest first. Loaded when its tab is first opened rather than with the

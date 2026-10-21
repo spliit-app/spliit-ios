@@ -95,7 +95,7 @@ struct ExpenseSearchView: View {
             EmptyState(
                 art: .icon("magnifyingglass"),
                 title: Text("Search this group"),
-                description: Text("Find an expense by its title.")
+                description: Text("Type a word from the expense you’re looking for.")
             )
         } else if model.didFailToSearch {
             EmptyState(
@@ -109,9 +109,10 @@ struct ExpenseSearchView: View {
             EmptyState(
                 art: .icon("magnifyingglass"),
                 title: Text("No matching expenses"),
-                // Titles, specifically: the server matches `title` and nothing else, so
-                // promising a search of "expenses" would promise more than it does.
-                description: Text("No expense here has “\(model.filter ?? "")” in its title.")
+                // Not "in its title", nor "in its title or its notes": an instance since
+                // spliit#660 searches both and one older than it titles alone, and nothing in the
+                // answer says which kind replied. Saying where it looked would be wrong on one.
+                description: Text("No expense here matches “\(model.filter ?? "")”.")
             )
         } else if model.searchResults.isEmpty {
             // Typed, but nothing has come back yet — the debounce is still running or the
@@ -212,7 +213,8 @@ struct ExpenseSearchView: View {
                                 expense: expense,
                                 payerPosition: model.participantPosition(expense.paidBy.id),
                                 formatter: model.moneyFormatter,
-                                activeParticipantID: activeParticipantID
+                                activeParticipantID: activeParticipantID,
+                                matchedInNotes: matchedInNotes(expense)
                             )
                         }
                         .buttonStyle(.plain)
@@ -240,5 +242,12 @@ struct ExpenseSearchView: View {
         // Typing changes the results under the thumb; letting them cut rather than animate keeps
         // a fast typist from watching rows slide in and out of a list they are still narrowing.
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// Against `model.filter`, not the field: the results answer to what was sent, and during
+    /// the debounce the field is already a character ahead of them.
+    private func matchedInNotes(_ expense: ExpenseListItem) -> Bool {
+        guard let filter = model.filter else { return false }
+        return ExpenseSearchMatch(title: expense.title, query: filter) == .notes
     }
 }

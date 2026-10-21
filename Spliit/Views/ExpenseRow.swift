@@ -13,6 +13,10 @@ struct ExpenseRow: View {
     /// Who the person holding the phone said they are in this group. Nil until they have, and
     /// then the row has no "you" to speak for.
     let activeParticipantID: String?
+    /// Set by search for a result the server found through its notes. The row never shows the
+    /// notes themselves — the list doesn't send them — so without this a match on them reads as
+    /// an expense that has nothing to do with what was typed.
+    var matchedInNotes = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -39,6 +43,12 @@ struct ExpenseRow: View {
                     paidByLine
                         .font(.footnote)
                         .accessibilityIdentifier(AccessibilityID.ExpenseList.rowPaidBy(expense.id))
+                }
+
+                if matchedInNotes {
+                    Label("Found in its notes", systemImage: "note.text")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

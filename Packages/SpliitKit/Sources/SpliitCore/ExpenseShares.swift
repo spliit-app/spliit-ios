@@ -38,7 +38,7 @@ public enum ExpenseShares {
         expenseId: String?,
         amount: Int,
         splitMode: SplitMode,
-        paidFor: [ExpenseDetails.PaidFor]
+        paidFor: [some ExpenseShareRow]
     ) -> [String: Int] {
         // The server fetches `paidFor` without an `orderBy`, so the rows can come back in any
         // order. The web app sorts by participant ID before splitting so the result does not
@@ -121,6 +121,19 @@ public enum ExpenseShares {
         }
         return hash
     }
+}
+
+/// One participant's row in a split, as the server stores it. The expense form and the expense
+/// list each decode their own, and both are split as they arrive rather than copied into one shape.
+public protocol ExpenseShareRow {
+    var participantId: String { get }
+    var shares: Int { get }
+}
+
+extension ExpenseDetails.PaidFor: ExpenseShareRow {}
+
+extension ExpenseListItem.PaidFor: ExpenseShareRow {
+    public var participantId: String { participant.id }
 }
 
 private extension Int128 {

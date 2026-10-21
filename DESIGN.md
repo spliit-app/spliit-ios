@@ -107,6 +107,11 @@ none, so it is `.primary`. A balance is positive, negative or settled — `Money
 does that mapping, and `.settled` is `.secondary` rather than a third colour, because zero is
 not an outcome worth tinting.
 
+An expense row carries both. The total stays `.primary`; once you have said who you are, the
+line under the title says what that expense does to *your* balance — "You lent …", "You
+borrowed …" — tinted along the money axis, because that figure does have a direction. It
+replaces the "for …" names rather than adding a line, so the row keeps its height.
+
 **Amounts are drawn unsigned wherever a caption above them already says which way they go.**
 Your own balance, at the top of the balances tab, sits under "You are owed" or "You owe"; the
 three figures on the totals tab sit under captions that flip between spending and earnings the

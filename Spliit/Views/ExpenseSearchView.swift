@@ -23,6 +23,15 @@ struct ExpenseSearchView: View {
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
     private var client: TRPCClient { app.client(forGroup: model.groupID) }
+
+    /// Who the person holding the phone said they are, read from the store rather than from
+    /// `model.actorID`, which is set only once the group screen appears and so missed the
+    /// first frame.
+    private var activeParticipantID: String? {
+        app.recentGroups.actorID(
+            inGroup: model.groupID, participants: model.group?.participants ?? []
+        )
+    }
     let model: GroupDetailModel
     @Binding var query: String
     /// Whether the search tab is the one on screen. A `TabView` keeps every tab's content alive,
@@ -202,7 +211,8 @@ struct ExpenseSearchView: View {
                             ExpenseRow(
                                 expense: expense,
                                 payerPosition: model.participantPosition(expense.paidBy.id),
-                                formatter: model.moneyFormatter
+                                formatter: model.moneyFormatter,
+                                activeParticipantID: activeParticipantID
                             )
                         }
                         .buttonStyle(.plain)

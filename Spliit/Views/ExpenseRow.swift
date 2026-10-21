@@ -49,7 +49,6 @@ struct ExpenseRow: View {
                     Label("Found in its notes", systemImage: "note.text")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .accessibilityIdentifier(AccessibilityID.ExpenseSearch.notesMatch(expense.id))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -45,26 +45,27 @@ final class ExpenseSearchTests: SpliitUITestCase {
             notes: "Birthday at the lake house"
         )
         try await api.createExpense(in: group, title: "Lake house deposit", amount: 9000, paidBy: "Bruno")
-        let dinner = try await api.expense(inGroup: group.id, titled: "Dinner")
-        let deposit = try await api.expense(inGroup: group.id, titled: "Lake house deposit")
-        let dinnerID = try XCTUnwrap(dinner["id"] as? String)
-        let depositID = try XCTUnwrap(deposit["id"] as? String)
         let app = launchApp(recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Trip")]))
 
         openGroup(app, group)
         search(app, for: "lake house")
 
-        assertExists(app.staticTexts["Dinner"], "An expense matching through its notes should be listed.")
-        assertExists(
-            app.descendants(matching: .any)[AccessibilityID.ExpenseSearch.notesMatch(dinnerID)],
-            "…and say that its notes are why."
-        )
+        let dinner = app.staticTexts["Dinner"]
+        assertExists(dinner, "An expense matching through its notes should be listed.")
         assertExists(app.staticTexts["Lake house deposit"], "A title match should be listed too.")
-        XCTAssertFalse(
-            app.descendants(matching: .any)[AccessibilityID.ExpenseSearch.notesMatch(depositID)].exists,
-            "A title match needs no explanation."
-        )
         XCTAssertFalse(app.staticTexts["Pizza night"].exists, "Nothing else should match.")
+
+        // One explanation, on the row that needs it: the title match needs none.
+        let explanations = app.staticTexts.matching(
+            NSPredicate(format: "label == %@", "Found in its notes")
+        )
+        XCTAssertEqual(explanations.count, 1, "Only the notes match should say why it matched.")
+        let explanation = explanations.firstMatch
+        XCTAssertGreaterThan(explanation.frame.minY, dinner.frame.minY)
+        XCTAssertLessThan(
+            explanation.frame.minY - dinner.frame.minY, 80,
+            "…and it should be the Dinner row that says so."
+        )
         capture(app, "search-notes-match")
     }
 

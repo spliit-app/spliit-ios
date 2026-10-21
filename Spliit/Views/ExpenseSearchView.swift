@@ -216,7 +216,8 @@ struct ExpenseSearchView: View {
                                 expense: expense,
                                 payerPosition: model.participantPosition(expense.paidBy.id),
                                 formatter: model.moneyFormatter,
-                                activeParticipantID: activeParticipantID
+                                activeParticipantID: activeParticipantID,
+                                matchedInNotes: matchedInNotes(expense)
                             )
                         }
                         .buttonStyle(.plain)

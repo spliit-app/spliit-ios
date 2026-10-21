@@ -95,7 +95,7 @@ struct ExpenseSearchView: View {
             EmptyState(
                 art: .icon("magnifyingglass"),
                 title: Text("Search this group"),
-                description: Text("Find an expense by its title or its notes.")
+                description: Text("Type a word from the expense you’re looking for.")
             )
         } else if model.didFailToSearch {
             EmptyState(
@@ -109,13 +109,10 @@ struct ExpenseSearchView: View {
             EmptyState(
                 art: .icon("magnifyingglass"),
                 title: Text("No matching expenses"),
-                // Titles and notes, specifically: that is all the server matches, so promising a
-                // search of "expenses" would promise more than it does. An instance older than
-                // spliit#660 matches titles alone, and this overstates it there — but nothing
-                // says which kind answered, and the one almost everybody uses is the newer.
-                description: Text(
-                    "No expense here has “\(model.filter ?? "")” in its title or its notes."
-                )
+                // Not "in its title", nor "in its title or its notes": an instance since
+                // spliit#660 searches both and one older than it titles alone, and nothing in the
+                // answer says which kind replied. Saying where it looked would be wrong on one.
+                description: Text("No expense here matches “\(model.filter ?? "")”.")
             )
         } else if model.searchResults.isEmpty {
             // Typed, but nothing has come back yet — the debounce is still running or the
@@ -160,7 +157,7 @@ struct ExpenseSearchView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
 
-                TextField("Search titles and notes", text: $query)
+                TextField("Search expenses", text: $query)
                     .textFieldStyle(.plain)
                     .submitLabel(.search)
                     .autocorrectionDisabled()

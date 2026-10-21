@@ -1,4 +1,4 @@
-# App Store Connect — Spliit 2.6.1
+# App Store Connect — Spliit 2.7.0
 
 Everything the listing needs, in the two languages it is published in, plus the screenshots and
 the script that regenerates them.
@@ -9,24 +9,25 @@ the wrap in it. The counts beside each heading are the limits App Store Connect 
 they are checked, not estimated.
 
 - **App**: Spliit — `app.spliit.spliitmobile`
-- **Version**: 2.6.1, build 30, uploaded and attached to the 2.6.1 record. 2.6.0 is
+- **Version**: 2.7.0, build 31, uploaded and attached to the 2.7.0 record. 2.6.1 is
   `READY_FOR_SALE`, which *closes* that train — a further build for it is refused with 90186, and
   90062 beside it asking for a higher marketing version. So the first upload after a release moves
   both numbers, not just the build
-- **What shipped before**: 2.6.0 went out as build 29 — calculations in the amount and share
-  fields — 2.5.0 as build 28 — the category suggested from the title
-  and the odd cent kept put — 2.4.0 as build 27 — each share's amount and the fuller
+- **What shipped before**: 2.6.1 went out as build 30 — expense dates on the right day west of
+  UTC — 2.6.0 as build 29 — calculations in the amount and share fields — 2.5.0 as build 28 —
+  the category suggested from the title and the odd cent kept put — 2.4.0 as build 27 — each share's amount and the fuller
   Shortcuts action — 2.3.0 as build 26 — the default split — and 2.2.0 as build
   **25**, not the 24 this file once said: the totals fix (#47) went up while its own pull request
   was still open, replaced 24 on the 2.2 record before review, and was approved there. The build
   attached to a version record is the one that shipped it; the upload dates in App Store Connect
   are what settle a question like this, not this file. The release notes below are what landed
-  since 2.6.0 and nothing older: expense dates no longer a day off west of UTC (#68). Plausible
-  switched off, Umami alone (#69), went up in the same build and is not in the notes — nobody
-  sees it, and §6 is where it belongs. The promotional text is 2.6.0's, still true, and filed
-  again because it does not carry forward
-- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.6.1 record, and the
-  screenshots carried forward from 2.6 unchanged — the release adds no screen worth reshooting.
+  since 2.6.1 and nothing older: what each expense does to your balance (#74), and a search
+  result that says it matched through its notes (#75). The notes say "a server recent enough"
+  rather than naming spliit.app, because searching notes is spliit#660's and nothing in the
+  response says which kind of instance answered. The description's search line drops "by
+  title" for the same reason
+- **Filed already**: everything in §2 and §3 is in App Store Connect on the 2.7.0 record, and the
+  screenshots carried forward from 2.6.1 unchanged — the release adds no screen worth reshooting.
   What is left before submitting is §8
 - **Replaces**: the Expo / React Native app, in place, on the same listing
 - **Localizations**: English (U.S.) — primary, French (France)
@@ -73,12 +74,12 @@ descriptive half belongs in the subtitle, which is what the subtitle is for.
 Split expenses with friends
 ```
 
-### Promotional text — 165 / 170
+### Promotional text — 160 / 170
 
 Editable without shipping a build, so it is the place to say what is true this month.
 
 ```
-Type 24.90+12.40 in an amount and Spliit does the sum for you, with +, −, × and ÷ right above the keyboard. Your groups are kept in iCloud, and no account is needed.
+Every expense now says what it does to your balance: what you lent in green, what you borrowed in red. Your groups are kept in iCloud, and no account is needed.
 ```
 
 It does not survive a new version: App Store Connect carries the description and the keywords
@@ -115,7 +116,7 @@ WHAT IT DOES
 • Totals for the group and for you, and where the money actually went, by category
 • Mark a suggested payment as paid and it becomes a reimbursement, in one tap
 • An activity log for every group: what has happened to it, and who did it
-• Search a group's expenses by title instead of scrolling for them
+• Search a group's expenses instead of scrolling for them
 • Star the groups you are in the middle of; archive the ones that are over
 • Every currency the system knows, each counted the way it is actually counted — yen has no decimals, dinars have three
 
@@ -137,9 +138,10 @@ Free and open source: github.com/spliit-app
 ### What's New in This Version
 
 ```
-The right day, wherever you are.
+See what each expense means for you.
 
-• An expense's date is now saved as the day you picked, not the day it already was in UTC. In the Americas, an expense added in the evening could show up a day later on spliit.app, and one added there a day earlier in the app
+• Once you've said who you are in a group, every expense says what it does to your balance: "You lent €95.10" in green, "You borrowed €6.00" in red, or "Not involved" when it left you out. The amounts match the Balances tab to the cent
+• Search finds expenses by their notes as well as their titles, on a Spliit server recent enough to do it, and a result found through its notes says so
 
 Still no account, and still nothing to sign in to.
 ```
@@ -154,10 +156,10 @@ Still no account, and still nothing to sign in to.
 Dépenses partagées entre amis
 ```
 
-### Texte promotionnel — 163 / 170
+### Texte promotionnel — 154 / 170
 
 ```
-Tapez 24,90+12,40 dans un montant et Spliit fait le calcul, avec +, −, × et ÷ juste au-dessus du clavier. Vos groupes sont gardés dans iCloud, sans compte à créer.
+Chaque dépense dit désormais ce qu'elle change à votre solde : prêté en vert, emprunté en rouge. Vos groupes sont gardés dans iCloud, sans compte à créer.
 ```
 
 ### Mots-clés — 93 / 100
@@ -208,9 +210,10 @@ Libre et open source : github.com/spliit-app
 ### Nouveautés de cette version
 
 ```
-Le bon jour, où que vous soyez.
+Voyez ce que chaque dépense change pour vous.
 
-• La date d'une dépense est désormais enregistrée telle que vous l'avez choisie, et non comme le jour qu'il était déjà en UTC. Sur le continent américain, une dépense ajoutée le soir pouvait apparaître au lendemain sur spliit.app, et une dépense ajoutée là-bas, la veille dans l'app
+• Une fois que vous avez indiqué qui vous êtes dans un groupe, chaque dépense dit ce qu'elle change à votre solde : « Vous avez prêté 95,10 € » en vert, « Vous avez emprunté 6,00 € » en rouge, ou « Non concerné » quand elle ne vous implique pas. Les montants correspondent au centime près à l'onglet Soldes
+• La recherche trouve les dépenses par leurs notes autant que par leur titre, sur un serveur Spliit assez récent pour le faire, et un résultat trouvé dans ses notes le signale
 
 Toujours pas de compte, et toujours rien à quoi se connecter.
 ```
@@ -504,16 +507,16 @@ follows the decision about where the page lives, so it is not drafted here.
       Whether it is the first impression the listing wants is a judgement call, and the
       alternative — dropping `TARGETED_DEVICE_FAMILY` to iPhone only — is a product decision
       with a cost of its own
-- [x] ~~Upload a build.~~ **2.6.0 (29) is uploaded, processed and attached to the 2.6 record** —
-      calculations in the amount and share fields, and Umami beside Plausible. Both numbers moved
-      together, 2.5.0 being approved having closed that train. Apple mails you if processing fails after an upload that reported success
-- [x] ~~Fill in the listing.~~ Release notes and promotional text are on the 2.6 record in both
-      languages; the description, the keywords and the five framed screenshots carried forward
-      from 2.5.0 untouched
+- [x] ~~Upload a build.~~ **2.7.0 (31) is uploaded, processed and attached to the 2.7.0 record** —
+      what each expense does to your balance, and search results found through their notes. Both
+      numbers moved together, 2.6.1 being approved having closed that train. Apple mails you if processing fails after an upload that reported success
+- [x] ~~Fill in the listing.~~ Release notes, promotional text and the description's search line
+      are on the 2.7.0 record in both languages; the keywords and the five framed screenshots
+      carried forward from 2.6.1 untouched
 - [ ] The keywords live on App Store Connect are not the ones in §2 and §3: both languages still
       end on the older set (`…ledger,tab,iou` and `…ami,note,compte`), without "receipt" and
-      "scan". 2.6.0 carried them forward as they were; filing the ones here is one edit per
-      language on the 2.6 record, if they are still the ones wanted
+      "scan". 2.7.0 carried them forward as they were; filing the ones here is one edit per
+      language on the 2.7.0 record, if they are still the ones wanted
 - [ ] The privacy policy at spliit.app names Plausible; it should name Umami too, now that the
       app reports to both (§7's draft does)
 - [ ] Check what share of the installed base is below iOS 26; they stay on 1.2.0

@@ -132,6 +132,8 @@ enum AccessibilityID {
         static let field = "search.field"
         static let clearButton = "search.clear"
         static let cancelButton = "search.cancel"
+
+        static func notesMatch(_ expenseID: String) -> String { "search.row.\(expenseID).notesMatch" }
     }
 
     enum ExpenseForm {

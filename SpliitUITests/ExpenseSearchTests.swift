@@ -33,6 +33,41 @@ final class ExpenseSearchTests: SpliitUITestCase {
         )
     }
 
+    /// The server matches notes as well as titles (spliit#660), and the list it answers with has
+    /// no notes in it — so the row has to say why "Dinner" came back for "lake house", or it reads
+    /// as a result that has nothing to do with the search.
+    @MainActor
+    func testAMatchInTheNotesSaysSo() async throws {
+        let group = try await api.createGroup(name: "Trip", participants: ["Ana", "Bruno"])
+        try await api.createExpense(in: group, title: "Pizza night", amount: 3000, paidBy: "Ana")
+        try await api.createExpense(
+            in: group, title: "Dinner", amount: 5000, paidBy: "Ana",
+            notes: "Birthday at the lake house"
+        )
+        try await api.createExpense(in: group, title: "Lake house deposit", amount: 9000, paidBy: "Bruno")
+        let dinner = try await api.expense(inGroup: group.id, titled: "Dinner")
+        let deposit = try await api.expense(inGroup: group.id, titled: "Lake house deposit")
+        let dinnerID = try XCTUnwrap(dinner["id"] as? String)
+        let depositID = try XCTUnwrap(deposit["id"] as? String)
+        let app = launchApp(recentGroups: SpliitTestAPI.recentGroupsJSON([(group.id, "Trip")]))
+
+        openGroup(app, group)
+        search(app, for: "lake house")
+
+        assertExists(app.staticTexts["Dinner"], "An expense matching through its notes should be listed.")
+        assertExists(
+            app.descendants(matching: .any)[AccessibilityID.ExpenseSearch.notesMatch(dinnerID)],
+            "…and say that its notes are why."
+        )
+        assertExists(app.staticTexts["Lake house deposit"], "A title match should be listed too.")
+        XCTAssertFalse(
+            app.descendants(matching: .any)[AccessibilityID.ExpenseSearch.notesMatch(depositID)].exists,
+            "A title match needs no explanation."
+        )
+        XCTAssertFalse(app.staticTexts["Pizza night"].exists, "Nothing else should match.")
+        capture(app, "search-notes-match")
+    }
+
     /// Typing does not end after the first word.
     ///
     /// The other tests here type in one go, which lands every character before the debounce has

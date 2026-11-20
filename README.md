@@ -52,7 +52,7 @@ Three layers, all runnable from the command line.
 
 | Command | What it covers | Needs |
 |---|---|---|
-| `make test` | superjson coding, response decoding, request building, the storage migration, money formatting, date bucketing | nothing |
+| `make test` | superjson coding, response decoding, request building, the storage migration, money formatting, date bucketing, group model cancellation and pagination | nothing |
 | `make strings` | every string in the source is in a catalogue, and translated | nothing |
 | `make test-live` | the API client against a real server, including writes | `make e2e-up` |
 | `make e2e` | the app itself, in a simulator, against a real server | Docker |

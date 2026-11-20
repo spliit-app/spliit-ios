@@ -45,6 +45,7 @@ targets:
     dependencies:
       - package: SpliitUI
         product: SpliitUI
+        embed: true
     settings:
       base:
         # The App Store record this replaces. Changing it would ship a second, separate app

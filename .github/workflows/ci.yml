@@ -31,8 +31,7 @@ jobs:
           xcodebuild -version
 
       - name: Run unit tests
-        working-directory: Packages/SpliitKit
-        run: swift test
+        run: make test
 
   build:
     name: Build app
@@ -217,6 +216,7 @@ jobs:
         run: |
           make generate
           xcodebuild test \
+            -skipPackagePluginValidation \
             -project Spliit.xcodeproj -scheme Spliit \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -derivedDataPath build \

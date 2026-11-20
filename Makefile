@@ -105,6 +105,14 @@ strings: build ## Check the string catalogues against the strings in the source
 
 test: ## Run the unit suites on the host (no simulator)
 	@cd Packages/SpliitKit && swift test --build-system native
+	@set -e; \
+		core_build=$$(cd Packages/SpliitKit && swift build --build-system native --show-bin-path); \
+		swiftc -parse-as-library -module-cache-path "$$core_build/ModuleCache" \
+			-I "$$core_build/Modules" Spliit/GroupDetailModel.swift \
+			Scripts/check-group-model.swift "$$core_build"/SpliitAPI.build/*.o \
+			"$$core_build"/SpliitCore.build/*.o -o "$$core_build/check-group-model"; \
+		python3 -c 'import subprocess, sys; subprocess.run([sys.argv[1]], check=True, timeout=30)' \
+			"$$core_build/check-group-model"
 
 android-app: ## Build the ARM64 Android debug APK (requires Skip, Gradle 9.4.1 and JDK 21)
 	@SKIP_EXPORT_ARCHS=aarch64 gradle -p Android :app:assembleDebug

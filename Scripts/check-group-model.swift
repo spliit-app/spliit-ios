@@ -1,11 +1,4 @@
-// Run from the repository root, using the same Swift toolchain for these commands:
-// (cd Packages/SpliitKit && swift build --build-system native)
-// core_build=$(cd Packages/SpliitKit && swift build --build-system native --show-bin-path)
-// swiftc -parse-as-library -module-cache-path /tmp/spliit-model-module-cache \
-//   -I "$core_build/Modules" Spliit/GroupDetailModel.swift \
-//   Scripts/check-group-model.swift "$core_build"/SpliitAPI.build/*.o \
-//   "$core_build"/SpliitCore.build/*.o -o /tmp/check-group-model
-// python3 -c "import subprocess; subprocess.run(['/tmp/check-group-model'], check=True, timeout=30)"
+// Run from the repository root with `make test` (also run by CI).
 
 import Foundation
 import SpliitAPI

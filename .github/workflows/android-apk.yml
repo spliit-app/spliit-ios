@@ -1,0 +1,51 @@
+name: Android APK
+
+on:
+  push:
+    branches: [skip-integration-plan]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+
+      - uses: skiptools/actions/setup-skip@v1
+        with:
+          gradle-version: '9.4.1'
+          install-swift-android-sdk: 'true'
+          swift-android-sdk-version: '6.4.0'
+
+      - name: Build APK
+        run: make android-app
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: spliit-arm64-debug
+          path: .build/Android/app/outputs/apk/debug/app-debug.apk
+          include-hidden-files: true
+          if-no-files-found: error

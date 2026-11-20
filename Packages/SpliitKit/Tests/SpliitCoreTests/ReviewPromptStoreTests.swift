@@ -13,13 +13,14 @@ struct ReviewPromptStoreTests {
     private static let day: TimeInterval = 24 * 3600
     private static let now = Date(timeIntervalSince1970: 1_767_225_600)
 
-    private func makeDefaults() throws -> UserDefaults {
-        try #require(UserDefaults(suiteName: "review-prompt-tests-\(UUID().uuidString)"))
+    private func makeDefaults() throws -> Foundation.UserDefaults {
+        let defaults = Foundation.UserDefaults(suiteName: "review-prompt-tests-\(UUID().uuidString)")
+        return try #require(defaults)
     }
 
     /// A store that would ask, so a test can shut one gate at a time and see it stop.
     private func makeStore(
-        _ defaults: UserDefaults,
+        _ defaults: Foundation.UserDefaults,
         installedDaysAgo: Double = 30,
         activations: Int = 10,
         version: String = "2.2.0",
@@ -33,7 +34,7 @@ struct ReviewPromptStoreTests {
         return ReviewPromptStore(defaults: defaults, version: version, now: { instant })
     }
 
-    private func isArmed(_ defaults: UserDefaults) -> Bool {
+    private func isArmed(_ defaults: Foundation.UserDefaults) -> Bool {
         defaults.bool(forKey: ReviewPromptStore.Key.isArmed)
     }
 

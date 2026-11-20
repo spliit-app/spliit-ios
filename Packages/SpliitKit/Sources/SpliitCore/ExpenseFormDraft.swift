@@ -2,7 +2,7 @@ import Foundation
 import SpliitAPI
 
 /// One participant's row in the "Paid for" list.
-public struct ParticipantShareDraft: Identifiable, Equatable, Sendable {
+public struct ParticipantShareDraft: Codable, Identifiable, Equatable, Sendable {
     /// The server-side participant ID.
     public let id: String
     public var name: String
@@ -23,7 +23,7 @@ public struct ParticipantShareDraft: Identifiable, Equatable, Sendable {
 ///
 /// Mirrors `expenseFormSchema` in the web app, including the split-mode sum rules that are the
 /// easiest thing to get subtly wrong.
-public struct ExpenseFormDraft: Equatable, Sendable {
+public struct ExpenseFormDraft: Codable, Equatable, Sendable {
 
     public var title: String
     public var expenseDate: Date
@@ -654,41 +654,41 @@ extension ExpenseFormDraft.Problem {
     public var message: String {
         switch self {
         case .titleTooShort:
-            String(localized: "Enter at least two characters.", bundle: Bundle.module)
+            NSLocalizedString("Enter at least two characters.", bundle: CoreResources.bundle, comment: "")
         case .amountMissing:
-            String(localized: "You must enter an amount.", bundle: Bundle.module)
+            NSLocalizedString("You must enter an amount.", bundle: CoreResources.bundle, comment: "")
         case .amountNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .amountZero:
-            String(localized: "The amount must not be zero.", bundle: Bundle.module)
+            NSLocalizedString("The amount must not be zero.", bundle: CoreResources.bundle, comment: "")
         case .amountTooLarge:
-            String(localized: "The amount must be lower than 10,000,000.", bundle: Bundle.module)
+            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountMissing:
-            String(localized: "Enter what was actually paid.", bundle: Bundle.module)
+            NSLocalizedString("Enter what was actually paid.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountZero:
-            String(localized: "The amount must not be zero.", bundle: Bundle.module)
+            NSLocalizedString("The amount must not be zero.", bundle: CoreResources.bundle, comment: "")
         case .originalAmountTooLarge:
-            String(localized: "The amount must be lower than 10,000,000.", bundle: Bundle.module)
+            NSLocalizedString("The amount must be lower than 10,000,000.", bundle: CoreResources.bundle, comment: "")
         case .conversionRateMissing:
-            String(localized: "Enter an exchange rate.", bundle: Bundle.module)
+            NSLocalizedString("Enter an exchange rate.", bundle: CoreResources.bundle, comment: "")
         case .conversionRateNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .conversionRateNotPositive:
-            String(localized: "The rate must be strictly greater than zero.", bundle: Bundle.module)
+            NSLocalizedString("The rate must be strictly greater than zero.", bundle: CoreResources.bundle, comment: "")
         case .payerMissing:
-            String(localized: "You must select a participant.", bundle: Bundle.module)
+            NSLocalizedString("You must select a participant.", bundle: CoreResources.bundle, comment: "")
         case .noParticipantsSelected:
-            String(localized: "The expense must be paid for at least one participant.", bundle: Bundle.module)
+            NSLocalizedString("The expense must be paid for at least one participant.", bundle: CoreResources.bundle, comment: "")
         case .shareNotANumber:
-            String(localized: "Invalid number.", bundle: Bundle.module)
+            NSLocalizedString("Invalid number.", bundle: CoreResources.bundle, comment: "")
         case .shareNotPositive:
-            String(localized: "All shares must be higher than 0.", bundle: Bundle.module)
+            NSLocalizedString("All shares must be higher than 0.", bundle: CoreResources.bundle, comment: "")
         case .amountsDoNotSumToTotal:
-            String(localized: "Sum of amounts must equal the expense amount.", bundle: Bundle.module)
+            NSLocalizedString("Sum of amounts must equal the expense amount.", bundle: CoreResources.bundle, comment: "")
         case .percentagesDoNotSumTo100:
-            String(localized: "Sum of percentages must equal 100.", bundle: Bundle.module)
+            NSLocalizedString("Sum of percentages must equal 100.", bundle: CoreResources.bundle, comment: "")
         }
     }
 }

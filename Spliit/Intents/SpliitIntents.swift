@@ -1,5 +1,8 @@
+#if os(iOS)
 import AppIntents
 import Foundation
+
+public struct SpliitAppIntentsPackage: AppIntentsPackage {}
 
 /// Opens a group.
 struct OpenGroupIntent: AppIntent {
@@ -121,3 +124,4 @@ struct SpliitShortcuts: AppShortcutsProvider {
         )
     }
 }
+#endif

@@ -8,6 +8,7 @@ import SwiftUI
 /// is red before you have typed anything reads as broken rather than helpful.
 struct GroupFormView: View {
 
+    @Environment(\.locale) var locale
     @Binding var draft: GroupFormDraft
     /// Participants who appear on an expense; the server refuses to remove these.
     var participantsWithExpenses: Set<String> = []
@@ -21,9 +22,9 @@ struct GroupFormView: View {
     let onSave: () -> Void
     let onCancel: () -> Void
 
-    @State private var hasAttemptedSave = false
-    @State private var blockedParticipant: String?
-    @FocusState private var focusedParticipant: ParticipantDraft.ID?
+    @State var hasAttemptedSave = false
+    @State var blockedParticipant: String?
+    @FocusState var focusedParticipant: ParticipantDraft.ID?
 
     var body: some View {
         Form {
@@ -83,7 +84,11 @@ struct GroupFormView: View {
                     text: $draft.information,
                     axis: .vertical
                 )
+                #if os(iOS)
                 .lineLimit(3...6)
+                #else
+                .lineLimit(6)
+                #endif
                 .accessibilityIdentifier(AccessibilityID.GroupForm.informationField)
             }
 
@@ -136,6 +141,7 @@ struct GroupFormView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel", action: onCancel)
+                    .disabled(isSaving)
                     .accessibilityIdentifier(AccessibilityID.GroupForm.cancelButton)
             }
             ToolbarItem(placement: .confirmationAction) {
@@ -172,7 +178,7 @@ struct GroupFormView: View {
     /// What the picker row shows on the right: the currency and the symbol it will put beside
     /// every amount, or just the symbol when that is all the group has.
     private var currencySummary: String {
-        if let currency = draft.selectedCurrency() {
+        if let currency = draft.selectedCurrency(in: locale) {
             "\(currency.name) (\(currency.symbol))"
         } else if let code = draft.currencyCode, !code.isEmpty {
             // Stored by something else and not a currency this system knows. Showing it is more
@@ -197,20 +203,21 @@ struct GroupFormView: View {
 /// "Create group", presented as a sheet from the group list.
 struct CreateGroupView: View {
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
 
-    @State private var draft = GroupFormDraft(newGroupIn: .autoupdatingCurrent)
-    @State private var instance: InstanceChoice
-    @State private var isSaving = false
-    @State private var failure: String?
+    @State var draft: GroupFormDraft
+    @State var instance: InstanceChoice
+    @State var isSaving = false
+    @State var failure: String?
 
     /// Called with the new group so the caller can remember it and open it.
     let onCreated: (RecentGroup) -> Void
 
     /// - Parameter instanceURL: where the form opens — the last instance a group was created on.
     ///   Passed in rather than read here, because the environment isn't available yet.
-    init(instanceURL: URL, onCreated: @escaping (RecentGroup) -> Void) {
+    init(instanceURL: URL, locale: Locale, onCreated: @escaping (RecentGroup) -> Void) {
+        _draft = State(initialValue: GroupFormDraft(newGroupIn: locale))
         _instance = State(initialValue: InstanceChoice(url: instanceURL))
         self.onCreated = onCreated
     }
@@ -235,7 +242,7 @@ struct CreateGroupView: View {
                 Text(failure ?? "")
             }
         }
-        .interactiveDismissDisabled(isSaving)
+        .savingDismissDisabled(isSaving)
     }
 
     private func save() {
@@ -268,8 +275,8 @@ struct CreateGroupView: View {
 /// "Group settings" — the same form, loaded from the server so participant IDs survive.
 struct GroupSettingsView: View {
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
 
     let groupID: String
     let onSaved: (String) -> Void
@@ -278,14 +285,14 @@ struct GroupSettingsView: View {
     /// ever reads it.
     private var client: TRPCClient { app.client(forGroup: groupID) }
 
-    @State private var draft: GroupFormDraft?
-    @State private var participantsWithExpenses: Set<String> = []
+    @State var draft: GroupFormDraft?
+    @State var participantsWithExpenses: Set<String> = []
     /// Who was in the group when this form opened, kept only to resolve who is saving it. The
     /// draft's own list is being edited, and someone removing themselves here is still the one
     /// who made the change.
-    @State private var participants: [Participant] = []
-    @State private var isSaving = false
-    @State private var failure: String?
+    @State var participants: [Participant] = []
+    @State var isSaving = false
+    @State var failure: String?
 
     var body: some View {
         NavigationStack {
@@ -306,13 +313,17 @@ struct GroupSettingsView: View {
                         description: Text(failure ?? "")
                     )
                 } else {
-                    ProgressView().controlSize(.large)
+                    ProgressView()
+                        #if os(iOS)
+                        .controlSize(.large)
+                        #endif
                 }
             }
             .navigationTitle("Group settings")
             .navigationBarTitleDisplayMode(.inline)
             .trackScreen(.groupSettings)
         }
+        .savingDismissDisabled(isSaving)
         .task { await load() }
     }
 

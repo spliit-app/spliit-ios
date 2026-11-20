@@ -9,18 +9,24 @@ import SwiftUI
 /// server details fill in. A server that can't be reached costs detail, not the list.
 struct GroupsListView: View {
 
-    @Environment(AppModel.self) private var app
-    @State private var model = GroupsListModel()
-    @State private var path: [String] = []
-    @State private var sheet: Sheet?
+    @Environment(AppModel.self) var app
+    @Environment(\.locale) var locale
+    @State var model = GroupsListModel()
+    @State var path: [String] = []
+    @State var sheet: Sheet?
+    #if os(Android)
+    @State var checkedExpenseRecovery = false
+    #endif
     /// Not one of the sheets: the camera takes the whole screen, and the cover is attached to
     /// the stack rather than to `content` — which swaps identity the moment the list stops
     /// being empty, taking any presentation hanging off it with it.
+    #if os(iOS)
     @State private var isScanningQRCode = false
-    @State private var linkFailure: String?
+    #endif
+    @State var linkFailure: String?
     private var router: Router { Router.shared }
 
-    private enum Sheet: String, Identifiable {
+    enum Sheet: String, Identifiable {
         case settings, createGroup, addByURL
         var id: String { rawValue }
     }
@@ -40,20 +46,31 @@ struct GroupsListView: View {
                 .trackScreen(.home)
         }
         .task(id: reloadToken) {
-            await model.load(summaryRequests)
+            await model.load(summaryRequests, locale: locale)
         }
         // An intent can land before this view exists — a cold launch from Spotlight — or while
         // it is already on screen, so the destination is read on appearance and on every change
         // rather than only once.
         .onAppear {
+            #if os(Android)
+            let hasIncomingRoute = router.destination != nil || router.pendingURL != nil
+            #endif
             openRoutedGroup()
             if let url = router.takePendingURL() { open(url) }
+            #if os(Android)
+            if !checkedExpenseRecovery {
+                checkedExpenseRecovery = true
+                if !hasIncomingRoute { openRecoveredExpenseGroup() }
+            }
+            #endif
         }
         .onChange(of: router.destination) { openRoutedGroup() }
         .onOpenURL { open($0) }
+        #if os(iOS)
         .fullScreenCover(isPresented: $isScanningQRCode) {
             ScanGroupQRCodeView { app.recentGroups.remember($0) }
         }
+        #endif
         .alert(
             "Couldn’t open that link",
             isPresented: .constant(linkFailure != nil)
@@ -128,6 +145,16 @@ struct GroupsListView: View {
         }
     }
 
+    #if os(Android)
+    private func openRecoveredExpenseGroup() {
+        guard path.isEmpty, let saved = app.expenseDrafts.record,
+              app.recentGroups.groups.contains(where: { $0.groupId == saved.groupID }),
+              SettingsStore.normalize(app.instanceURL(forGroup: saved.groupID).absoluteString)
+                == saved.instanceURL else { return }
+        path = [saved.groupID]
+    }
+    #endif
+
     /// Reloads when the remembered groups change — including when one of them turns out to be
     /// on a different instance than the list thought.
     private var reloadToken: String {
@@ -155,10 +182,12 @@ struct GroupsListView: View {
                     .accessibilityIdentifier(AccessibilityID.GroupsList.createGroupButton)
                 Button("Add by link", systemImage: "link") { sheet = .addByURL }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
+                #if os(iOS)
                 Button("Add by QR code", systemImage: "qrcode.viewfinder") {
                     isScanningQRCode = true
                 }
                 .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                #endif
             } label: {
                 Label("Add group", systemImage: "plus")
             }
@@ -179,7 +208,7 @@ struct GroupsListView: View {
         case .settings:
             SettingsView()
         case .createGroup:
-            CreateGroupView(instanceURL: app.settings.defaultInstanceURL) { group in
+            CreateGroupView(instanceURL: app.settings.defaultInstanceURL, locale: locale) { group in
                 app.recentGroups.remember(group)
                 path = [group.groupId]
             }
@@ -222,9 +251,13 @@ struct GroupsListView: View {
     @ToolbarContentBuilder
     private var wordmarkToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) { wordmark }
+            #if os(iOS)
             .sharedBackgroundVisibility(.hidden)
+            #endif
         ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
+            #if os(iOS)
             .sharedBackgroundVisibility(.hidden)
+            #endif
     }
 
     /// The asset is 522×180, and both numbers are needed here. A height on its own is not enough:
@@ -237,7 +270,7 @@ struct GroupsListView: View {
     /// Fixed size, like the welcome screen's: the navigation bar is 44pt whatever the text size,
     /// so a mark that grew with Dynamic Type would only be clipped by it.
     private var wordmark: some View {
-        Image("Logo")
+        Image("Logo", bundle: UIResources.bundle)
             .resizable()
             .scaledToFit()
             .frame(width: Self.wordmarkWidth, height: Self.wordmarkHeight)
@@ -285,12 +318,14 @@ struct GroupsListView: View {
                     }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.addByURLButton)
 
+                    #if os(iOS)
                     Button { isScanningQRCode = true } label: {
                         Text("Add by QR code")
                             .frame(maxWidth: .infinity)
                             .multilineTextAlignment(.center)
                     }
                     .accessibilityIdentifier(AccessibilityID.GroupsList.scanQRCodeButton)
+                    #endif
                 }
                 .buttonStyle(.bordered)
             }
@@ -331,7 +366,7 @@ struct GroupsListView: View {
             }
         }
         .refreshable {
-            await model.load(summaryRequests)
+            await model.load(summaryRequests, locale: locale)
         }
     }
 
@@ -404,9 +439,10 @@ struct GroupsListView: View {
     }
 }
 
-private struct GroupRow: View {
+struct GroupRow: View {
     let group: RecentGroup
     let summary: GroupSummary?
+    @Environment(\.locale) var locale
 
     var body: some View {
         AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
@@ -415,7 +451,7 @@ private struct GroupRow: View {
             Monogram(name: group.groupName, seed: group.groupId, size: 40)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(group.groupName)
+                Text(verbatim: group.groupName)
                     .font(.system(.headline, design: .rounded))
                     .accessibilityIdentifier(AccessibilityID.GroupsList.rowTitle(group.groupId))
 
@@ -425,16 +461,22 @@ private struct GroupRow: View {
                             AccessibilityID.GroupsList.rowParticipants(group.groupId)
                         )
                     if let createdAt = summary?.createdAt {
-                        Label(createdAt.formatted(date: .abbreviated, time: .omitted),
-                              systemImage: "calendar")
+                        let date = createdAt.formatted(
+                            Date.FormatStyle(date: .abbreviated, time: .omitted, locale: locale)
+                        )
+                        Label(date, systemImage: "calendar")
                             .accessibilityLabel(
-                                Text("Created \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+                                Text("Created \(date)")
                             )
                     }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                #if os(iOS)
                 .labelStyle(.compact)
+                #else
+                .labelStyle(.titleAndIcon)
+                #endif
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -451,6 +493,7 @@ private struct GroupRow: View {
 }
 
 /// Fetches the server-side detail for the remembered groups.
+@MainActor
 @Observable
 final class GroupsListModel {
 
@@ -470,7 +513,7 @@ final class GroupsListModel {
     /// list still fills in, and the names are local anyway. The note names the servers that
     /// didn't answer, because with a list spanning more than one of them "the server" is no
     /// longer a thing anybody can act on.
-    func load(_ requests: [Request]) async {
+    func load(_ requests: [Request], locale: Locale) async {
         guard !requests.isEmpty else {
             summaries = [:]
             errorMessage = nil
@@ -509,7 +552,7 @@ final class GroupsListModel {
         // build: how two of them are joined is the translation's business.
         let names = unreachable
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-            .formatted(.list(type: .and))
+            .formatted(.list(type: .and).locale(locale))
         errorMessage = String(
             localized: "Couldn’t reach \(names), so group details may be out of date."
         )

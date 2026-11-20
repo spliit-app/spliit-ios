@@ -70,8 +70,9 @@ needs nothing — the whole `Spliit/` folder is picked up. Never hand-edit the `
 ## Layout
 
 ```
-Spliit/              app target: SwiftUI views, assets, string catalogues, analytics
-Shared/              code shared with the UI test bundle (accessibility identifiers)
+iOS/                thin iOS app host and App Intents package registration
+Spliit/             shared SpliitUI module: views, resources, analytics
+  Shared/           code shared with the UI test bundle (accessibility identifiers)
 Packages/SpliitKit/
   SpliitAPI/         tRPC client, superjson coding, models, endpoints
   SpliitCore/        stores, the React Native migration, form drafts, formatting
@@ -91,7 +92,7 @@ fail.
 **`accessibilityIdentifier` on a container stamps every descendant and overrides inner ones.**
 A screen-level identifier on a `NavigationStack` erases the identifier of every button beneath
 it, and the elements simply stop matching. Put identifiers on leaves only. They all live in
-`Shared/AccessibilityID.swift`, and go in the same commit as the view.
+`Spliit/Shared/AccessibilityID.swift`, and go in the same commit as the view.
 
 **A `NavigationStack` nested inside a `TabView` tab silently refuses to push.** No error, no
 crash — the link just no-ops. The pushed screen already owns the navigation bar; tab contents
@@ -445,10 +446,14 @@ signature does not.
 No third-party dependencies without a good reason — it keeps builds fast, CI simple and the
 review surface small.
 
-All user-facing strings are `LocalizedStringKey` or `String(localized:)`. In `SpliitCore` they
-need `bundle: Bundle.module`, or they resolve against the app bundle and can never be
-translated. The app ships English and French, so **a new string needs its French in the same
-commit** — `make strings` is what tells you which ones are outstanding.
+App strings use `LocalizedStringKey` or `String(localized:)`. In `SpliitCore`, use
+`NSLocalizedString("…", bundle: CoreResources.bundle, comment: "")` and keep the English and French
+tables in `Resources/en.lproj/Localizable.strings` and `Resources/fr.lproj/Localizable.strings`.
+Native SwiftPM on Android supports these tables; `CoreResources` also locates them inside
+the Android app. Skip compiles the app's `.xcstrings` catalogs, and `SpliitLocalization`
+bridges `String(localized:)` on Android. Keep the app's catalogs as their source of truth.
+The app ships English and French, so **a new string needs its French in the same commit** —
+`make strings` checks both the app catalogs and core tables for missing or stale keys and translations.
 
 Never build a sentence by concatenation, and never pick a plural form with a ternary: word
 order and plural categories are both the translation's business, not the call site's. Interpolate

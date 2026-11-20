@@ -1,7 +1,14 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import SpliitCore
+#if os(Android)
+import SkipFuseUI
+#else
 import SwiftUI
 import UIKit
+#endif
 
 /// Posts ``AnalyticsEvent`` to Umami, and nothing else.
 ///
@@ -43,7 +50,9 @@ struct Analytics {
         guard isEnabled else { return }
 
         sendToPlausible(event)
+        #if os(iOS)
         sendToUmami(event)
+        #endif
     }
 
     private func sendToPlausible(_ event: AnalyticsEvent) {
@@ -53,13 +62,18 @@ struct Analytics {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // Plausible rejects requests without one.
+        #if os(Android)
+        request.setValue("Spliit Android", forHTTPHeaderField: "User-Agent")
+        #else
         request.setValue("Spliit iOS", forHTTPHeaderField: "User-Agent")
+        #endif
         request.httpBody = try? JSONSerialization.data(withJSONObject: event.body)
 
         // Fire and forget: analytics must never delay or fail anything the user is doing.
         URLSession.shared.dataTask(with: request).resume()
     }
 
+    #if os(iOS)
     private func sendToUmami(_ event: AnalyticsEvent) {
         guard let websiteID = AnalyticsEvent.umamiWebsiteID else { return }
 
@@ -92,6 +106,7 @@ struct Analytics {
             language: Locale.preferredLanguages.first ?? "en"
         )
     }
+    #endif
 }
 
 extension View {

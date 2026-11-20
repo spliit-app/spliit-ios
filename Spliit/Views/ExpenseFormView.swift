@@ -12,9 +12,10 @@ struct ExpenseFormView: View {
         var isEditing: Bool { if case .edit = self { true } else { false } }
     }
 
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(AppModel.self) var app
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) var locale
+    @AppTextSize private var dynamicTypeSize
 
     /// Wide enough for "100.00" at the body size, and it has to grow with the text or the
     /// digits are clipped long before the largest sizes.
@@ -25,43 +26,80 @@ struct ExpenseFormView: View {
     let categories: [ExpenseCategory]
     /// Prefilled for a new expense; nil when editing, since it is fetched.
     let draft: ExpenseFormDraft?
+    #if os(iOS)
     /// Photographs a shortcut handed over with the expense, uploaded as soon as the form is up.
     var photosToAttach: [ReceiptPhoto] = []
+    #endif
     let onFinished: () async -> Void
 
-    @State private var form: ExpenseFormDraft?
-    @State private var hasAttemptedSave = false
-    @State private var isSaving = false
-    @State private var failure: String?
-    @FocusState private var calculationField: CalculationField?
+    @State var form: ExpenseFormDraft?
+    @State var loadTask: Task<Void, Never>?
+    @State var hasAttemptedSave = false
+    @State var localIsSaving = false
+    @State var failure: String?
+    @State var recoveryID: UUID?
+    @State var conflictingDraftID: UUID?
+    @State var confirmInterruptedWrite = false
+
+    private var keepsDrafts: Bool {
+        #if os(Android)
+        true
+        #else
+        false
+        #endif
+    }
+
+    private var isSaving: Bool {
+        localIsSaving || recoveryID.map { app.expenseWrites.contains($0) } == true
+    }
+
+    private var interruptedWrite: Bool {
+        recoveryID == app.expenseDrafts.record?.id
+            && app.expenseDrafts.record?.phase == .submitting && !isSaving
+    }
+    @FocusState var calculationField: CalculationField?
+    @State var calculationSelections: [CalculationField: TextSelection] = [:]
+    @State var calculationDismissals = 0
 
     /// The ID a new expense is created under. Minted here rather than left to the server so
     /// the form has it before saving, which is what makes the split it previews the one the
     /// expense is saved with — see `expenseID`. Fresh for every presentation of the form, and
-    /// fresh again after a save that failed: the server may have written the expense and only
-    /// the answer been lost, and a retry under the same ID would then collide with it rather
-    /// than create anything. The web form does the same.
-    @State private var mintedExpenseID = NanoID.generate()
+    /// fresh again for a retry: the server may have written the expense and only the answer
+    /// been lost. Android retains the attempted ID until the user confirms that retry.
+    @State var mintedExpenseID = NanoID.generate()
 
     /// Counters rather than flags: the same outcome twice in a row is still two outcomes, and a
     /// flag that is already true does not trigger anything.
-    @State private var savedCount = 0
-    @State private var refusedCount = 0
+    @State var savedCount = 0
+    @State var refusedCount = 0
 
+    #if os(iOS)
     /// The receipts on their way to the bucket. The form's, not the documents section's, so an
     /// upload starts whether or not that section — the last row of a long form — has been built
     /// yet. See `DocumentUploads`.
     @State private var uploads = DocumentUploads()
+    #endif
 
-    @State private var rateLookup = RateLookup.idle
+    private var isUploading: Bool {
+        #if os(iOS)
+        uploads.isUploading
+        #else
+        false
+        #endif
+    }
+
+    @State var rateLookup = RateLookup.idle
+    @State var rateTask: Task<Void, Never>?
     /// The last rate this screen filled in by itself, so a rate the user typed over it is left
     /// alone by the next lookup.
-    @State private var autoFilledRate: String?
+    @State var autoFilledRate: String?
 
     /// What the on-device model has guessed for the category from the title, and whether it is
     /// still the form's to change. See `CategorySuggestion`.
-    @State private var categorySuggestion = CategorySuggestion()
+    @State var categorySuggestion = CategorySuggestion()
+    #if os(iOS)
     @State private var categorySuggester = CategorySuggester()
+    #endif
 
     /// Stubbed from a launch argument under UI test, so a run neither depends on reaching an
     /// external service nor gets a different answer every day.
@@ -72,7 +110,7 @@ struct ExpenseFormView: View {
     private var client: TRPCClient { app.client(on: instanceURL) }
 
     private var rates: ExchangeRates {
-        #if DEBUG
+        #if DEBUG && os(iOS)
         if let stubbed = UITestSupport.stubbedExchangeRates() { return stubbed }
         #endif
         return ExchangeRates()
@@ -81,17 +119,14 @@ struct ExpenseFormView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if form != nil {
-                    formBody(liveForm)
-                } else if failure != nil {
-                    EmptyState(
-                        art: .icon("exclamationmark.triangle"),
-                        title: Text("Couldn’t load the expense"),
-                        description: Text(failure ?? "")
-                    )
-                } else {
-                    ProgressView().controlSize(.large)
+                #if os(Android)
+                VStack(spacing: 0) {
+                    formContent.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    calculationBar
                 }
+                #else
+                formContent
+                #endif
             }
             .navigationTitle(mode.isEditing ? "Edit expense" : "New expense")
             .trackScreen(mode.isEditing ? .groupEditExpense : .groupCreateExpense)
@@ -99,6 +134,7 @@ struct ExpenseFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.cancelButton)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -106,35 +142,87 @@ struct ExpenseFormView: View {
                     // the instance has answered with its address, and a save before that would
                     // write the expense without it. The shortcut that attaches one opens the form
                     // with the upload already running, which is exactly when somebody saves.
-                    Button(isSaving ? "Saving…" : "Save", action: save)
-                        .disabled(isSaving || uploads.isUploading || form == nil)
+                    Button(isSaving ? "Saving…" : "Save") { save() }
+                        .disabled(isSaving || isUploading || form == nil)
                         .accessibilityIdentifier(AccessibilityID.ExpenseForm.saveButton)
                 }
             }
             // Drawn here rather than as a `.keyboard` toolbar item, which the system lays flush
             // against the top row of keys. As a bar it can keep the same gap above the keyboard
             // that the search field does, and the two read as one design.
+            #if os(iOS)
             .safeAreaBar(edge: .bottom) {
                 if calculationField != nil {
                     calculationBar
                 }
             }
+            #endif
             .alert("Couldn’t save the expense", isPresented: .constant(failure != nil && form != nil)) {
                 Button("OK", role: .cancel) { failure = nil }
+                if keepsDrafts && (app.expenseDrafts.hasUnreadableFile || conflictingDraftID != nil) {
+                    Button("Discard saved draft", role: .destructive) { discardConflictingDraft() }
+                        .disabled(conflictingDraftID.map { app.expenseWrites.contains($0) } == true)
+                }
             } message: {
                 Text(failure ?? "")
             }
+            .alert("Save these details?", isPresented: $confirmInterruptedWrite) {
+                Button("Cancel", role: .cancel) {}
+                Button("Save anyway") { save(confirmedRetry: true) }
+            } message: {
+                Text("The previous request may already have completed. Check the group before saving these details.")
+            }
         }
-        .task { await load() }
+        .task {
+            loadTask?.cancel()
+            loadTask = Task { await load() }
+        }
+        #if os(Android)
+        .background(ComposeView { SpliitCalculationInput(dismissCount: calculationDismissals) })
+        .onChange(of: form) { checkpoint() }
+        .onChange(of: app.expenseDrafts.record?.id) {
+            // A write from the previous activity finished while this form was restored.
+            if recoveryID != nil, app.expenseDrafts.record == nil, !localIsSaving {
+                Task { await onFinished(); dismiss() }
+            }
+        }
+        .onChange(of: recoveryID.flatMap { app.expenseWriteFailures[$0] }) {
+            if let recoveryID { failure = app.expenseWriteFailures[recoveryID] }
+        }
+        #endif
         .onChange(of: categories) { reconcileCategory() }
-        .task(id: rateRequest) { await lookUpRate() }
+        .onChange(of: rateRequest, initial: true) { startRateLookup() }
+        .onDisappear {
+            loadTask?.cancel()
+            rateTask?.cancel()
+        }
+        .savingDismissDisabled(isSaving)
+        #if os(iOS)
         .task(id: categoryQuestion) { await suggestCategory() }
-        .interactiveDismissDisabled(isSaving)
+        #endif
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
         .sensoryFeedback(Haptics.refused, trigger: refusedCount)
     }
 
     // MARK: - Form
+
+    @ViewBuilder private var formContent: some View {
+        if form != nil {
+            formBody(liveForm)
+                .disabled(isSaving)
+        } else if failure != nil {
+            EmptyState(
+                art: .icon("exclamationmark.triangle"),
+                title: Text("Couldn’t load the expense"),
+                description: Text(failure ?? "")
+            )
+        } else {
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
+        }
+    }
 
     /// A binding whose getter reads `form` *now*, rather than the value it held when the body
     /// last ran.
@@ -148,7 +236,7 @@ struct ExpenseFormView: View {
     /// there still was one and stayed open on nothing.
     private var liveForm: Binding<ExpenseFormDraft> {
         Binding(
-            get: { self.form ?? ExpenseFormDraft() },
+            get: { self.form ?? ExpenseFormDraft(locale: locale) },
             set: { self.form = $0 }
         )
     }
@@ -156,6 +244,12 @@ struct ExpenseFormView: View {
     @ViewBuilder
     private func formBody(_ form: Binding<ExpenseFormDraft>) -> some View {
         Form {
+            if interruptedWrite {
+                Section {
+                    Text("The previous request may already have completed. Check the group before saving these details.")
+                }
+            }
+            #if os(iOS)
             // Only on a new expense. Scanning a receipt is how an expense gets written down, not
             // how one gets corrected, and an expense already saved has an amount somebody typed
             // on purpose.
@@ -169,6 +263,7 @@ struct ExpenseFormView: View {
                     form.wrappedValue.apply(scan)
                 }
             }
+            #endif
 
             Section {
                 TextField("What was it for?", text: form.title)
@@ -181,7 +276,7 @@ struct ExpenseFormView: View {
                     } else {
                         TextField(
                             "0\(decimalSeparator)00",
-                            text: form.amountText
+                            text: form.amountText, selection: calculationSelection(for: .amount)
                         )
                         .modifier(CalculatingAmountInput(
                             text: form.amountText,
@@ -208,7 +303,7 @@ struct ExpenseFormView: View {
             Section {
                 Picker("Paid by", selection: form.paidByID) {
                     ForEach(group.participants) { participant in
-                        Text(participant.name).tag(Optional(participant.id))
+                        Text(verbatim: participant.name).tag(Optional(participant.id))
                     }
                 }
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.paidByPicker)
@@ -242,10 +337,15 @@ struct ExpenseFormView: View {
 
             Section("Notes") {
                 TextField("Anything worth remembering?", text: form.notes, axis: .vertical)
+                    #if os(iOS)
                     .lineLimit(2...5)
+                    #else
+                    .lineLimit(5)
+                    #endif
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.notesField)
             }
 
+            #if os(iOS)
             // Below the expense itself, and on an edit as well as a create: unlike scanning,
             // which is how an expense gets written down, a receipt is worth attaching to one
             // that was written down last week — and one attached from the web app has to be
@@ -255,6 +355,7 @@ struct ExpenseFormView: View {
                 uploads: uploads,
                 instanceURL: instanceURL
             )
+            #endif
 
             if case .edit(let expenseID) = mode {
                 Section {
@@ -297,7 +398,7 @@ struct ExpenseFormView: View {
                         HStack(spacing: 4) {
                             TextField(
                                 "0\(decimalSeparator)00",
-                                text: form.originalAmountText
+                                text: form.originalAmountText, selection: calculationSelection(for: .originalAmount)
                             )
                             .modifier(CalculatingAmountInput(
                                 text: form.originalAmountText,
@@ -356,7 +457,7 @@ struct ExpenseFormView: View {
                 .accessibilityIdentifier(AccessibilityID.ExpenseForm.conversionRateStatus)
 
             if canRefreshRate(form) {
-                Button("Use the published rate") { Task { await refreshRate() } }
+                Button("Use the published rate") { startRateLookup(replacingManualRate: true) }
                     .font(.footnote)
                     .accessibilityIdentifier(AccessibilityID.ExpenseForm.refreshRateButton)
             }
@@ -407,7 +508,7 @@ struct ExpenseFormView: View {
             return String(localized: "Getting the exchange rate…")
         case .found(let rate):
             let quote = String(
-                localized: "\(base) 1 = \(target) \(ExpenseFormDraft.text(forRate: rate.rate))"
+                localized: "\(base) 1 = \(target) \(ExpenseFormDraft.text(forRate: rate.rate, locale: locale))"
             )
             guard let day = rate.date, !Calendar.autoupdatingCurrent.isDate(
                 day, inSameDayAs: form.expenseDate
@@ -417,7 +518,9 @@ struct ExpenseFormView: View {
             // Rates are published on working days, so a Sunday or a date still to come answers
             // with the last day there is one. Saying which day avoids the reasonable suspicion
             // that the number is simply wrong.
-            let dayText = day.formatted(date: .abbreviated, time: .omitted)
+            let dayText = day.formatted(
+                Date.FormatStyle(date: .abbreviated, time: .omitted, locale: locale)
+            )
             return String(localized: "\(quote) — the rate on \(dayText).")
         case .noRate:
             return String(localized: "No published rate for this pair. Enter the rate yourself.")
@@ -434,11 +537,11 @@ struct ExpenseFormView: View {
     }
 
     private func originalCurrency(_ form: ExpenseFormDraft) -> Currency? {
-        form.originalCurrencyCode.flatMap { Currency.named($0) }
+        form.originalCurrencyCode.flatMap { Currency.named($0, in: locale) }
     }
 
     private var groupFormatter: MoneyFormatter {
-        MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode)
+        MoneyFormatter(currencySymbol: group.currency, currencyCode: group.currencyCode, locale: locale)
     }
 
     /// The expense's ID, which is what decides who is offered the odd cent of an uneven split —
@@ -473,9 +576,11 @@ struct ExpenseFormView: View {
             ForEach(form.participants) { $participant in
                 AdaptiveHStack {
                     Toggle(isOn: $participant.isIncluded) {
-                        Text(participant.name)
+                        Text(verbatim: participant.name)
                     }
+                    #if os(iOS)
                     .toggleStyle(.checkbox)
+                    #endif
                     .accessibilityIdentifier(
                         AccessibilityID.ExpenseForm.participantToggle(participant.id)
                     )
@@ -522,7 +627,7 @@ struct ExpenseFormView: View {
         VStack(alignment: dynamicTypeSize.detailAlignment, spacing: 2) {
             if splitMode != .evenly {
                 HStack(spacing: 4) {
-                    TextField("0", text: participant.valueText)
+                    TextField("0", text: participant.valueText, selection: calculationSelection(for: .participant(id)))
                         .modifier(CalculatingAmountInput(
                             text: participant.valueText,
                             minorUnitDigits: splitMode == .byAmount ? formatter.minorUnitDigits : 2,
@@ -536,7 +641,7 @@ struct ExpenseFormView: View {
                         // position is exactly what a screen reader flattens away.
                         .accessibilityLabel(Text("\(name)’s share"))
 
-                    Text(splitMode.unitLabel(currency: group.currency))
+                    Text(verbatim: splitMode.unitLabel(currency: group.currency))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -572,7 +677,7 @@ struct ExpenseFormView: View {
     private func splitModePicker(_ form: Binding<ExpenseFormDraft>) -> some View {
         Picker("Split", selection: form.splitMode) {
             ForEach(SplitMode.allCases, id: \.self) { mode in
-                Text(mode.title)
+                Text(verbatim: mode.title)
                     .tag(mode)
                     .accessibilityIdentifier(
                         AccessibilityID.ExpenseForm.splitModeOption(mode.rawValue)
@@ -608,7 +713,7 @@ struct ExpenseFormView: View {
         switch form.splitMode {
         case .byAmount:
             let formatter = MoneyFormatter(
-                currencySymbol: group.currency, currencyCode: group.currencyCode
+                currencySymbol: group.currency, currencyCode: group.currencyCode, locale: locale
             )
             return remainder > 0
                 ? String(localized: "\(formatter.string(minorUnits: remainder)) still to allocate.")
@@ -616,8 +721,8 @@ struct ExpenseFormView: View {
         case .byPercentage:
             let percent = Decimal(abs(remainder)) / 100
             return remainder > 0
-                ? String(localized: "\(percent.formatted())% still to allocate.")
-                : String(localized: "\(percent.formatted())% over 100%.")
+                ? String(localized: "\(percent.formatted(.number.locale(locale)))% still to allocate.")
+                : String(localized: "\(percent.formatted(.number.locale(locale)))% over 100%.")
         case .evenly, .byShares:
             return ""
         }
@@ -635,11 +740,12 @@ struct ExpenseFormView: View {
     }
 
     private var decimalSeparator: String {
-        Locale.autoupdatingCurrent.decimalSeparator ?? "."
+        locale.decimalSeparator ?? "."
     }
 
     // MARK: - Actions
 
+    #if os(iOS)
     /// The search field's bar, in shape and spacing: glass capsules a few points apart, inset
     /// from the screen's edges and lifted off the keyboard by the gap between them.
     private var calculationBar: some View {
@@ -674,26 +780,82 @@ struct ExpenseFormView: View {
     /// The search field's height, so the two bars sit at the same size above the keyboard.
     private let calculationBarHeight: CGFloat = 44
 
+    #else
+    @ViewBuilder private var calculationBar: some View {
+        if calculationField != nil {
+            HStack { calculationControls }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.background)
+                .disabled(isSaving)
+        }
+    }
+
+    @ViewBuilder private var calculationControls: some View {
+        if calculationField != nil {
+            calculationButton("Add", symbol: "plus", expression: "+")
+            calculationButton("Subtract", symbol: "minus", expression: "−")
+            calculationButton("Multiply", symbol: "multiply", expression: "×")
+            calculationButton("Divide", symbol: "divide", expression: "÷")
+            Spacer()
+            Button("Done") {
+                calculationField = nil
+                calculationDismissals += 1
+            }
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationDone)
+        }
+    }
+
+    #endif
+
+    private func calculationSelection(for field: CalculationField) -> Binding<TextSelection?> {
+        Binding(get: { calculationSelections[field] }, set: { calculationSelections[field] = $0 })
+    }
+
     private func calculationButton(
         _ title: LocalizedStringKey, symbol: String, expression: String
     ) -> some View {
         Button {
+            #if os(Android)
+            guard !isSaving, let field = calculationField, let form else { return }
+            let input: Binding<String>
+            switch field {
+            case .amount: input = liveForm.amountText
+            case .originalAmount: input = liveForm.originalAmountText
+            case .participant(let id):
+                guard let index = form.participants.firstIndex(where: { $0.id == id }) else { return }
+                input = liveForm.participants[index].valueText
+            }
+            SpliitCalculationInput.insert(
+                text: input.wrappedValue, selection: calculationSelections[field], expression: expression
+            ) { updated, selection in
+                input.wrappedValue = updated
+                calculationSelections[field] = selection
+            }
+            #else
             // Let the focused text field insert at its caret or replace its selection.
             UIApplication.shared.sendAction(
                 #selector(UIKeyInput.insertText(_:)), to: nil, from: expression, for: nil
             )
+            #endif
         } label: {
+            #if os(Android)
+            Text(verbatim: expression)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel(Text(title))
+            #else
             Label(title, systemImage: symbol)
                 .labelStyle(.iconOnly)
                 .font(.system(size: 17, weight: .semibold))
                 .frame(width: calculationBarHeight, height: calculationBarHeight)
                 .contentShape(.rect)
+            #endif
         }
-        .buttonStyle(.plain)
+        .disabled(isSaving)
         .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationOperator(symbol))
     }
 
-    private enum RateLookup: Equatable {
+    enum RateLookup: Equatable {
         case idle
         case loading
         case found(ExchangeRate)
@@ -720,7 +882,16 @@ struct ExpenseFormView: View {
         )
     }
 
-    private func lookUpRate() async {
+    /// Own the native task: the pinned Skip bridge does not forward `.task(id:)` cancellation.
+    /// Automatic lookups and explicit refreshes replace the same task so neither can apply an
+    /// older answer after the currency/date changed or a newer refresh completed.
+    private func startRateLookup(replacingManualRate: Bool = false) {
+        rateTask?.cancel()
+        rateTask = Task { await lookUpRate(replacingManualRate: replacingManualRate) }
+    }
+
+    private func lookUpRate(replacingManualRate: Bool) async {
+        guard !Task.isCancelled else { return }
         guard let request = rateRequest else {
             rateLookup = .idle
             return
@@ -730,54 +901,58 @@ struct ExpenseFormView: View {
             let rate = try await rates.rate(
                 on: request.day, from: request.base, to: request.target
             )
+            guard !Task.isCancelled, rateRequest == request else { return }
             rateLookup = .found(rate)
             // Only into a field the user has not made their own. The rate a card was actually
             // charged at beats a published one, and typing it must not be undone by a lookup
             // that arrives afterwards.
-            if form?.conversionRateText.isEmpty == true
+            if replacingManualRate || form?.conversionRateText.isEmpty == true
                 || form?.conversionRateText == autoFilledRate {
                 apply(rate.rate)
             }
         } catch ExchangeRates.Failure.noRateForCurrency {
+            guard !Task.isCancelled, rateRequest == request else { return }
             rateLookup = .noRate
         } catch {
-            rateLookup = .unavailable
-        }
-    }
-
-    /// Asks again, and takes the answer whatever is in the field — this is the way back from a
-    /// rate typed by hand, and the retry after a lookup that failed.
-    private func refreshRate() async {
-        guard let request = rateRequest else { return }
-        rateLookup = .loading
-        do {
-            let rate = try await rates.rate(
-                on: request.day, from: request.base, to: request.target
-            )
-            rateLookup = .found(rate)
-            apply(rate.rate)
-        } catch ExchangeRates.Failure.noRateForCurrency {
-            rateLookup = .noRate
-        } catch {
+            guard !Task.isCancelled, rateRequest == request else { return }
             rateLookup = .unavailable
         }
     }
 
     private func apply(_ rate: Decimal) {
+        guard !isSaving else { return }
         form?.use(rate: rate)
         autoFilledRate = form?.conversionRateText
     }
 
     private func load() async {
+        guard !Task.isCancelled else { return }
+        #if os(Android)
+        if let saved = app.expenseDrafts.record,
+           saved.groupID == group.id,
+           saved.instanceURL == SettingsStore.normalize(instanceURL.absoluteString),
+           saved.editingExpenseID == editingExpenseID {
+            recoveryID = saved.id
+            mintedExpenseID = saved.mintedExpenseID
+            form = saved.draft
+            failure = app.expenseWriteFailures[saved.id]
+            return
+        }
+        #endif
+        #if os(iOS)
         if !mode.isEditing, suggestsCategories {
             categorySuggester.prepare()
         }
+        #endif
         if let draft {
             form = draft
             reconcileCategory()
+            beginCheckpoint()
+            #if os(iOS)
             for photo in photosToAttach {
                 attach(photo)
             }
+            #endif
             return
         }
         guard case .edit(let expenseID) = mode else { return }
@@ -785,8 +960,11 @@ struct ExpenseFormView: View {
             let response = try await client.call(
                 Spliit.expense(groupId: group.id, expenseId: expenseID)
             )
-            form = ExpenseFormDraft(editing: response.expense, group: group)
+            guard !Task.isCancelled else { return }
+            form = ExpenseFormDraft(editing: response.expense, group: group, locale: locale)
+            beginCheckpoint()
         } catch {
+            guard !Task.isCancelled else { return }
             failure = error.localizedDescription
         }
     }
@@ -797,7 +975,7 @@ struct ExpenseFormView: View {
     /// variable — not necessarily the one this group is on. The list arrives in its own time, so
     /// this runs both when the draft is loaded and when the categories are.
     private func reconcileCategory() {
-        guard let categoryID = form?.categoryID, !categories.isEmpty,
+        guard !isSaving, let categoryID = form?.categoryID, !categories.isEmpty,
               !categories.contains(where: { $0.id == categoryID })
         else { return }
         form?.categoryID = 0
@@ -816,6 +994,7 @@ struct ExpenseFormView: View {
         )
     }
 
+    #if os(iOS)
     /// What to ask the model about the title, and nil when nothing should be asked. Doubles as
     /// the identity of the suggestion task, so every edit to the title abandons the question
     /// before it and starts its own.
@@ -857,6 +1036,9 @@ struct ExpenseFormView: View {
         }
     }
 
+    #endif
+
+    #if os(iOS)
     /// Starts a receipt on its way to the bucket, and puts it on the expense once it lands.
     /// `self.form` rather than the draft in hand, for the reason `liveForm` gives: two uploads
     /// finishing in turn each have to append to the array the other left.
@@ -865,8 +1047,14 @@ struct ExpenseFormView: View {
             self.form?.documents.append(document)
         }
     }
+    #endif
 
-    private func save() {
+    private func save(confirmedRetry: Bool = false) {
+        guard !isSaving else { return }
+        if interruptedWrite && !confirmedRetry {
+            confirmInterruptedWrite = true
+            return
+        }
         hasAttemptedSave = true
         guard let form, let values = form.formValues else {
             // Refused before anything was sent. The problems appear beside the fields that have
@@ -875,9 +1063,10 @@ struct ExpenseFormView: View {
             return
         }
 
-        isSaving = true
+        if confirmedRetry, case .create = mode { mintedExpenseID = NanoID.generate() }
+        guard beginWrite() else { return }
         Task {
-            defer { isSaving = false }
+            defer { endWrite() }
             do {
                 switch mode {
                 case .create:
@@ -906,10 +1095,16 @@ struct ExpenseFormView: View {
                 // Before the reload, so it lands with the save rather than after the list has
                 // caught up — and while this view is still on screen to play it.
                 savedCount += 1
+                guard clearCheckpoint() else { return }
                 await onFinished()
                 dismiss()
             } catch {
+                #if os(Android)
+                // Keep the attempted identity and pending marker: a lost reply is ambiguous.
+                if let recoveryID { app.expenseWriteFailures[recoveryID] = error.localizedDescription }
+                #else
                 if case .create = mode { mintedExpenseID = NanoID.generate() }
+                #endif
                 failure = error.localizedDescription
             }
         }
@@ -922,34 +1117,128 @@ struct ExpenseFormView: View {
     }
 
     private func delete(_ expenseID: String) {
-        isSaving = true
+        guard !isSaving, beginWrite() else { return }
         Task {
-            defer { isSaving = false }
+            defer { endWrite() }
             do {
                 _ = try await client.call(
                     Spliit.deleteExpense(
                         groupId: group.id, expenseId: expenseID, by: actorID
                     )
                 )
+                guard clearCheckpoint() else { return }
                 await onFinished()
                 dismiss()
             } catch {
+                #if os(Android)
+                if let recoveryID { app.expenseWriteFailures[recoveryID] = error.localizedDescription }
+                #endif
                 failure = error.localizedDescription
             }
         }
     }
+
+    private var editingExpenseID: String? {
+        if case .edit(let id) = mode { id } else { nil }
+    }
+
+    private func beginCheckpoint() {
+        // Compile these strings on Apple too so its catalogue extraction sees the Android UI.
+        guard keepsDrafts, let form else { return }
+        if app.expenseDrafts.hasUnreadableFile {
+            failure = String(localized: "The saved draft can’t be read. You can discard it to start a new one. Check the group for any previous save first.")
+            return
+        }
+        if let saved = app.expenseDrafts.record {
+            conflictingDraftID = saved.id
+            var message = String(localized: "Finish or discard the expense in \(saved.groupName) first.")
+            if saved.phase == .submitting {
+                message += "\n\n" + String(localized: "The previous request may already have completed. Check the group before saving these details.")
+            }
+            failure = message
+            return
+        }
+        let saved = ExpenseDraftSnapshot(
+            instanceURL: instanceURL, groupID: group.id, groupName: group.name,
+            editingExpenseID: editingExpenseID, mintedExpenseID: mintedExpenseID, draft: form
+        )
+        if app.expenseDrafts.save(saved) {
+            recoveryID = saved.id
+            conflictingDraftID = nil
+        }
+        else { failure = app.expenseDrafts.failure }
+    }
+
+    private func discardConflictingDraft() {
+        let cleared: Bool
+        if app.expenseDrafts.hasUnreadableFile {
+            cleared = app.expenseDrafts.discardUnreadableFile()
+        } else if let conflictingDraftID, !app.expenseWrites.contains(conflictingDraftID) {
+            cleared = app.expenseDrafts.clear(id: conflictingDraftID)
+            if cleared { app.expenseWriteFailures[conflictingDraftID] = nil }
+        } else {
+            return
+        }
+        guard cleared else { failure = app.expenseDrafts.failure; return }
+        conflictingDraftID = nil
+        failure = nil
+        beginCheckpoint()
+    }
+
+    @discardableResult private func checkpoint(submitting: Bool = false) -> Bool {
+        #if os(Android)
+        guard let form, let recoveryID, var saved = app.expenseDrafts.record,
+              saved.id == recoveryID else { return false }
+        saved.draft = form
+        saved.mintedExpenseID = mintedExpenseID
+        if submitting { saved.phase = .submitting }
+        let savedToDisk = app.expenseDrafts.save(saved)
+        if !savedToDisk { failure = app.expenseDrafts.failure }
+        return savedToDisk
+        #else
+        return true
+        #endif
+    }
+
+    private func beginWrite() -> Bool {
+        #if os(Android)
+        if recoveryID == nil { beginCheckpoint() }
+        #endif
+        guard checkpoint(submitting: true) else { return false }
+        localIsSaving = true
+        if let recoveryID {
+            app.expenseWriteFailures[recoveryID] = nil
+            app.expenseWrites.insert(recoveryID)
+        }
+        return true
+    }
+
+    private func endWrite() {
+        if let recoveryID { app.expenseWrites.remove(recoveryID) }
+        localIsSaving = false
+    }
+
+    private func clearCheckpoint() -> Bool {
+        guard let recoveryID else { return true }
+        guard app.expenseDrafts.clear(id: recoveryID) else {
+            failure = app.expenseDrafts.failure
+            return false
+        }
+        app.expenseWriteFailures[recoveryID] = nil
+        return true
+    }
 }
 
-private enum CalculationField: Hashable {
+enum CalculationField: Hashable {
     case amount, originalAmount, participant(String)
 }
 
-private struct CalculatingAmountInput: ViewModifier {
+struct CalculatingAmountInput: ViewModifier {
     @Binding var text: String
     var minorUnitDigits: Int
     var focus: FocusState<CalculationField?>.Binding
     var field: CalculationField
-    @Environment(\.locale) private var locale
+    @Environment(\.locale) var locale
 
     func body(content: Content) -> some View {
         content
@@ -971,12 +1260,12 @@ private struct CalculatingAmountInput: ViewModifier {
 // MARK: - Split mode presentation
 
 extension SplitMode {
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
-        case .evenly: "Evenly"
-        case .byShares: "Shares"
-        case .byPercentage: "Percent"
-        case .byAmount: "Amount"
+        case .evenly: String(localized: "Evenly")
+        case .byShares: String(localized: "Shares")
+        case .byPercentage: String(localized: "Percent")
+        case .byAmount: String(localized: "Amount")
         }
     }
 
@@ -999,6 +1288,7 @@ extension SplitMode {
     }
 }
 
+#if os(iOS)
 /// A leading checkbox, closer to the old app's list than a trailing switch and much less
 /// cramped once a value field shares the row.
 private struct CheckboxToggleStyle: ToggleStyle {
@@ -1033,3 +1323,4 @@ private struct CheckboxToggleStyle: ToggleStyle {
 extension ToggleStyle where Self == CheckboxToggleStyle {
     static var checkbox: CheckboxToggleStyle { CheckboxToggleStyle() }
 }
+#endif

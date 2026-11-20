@@ -1,0 +1,7 @@
+Material Design icons by Google, licensed under Apache-2.0.
+https://github.com/google/material-design-icons
+
+Pinned source revision: bd8cb85bd4bad964fe6918f79665bb40c3a8efef
+The original vector shapes were expanded to filled paths and wrapped as Skip symbol assets.
+The mappings and reproducible importer are Android/MaterialIcons.json and Scripts/android-icons.py.
+See MaterialIcons-LICENSE.txt for the license.

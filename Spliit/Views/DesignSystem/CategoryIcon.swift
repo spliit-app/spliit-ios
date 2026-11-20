@@ -21,12 +21,20 @@ struct CategoryIcon: View {
             .foregroundStyle(.secondary)
             .frame(width: side, height: side)
             .background(
-                Color(.tertiarySystemFill),
+                tileFill,
                 in: RoundedRectangle(cornerRadius: side * 0.24, style: .continuous)
             )
             // The category is named on the row's title instead — see `ExpenseRow`. Left to itself
             // this would be one more element to swipe past on every row.
             .accessibilityHidden(true)
+    }
+
+    private var tileFill: Color {
+        #if os(iOS)
+        Color(.tertiarySystemFill)
+        #else
+        Color.secondary.opacity(0.12)
+        #endif
     }
 
     private var side: CGFloat {
@@ -65,6 +73,7 @@ extension ExpenseCategory {
     }
 }
 
+#if os(iOS)
 #Preview {
     let samples = [
         ("Food and Drink", "Groceries"),
@@ -85,3 +94,4 @@ extension ExpenseCategory {
     }
     .padding()
 }
+#endif

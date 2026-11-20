@@ -1,3 +1,4 @@
+#if os(iOS)
 import SpliitAPI
 import SwiftUI
 
@@ -137,3 +138,4 @@ final class DocumentUploads {
         }
     }
 }
+#endif

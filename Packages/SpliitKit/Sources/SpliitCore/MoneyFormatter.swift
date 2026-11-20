@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 /// Formats the integer minor units the API deals in.
 ///
@@ -31,18 +32,17 @@ public final class MoneyFormatter: @unchecked Sendable {
         formatter.numberStyle = .currency
         formatter.locale = locale
 
-        // Setting the symbol keeps the locale's placement and separators while showing what
-        // the group actually uses. An ISO code, when present, also fixes the spacing rules —
-        // and the fraction digits, which is why they are not pinned to two alongside it.
+        // Corelibs NumberFormatter reports two fraction digits even for JPY/KWD. Ask the
+        // platform's currency metadata directly, and use it for both scaling and display.
+        let digits = Self.minorUnitDigits(forCurrencyCode: currencyCode, locale: locale)
         if let currencyCode, currencyCode.count == 3 {
             formatter.currencyCode = currencyCode
-        } else {
-            formatter.minimumFractionDigits = 2
-            formatter.maximumFractionDigits = 2
         }
+        formatter.minimumFractionDigits = digits
+        formatter.maximumFractionDigits = digits
         formatter.currencySymbol = currencySymbol
 
-        self.minorUnitDigits = formatter.maximumFractionDigits
+        self.minorUnitDigits = digits
         self.formatter = formatter
     }
 
@@ -72,7 +72,13 @@ public final class MoneyFormatter: @unchecked Sendable {
         forCurrencyCode code: String?,
         locale: Locale = .autoupdatingCurrent
     ) -> Int {
-        MoneyFormatter(currencySymbol: "", currencyCode: code, locale: locale).minorUnitDigits
+        guard let code, code.count == 3,
+              let currency = CFStringCreateWithCString(nil, code.uppercased(), CFStringBuiltInEncodings.UTF8.rawValue),
+              CFStringGetLength(currency) == 3
+        else { return 2 }
+        var digits: Int32 = 2
+        guard CFNumberFormatterGetDecimalInfoForCurrencyCode(currency, &digits, nil) else { return 2 }
+        return Int(digits)
     }
 
     /// - Parameter minorUnits: the value as stored, e.g. `1234` for 12.34 in a currency with

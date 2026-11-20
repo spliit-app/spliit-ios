@@ -52,7 +52,7 @@ Three layers, all runnable from the command line.
 
 | Command | What it covers | Needs |
 |---|---|---|
-| `make test` | superjson coding, response decoding, request building, the storage migration, money formatting, date bucketing | nothing |
+| `make test` | superjson coding, response decoding, request building, the storage migration, money formatting, date bucketing, group model cancellation and pagination | nothing |
 | `make strings` | every string in the source is in a catalogue, and translated | nothing |
 | `make test-live` | the API client against a real server, including writes | `make e2e-up` |
 | `make e2e` | the app itself, in a simulator, against a real server | Docker |
@@ -92,14 +92,17 @@ assumptions; recorded ones prove it agrees with the server.
 `.accessibilityIdentifier` applies to every descendant of the view it modifies, and an outer
 one silently replaces the identifiers set inside it — a screen-level identifier on a
 `NavigationStack` erases the identifier of every button beneath it. All identifiers live in
-[`Shared/AccessibilityID.swift`](Shared/AccessibilityID.swift), shared by the app and the test
+[`Spliit/Shared/AccessibilityID.swift`](Spliit/Shared/AccessibilityID.swift), shared by the app and the test
 bundle, and are added in the same commit as the view they belong to.
 
 ## Layout
 
 ```
-Spliit/              the app: SwiftUI views, assets, the string catalogues
-Shared/              code shared with the UI test bundle (accessibility identifiers)
+Package.swift       the SpliitUI package (shared screens, built with Skip)
+iOS/                thin iOS app host and App Intents package registration
+Android/            Gradle host for the Android prototype
+Spliit/             shared SpliitUI module: views, assets, string catalogues
+  Shared/           code shared with the UI test bundle (accessibility identifiers)
 Packages/SpliitKit/
   SpliitAPI/         tRPC client, superjson coding, models, endpoints
   SpliitCore/        stores, the React Native migration, formatting
@@ -108,9 +111,21 @@ Scripts/             what the Makefile reaches for that isn't one line of shell
 e2e/                 the disposable server: compose file and seed script
 ```
 
-`SpliitAPI` and `SpliitCore` are plain SwiftPM libraries with no third-party dependencies, so
-the protocol handling, the money maths and the migration are all testable in seconds without
-launching a simulator.
+`SpliitAPI` and `SpliitCore` are SwiftPM libraries that run on the host, so the protocol
+handling, the money maths and the migration are all testable in seconds without launching a
+simulator. `SpliitAPI` has no dependencies; `SpliitCore` and `SpliitUI` depend on
+[Skip](https://skip.dev), pinned exactly and locked in the committed `Package.resolved` files.
+
+## Android prototype
+
+The same `SpliitUI` and `SpliitKit` sources also build an experimental Android app with Skip
+Fuse (`make android-app`, `make android-test`). That makes Skip part of the iOS build too: its
+packages are fetched, compiled and linked, and its build plugin runs, although on iOS the views
+still render with SwiftUI and every Apple integration stays iOS-only. The prototype is not
+feature parity — receipts, attachments, QR scanning, review prompts, moving groups between
+installs and store distribution are not done on Android. See
+[Docs/skip-integration.md](Docs/skip-integration.md) for what it changes, what it covers, and
+how it was validated.
 
 ## How it talks to Spliit
 
@@ -178,10 +193,12 @@ they cover the other half, which is that the app says so plainly.
 
 ## Languages
 
-English and French. Both come from String Catalogs — `Spliit/Resources/Localizable.xcstrings`
-for the app, `AppShortcuts.xcstrings` for the phrases Siri listens for, `Categories.xcstrings`
-for the expense categories, and one inside `SpliitCore` for the form validation messages, which
-needs to be its own because `String(localized:)` there resolves against `Bundle.module`.
+English and French. The app uses String Catalogs — `Spliit/Resources/Localizable.xcstrings`,
+`AppShortcuts.xcstrings` for the phrases Siri listens for, and `Categories.xcstrings` for the
+expense categories. Core form validation uses `Resources/en.lproj/Localizable.strings` and
+`Resources/fr.lproj/Localizable.strings` inside `SpliitCore`, read through `NSLocalizedString`
+with `CoreResources.bundle`. That helper locates the tables in both native SwiftPM builds
+and the Android APK.
 
 **Categories are translated on the client**, because the server does not translate them:
 `categories.list` returns "Groceries" to everyone. The web app has the same problem and solves

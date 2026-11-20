@@ -6,6 +6,12 @@ import Testing
 @Suite("Money formatting")
 struct MoneyFormatterTests {
 
+    @Test("Malformed currency codes safely keep the legacy two digits",
+          arguments: ["", "US", "TOOLONG", "💶💶💶", "ßßß", "A\u{0}B"])
+    func malformedCurrencyCodes(code: String) {
+        #expect(MoneyFormatter.minorUnitDigits(forCurrencyCode: code) == 2)
+    }
+
     @Test("Minor units are rendered with the group's symbol")
     func formatsWithGroupSymbol() {
         let formatter = MoneyFormatter(

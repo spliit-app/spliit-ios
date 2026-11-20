@@ -1,3 +1,4 @@
+#if os(iOS)
 import CoreGraphics
 import FoundationModels
 import ImageIO
@@ -203,3 +204,4 @@ private struct ReceiptReading {
     )
     var category: String
 }
+#endif

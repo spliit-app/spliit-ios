@@ -18,7 +18,7 @@ import SwiftUI
 /// which keyboard avoidance lifts above the keyboard for free.
 struct ExpenseSearchView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -41,31 +41,24 @@ struct ExpenseSearchView: View {
     let onEdit: (String) -> Void
     let onCancel: () -> Void
 
-    @FocusState private var isFieldFocused: Bool
+    @FocusState var isFieldFocused: Bool
 
     var body: some View {
-        // The `ZStack` is load-bearing. `content` switches between the prompt, the results and
-        // the empty state as the search runs, and hanging the bar off a view whose shape changes
-        // takes the field's identity with it: the first results arriving rebuilt the field,
-        // which dropped keyboard focus and the keyboard with it, one character in. The stack
-        // gives the modifiers below something whose identity never changes.
-        ZStack {
-            // The same ground the lists stand on. A `List` brings the grouped background with
-            // it; the prompt, the spinner and the empty states bring nothing, so the screen went
-            // white between searches and grey once results arrived — one flicker per keystroke.
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
-
-            content
+        Group {
+            #if os(iOS)
+            searchSurface
+                .expenseUndoBar(model)
+                // The iOS 26 bar keeps the field interactive inside this pushed tab screen.
+                .safeAreaBar(edge: .bottom) { searchBar }
+            #else
+            VStack(spacing: 0) {
+                searchSurface
+                    .expenseUndoBar(model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                searchBar
+            }
+            #endif
         }
-        // Inside the search field's bar, so a deleted result's way back sits above the field
-        // rather than under it.
-        .expenseUndoBar(model)
-        // `safeAreaBar`, not `safeAreaInset`: the iOS 26 bar variant is the one that stays
-        // interactive. Under `safeAreaInset` the field and both buttons render correctly,
-        // report themselves hittable, and silently swallow every tap — by element and by
-        // coordinate alike. It is the inset that eats them, not the glass.
-        .safeAreaBar(edge: .bottom) { searchBar }
         // The tab bar and the field both want the bottom of the screen. Standing down while
         // searching is what the system's own search tab does when it morphs the bar into a
         // field; the cancel button beside the field is the way back to the tabs.
@@ -81,6 +74,26 @@ struct ExpenseSearchView: View {
             if isActive {
                 Analytics.shared.screen(.groupSearch)
             }
+        }
+    }
+
+    private var searchSurface: some View {
+        // The `ZStack` is load-bearing. `content` switches between the prompt, the results and
+        // the empty state as the search runs, and hanging the bar off a view whose shape changes
+        // takes the field's identity with it: the first results arriving rebuilt the field,
+        // which dropped keyboard focus and the keyboard with it, one character in. The stack
+        // gives the modifiers below something whose identity never changes.
+        ZStack {
+            // The same ground the lists stand on. A `List` brings the grouped background with
+            // it; the prompt, the spinner and the empty states bring nothing, so the screen went
+            // white between searches and grey once results arrived — one flicker per keystroke.
+            #if os(iOS)
+            Color(.systemGroupedBackground).ignoresSafeArea()
+            #else
+            Color(.systemBackground).ignoresSafeArea()
+            #endif
+
+            content
         }
     }
 
@@ -118,7 +131,10 @@ struct ExpenseSearchView: View {
             // Typed, but nothing has come back yet — the debounce is still running or the
             // request is in flight. Narrowing an existing search skips this: the previous
             // results stay up until the new ones replace them.
-            ProgressView().controlSize(.large)
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
         } else {
             results
         }
@@ -132,8 +148,12 @@ struct ExpenseSearchView: View {
         // Two glass surfaces a few points apart, which is the case the container exists for:
         // inside one they sample the same backdrop and bend towards each other as the gap
         // closes, instead of each refracting the screen on its own like two unrelated panes.
-        GlassEffectContainer(spacing: 10) {
+        Group {
+            #if os(iOS)
+            GlassEffectContainer(spacing: 10) { searchBarContent }
+            #else
             searchBarContent
+            #endif
         }
         .padding(.horizontal, 16)
         // The keyboard arrives right under the bar, and without this the field and the top row
@@ -180,7 +200,11 @@ struct ExpenseSearchView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, fieldPadding)
+            #if os(iOS)
             .glassEffect(.regular, in: .capsule)
+            #else
+            .background(.regularMaterial, in: Capsule())
+            #endif
 
             // Sized to the field rather than left to its own devices. `.buttonStyle(.glass)` pads
             // generously around whatever it is given — a 44pt glyph frame came out 68×58 beside a
@@ -192,10 +216,16 @@ struct ExpenseSearchView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
                     .frame(width: barHeight, height: barHeight)
+                    #if os(iOS)
                     .contentShape(.circle)
+                    #endif
             }
             .buttonStyle(.plain)
+            #if os(iOS)
             .glassEffect(.regular.interactive(), in: .circle)
+            #else
+            .background(.regularMaterial, in: Circle())
+            #endif
             .accessibilityLabel(Text("Cancel search"))
             .accessibilityIdentifier(AccessibilityID.ExpenseSearch.cancelButton)
         }

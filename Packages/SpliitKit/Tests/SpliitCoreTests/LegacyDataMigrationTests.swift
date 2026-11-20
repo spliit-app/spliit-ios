@@ -1,3 +1,4 @@
+#if canImport(Darwin)
 import Foundation
 import Testing
 
@@ -115,3 +116,4 @@ struct LegacyDataMigrationTests {
         #expect(result.recentGroups.last?.groupName == "Group number 40")
     }
 }
+#endif

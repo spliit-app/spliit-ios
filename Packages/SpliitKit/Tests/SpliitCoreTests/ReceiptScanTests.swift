@@ -37,6 +37,7 @@ struct ReceiptTextTests {
         #expect(ReceiptText.read(receipt).title == "Café Du Coin")
     }
 
+    #if canImport(Darwin)
     @Test("The date is the one printed on it")
     func findsTheDate() throws {
         let today = try #require(
@@ -50,6 +51,17 @@ struct ReceiptTextTests {
         #expect(parts.month == 3)
         #expect(parts.day == 14)
     }
+    #else
+    @Test("Without a date detector, scanning preserves the form's date")
+    func preservesDateWithoutDetector() {
+        var form = ExpenseFormDraft()
+        let originalDate = form.expenseDate
+        let scan = ReceiptText.read(receipt)
+        #expect(scan.date == nil)
+        form.apply(scan)
+        #expect(form.expenseDate == originalDate)
+    }
+    #endif
 
     /// The date detector reads a card expiry or a copyright line as happily as a purchase date,
     /// and an expense silently filed in 1999 is worse than one filed today.

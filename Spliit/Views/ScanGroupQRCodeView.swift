@@ -1,3 +1,4 @@
+#if os(iOS)
 import AVFoundation
 import SpliitAPI
 import SpliitCore
@@ -275,3 +276,4 @@ private struct QRCodeCamera: UIViewControllerRepresentable {
         }
     }
 }
+#endif

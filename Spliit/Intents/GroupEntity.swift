@@ -1,3 +1,4 @@
+#if os(iOS)
 import AppIntents
 import Foundation
 import SpliitCore
@@ -71,3 +72,4 @@ extension GroupEntityQuery: EntityStringQuery {
         }
     }
 }
+#endif

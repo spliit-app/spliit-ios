@@ -4,22 +4,31 @@ import PackageDescription
 let package = Package(
     name: "SpliitKit",
     defaultLocalization: "en",
-    // The app only ships for iOS. macOS is declared so `swift test` runs the unit suites on
-    // the host in a couple of seconds, with no simulator involved.
+    // Apple deployment minimums; the core also builds with the Swift Android SDK.
+    // macOS lets `swift test` run the unit suites without a simulator.
     platforms: [.iOS(.v26), .macOS(.v15)],
     products: [
         .library(name: "SpliitAPI", targets: ["SpliitAPI"]),
         .library(name: "SpliitCore", targets: ["SpliitCore"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/skiptools/skip.git", exact: "1.9.12"),
+        .package(url: "https://github.com/skiptools/skip-fuse.git", exact: "1.0.3"),
+    ],
     targets: [
         .target(name: "SpliitAPI"),
         .target(
             name: "SpliitCore",
-            dependencies: ["SpliitAPI"],
-            // The validation messages live here, so this target needs its own catalog and
-            // resource bundle — otherwise `String(localized:)` would look in the app bundle
-            // and package translations could never be found.
-            resources: [.process("Resources")]
+            dependencies: [
+                "SpliitAPI",
+                // Skip's iOS prebuild must see this dependency to generate the Android
+                // resource project's Gradle plugins and dependencies.
+                .product(name: "SkipFuse", package: "skip-fuse"),
+            ],
+            // Standard .strings tables work with native SwiftPM on both Apple and Android.
+            // Validation messages use this bundle rather than the app's translations.
+            resources: [.process("Resources")],
+            plugins: [.plugin(name: "skipstone", package: "skip")]
         ),
         .testTarget(
             name: "SpliitAPITests",

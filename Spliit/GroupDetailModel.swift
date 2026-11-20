@@ -1,10 +1,14 @@
 import Foundation
 import Observation
+#if SKIP_BRIDGE
+import SkipFuse
+#endif
 import SpliitAPI
 import SpliitCore
 
 /// Everything one group's screens need, loaded once and shared by both tabs so that adding an
 /// expense updates the balances without either tab knowing about the other.
+@MainActor
 @Observable
 final class GroupDetailModel {
 
@@ -59,18 +63,29 @@ final class GroupDetailModel {
     private var nextCursor = 0
     private var nextSearchCursor = 0
     private var nextActivityCursor = 0
+    // A sentinel can reappear before its previous task unwinds. Allow that replacement read;
+    // only its ID may apply a page or clear the loading flag. Refreshing invalidates old pages.
+    private var expensesPageRequestID = UUID()
+    private var searchPageRequestID = UUID()
+    private var activityPageRequestID = UUID()
+    private var searchRequestID = UUID()
     private static let pageSize = 20
 
-    /// How long a pause in typing counts as "done typing". `.task(id:)` cancels the previous
-    /// search when the text changes again, so this sleep is what stops a request per keystroke.
+    /// How long a pause in typing counts as "done typing". Cancellation and the request ID
+    /// discard superseded searches before this wait can turn into a request per keystroke.
     private static let searchDebounce = Duration.milliseconds(250)
 
     init(groupID: String) {
         self.groupID = groupID
     }
 
+    var formattingLocale: Locale = .autoupdatingCurrent
+
     var moneyFormatter: MoneyFormatter {
-        MoneyFormatter(currencySymbol: group?.currency ?? "", currencyCode: group?.currencyCode)
+        MoneyFormatter(
+            currencySymbol: group?.currency ?? "", currencyCode: group?.currencyCode,
+            locale: formattingLocale
+        )
     }
 
     func participant(_ id: String) -> Participant? {
@@ -266,11 +281,15 @@ final class GroupDetailModel {
     }
 
     private func loadFirstPage(using client: TRPCClient) async {
+        expensesPageRequestID = UUID()
+        isLoadingMore = false
         expensesLoad.begin()
         do {
             let response = try await client.call(
                 Spliit.expenses(groupId: groupID, cursor: 0, limit: Self.pageSize)
             )
+            expensesPageRequestID = UUID()
+            isLoadingMore = false
             expenses = withoutPendingDeletion(response.expenses)
             hasMoreExpenses = response.hasMore
             nextCursor = response.nextCursor
@@ -281,20 +300,26 @@ final class GroupDetailModel {
     }
 
     func loadNextPage(using client: TRPCClient) async {
-        guard hasMoreExpenses, !isLoadingMore else { return }
+        guard hasMoreExpenses, !Task.isCancelled else { return }
+        let requestID = UUID()
+        expensesPageRequestID = requestID
         isLoadingMore = true
-        defer { isLoadingMore = false }
+        defer { if expensesPageRequestID == requestID { isLoadingMore = false } }
 
         do {
             let response = try await client.call(
                 Spliit.expenses(groupId: groupID, cursor: nextCursor, limit: Self.pageSize)
             )
+            try Task.checkCancellation()
+            guard expensesPageRequestID == requestID else { return }
             // Guard against a duplicate page if an expense was added while paging.
             let known = Set(expenses.map(\.id))
             expenses += withoutPendingDeletion(response.expenses).filter { !known.contains($0.id) }
             hasMoreExpenses = response.hasMore
             nextCursor = response.nextCursor
         } catch {
+            guard expensesPageRequestID == requestID,
+                  !Task.isCancelled, !(error is CancellationError) else { return }
             // Paging failures shouldn't replace what is already on screen.
             hasMoreExpenses = false
         }
@@ -324,6 +349,7 @@ final class GroupDetailModel {
     /// against this one.
     private var statsParticipantID: String?
     private var didRequestStats = false
+    private var statsRequestID = UUID()
 
     /// Loads the totals for whoever the user says they are, if they aren't already loaded.
     ///
@@ -332,12 +358,17 @@ final class GroupDetailModel {
     /// Keyed on the participant because two of the three numbers are theirs: answering "who are
     /// you?" from this screen has to ask the question again.
     func loadStats(for participantID: String?, using client: TRPCClient) async {
-        guard !didRequestStats || participantID != statsParticipantID else { return }
+        // A returning tab can start its task before the canceled request has unwound.
+        guard !didRequestStats || participantID != statsParticipantID || statsLoad.isLoading
+        else { return }
         await refreshStats(for: participantID, using: client)
     }
 
     /// The same, unconditionally — for pull-to-refresh and for "Try again".
     func refreshStats(for participantID: String?, using client: TRPCClient) async {
+        guard !Task.isCancelled else { return }
+        let requestID = UUID()
+        statsRequestID = requestID
         didRequestStats = true
         statsParticipantID = participantID
         statsLoad.begin()
@@ -346,20 +377,24 @@ final class GroupDetailModel {
             let response = try await client.groupStats(
                 groupId: groupID, participantId: participantID
             )
-            // The picker may have moved on while this was in flight; somebody else's share must
-            // not become the answer under your name.
-            guard statsParticipantID == participantID else { return }
+            try Task.checkCancellation()
+            // A newer request wins even when the participant is unchanged.
+            guard statsRequestID == requestID else { return }
             stats = response
             statsUnavailable = false
             statsLoad.succeeded()
-        } catch let error as TRPCServerError where error.isUnknownProcedure {
-            statsUnavailable = true
-            statsLoad.failed(nil)
         } catch {
-            // A tab switch cancels this the way a keystroke cancels a search, and a cancelled
-            // request has nothing to report.
-            guard !Task.isCancelled, statsParticipantID == participantID else { return }
-            statsLoad.failed(error.localizedDescription)
+            guard statsRequestID == requestID else { return }
+            if Task.isCancelled || error is CancellationError {
+                // Let the next visit retry without reporting cancellation as a failure.
+                didRequestStats = false
+                statsLoad = LoadState()
+            } else if let error = error as? TRPCServerError, error.isUnknownProcedure {
+                statsUnavailable = true
+                statsLoad.failed(nil)
+            } else {
+                statsLoad.failed(error.localizedDescription)
+            }
         }
     }
 
@@ -472,11 +507,15 @@ final class GroupDetailModel {
     }
 
     private func loadFirstActivityPage(using client: TRPCClient) async {
+        activityPageRequestID = UUID()
+        isLoadingMoreActivities = false
         activitiesLoad.begin()
         do {
             let response = try await client.call(
                 Spliit.activities(groupId: groupID, cursor: 0, limit: Self.pageSize)
             )
+            activityPageRequestID = UUID()
+            isLoadingMoreActivities = false
             activities = response.activities
             hasMoreActivities = response.hasMore
             nextActivityCursor = response.nextCursor
@@ -487,9 +526,11 @@ final class GroupDetailModel {
     }
 
     func loadNextActivityPage(using client: TRPCClient) async {
-        guard hasMoreActivities, !isLoadingMoreActivities else { return }
+        guard hasMoreActivities, !Task.isCancelled else { return }
+        let requestID = UUID()
+        activityPageRequestID = requestID
         isLoadingMoreActivities = true
-        defer { isLoadingMoreActivities = false }
+        defer { if activityPageRequestID == requestID { isLoadingMoreActivities = false } }
 
         do {
             let response = try await client.call(
@@ -497,6 +538,8 @@ final class GroupDetailModel {
                     groupId: groupID, cursor: nextActivityCursor, limit: Self.pageSize
                 )
             )
+            try Task.checkCancellation()
+            guard activityPageRequestID == requestID else { return }
             // The log grows at the top, so a page fetched after something new was recorded
             // repeats a row rather than skipping one. Same guard as the expense list.
             let known = Set(activities.map(\.id))
@@ -504,6 +547,8 @@ final class GroupDetailModel {
             hasMoreActivities = response.hasMore
             nextActivityCursor = response.nextCursor
         } catch {
+            guard activityPageRequestID == requestID,
+                  !Task.isCancelled, !(error is CancellationError) else { return }
             hasMoreActivities = false
         }
     }
@@ -520,20 +565,23 @@ final class GroupDetailModel {
 
     /// Answers `text`, after a pause long enough to mean the typing has stopped.
     ///
-    /// Driven by `.task(id:)`, which cancels the previous call on every keystroke — so the sleep
-    /// below is only ever reached by the last one. Cancellation lands in `Task.sleep`, before any
-    /// request goes out and before `filter` moves, which keeps a half-typed word from ever being
-    /// the state the results are showing.
+    /// Driven by `.task(id:)`. The request ID also invalidates earlier work on bridges that do
+    /// not forward task cancellation, so only the latest text can pass the debounce and change
+    /// the displayed results.
     func search(_ text: String, using client: TRPCClient) async {
+        // Invalidate older debounces even when the text returns to the displayed query.
+        let requestID = UUID()
+        searchRequestID = requestID
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let newFilter = trimmed.isEmpty ? nil : trimmed
-        guard newFilter != filter else { return }
+        guard newFilter != filter || searchLoad.isLoading else { return }
 
         do {
             try await Task.sleep(for: Self.searchDebounce)
         } catch {
             return
         }
+        guard searchRequestID == requestID else { return }
 
         filter = newFilter
         guard let newFilter else {
@@ -541,6 +589,8 @@ final class GroupDetailModel {
             // the prompt rather than asking the server for the whole group again.
             searchResults = []
             hasMoreSearchResults = false
+            searchPageRequestID = UUID()
+            isLoadingMoreSearchResults = false
             searchLoad = LoadState()
             return
         }
@@ -551,6 +601,9 @@ final class GroupDetailModel {
         matching query: String,
         using client: TRPCClient
     ) async {
+        searchPageRequestID = UUID()
+        isLoadingMoreSearchResults = false
+        let requestID = searchRequestID
         searchLoad.begin()
         do {
             let response = try await client.call(
@@ -558,27 +611,27 @@ final class GroupDetailModel {
             )
             // The field may have moved on while this was in flight; a stale page must not
             // become the answer to a question nobody asked.
-            guard filter == query else { return }
+            guard !Task.isCancelled, searchRequestID == requestID, filter == query else { return }
+            searchPageRequestID = UUID()
+            isLoadingMoreSearchResults = false
             searchResults = withoutPendingDeletion(response.expenses)
             hasMoreSearchResults = response.hasMore
             nextSearchCursor = response.nextCursor
             searchLoad.succeeded()
         } catch {
-            // A keystroke cancels the request the keystroke before it started, and a cancelled
-            // request is not a failed one. Reporting it put "Couldn't search" on screen between
-            // characters for anyone typing slower than the debounce.
-            // Belt and braces with the client, which now rethrows a cancelled request as
-            // `CancellationError` rather than dressing it up as a network failure: this task is
-            // the cancelled one, so it has nothing to report either way.
-            guard !Task.isCancelled, filter == query else { return }
+            // Canceled or superseded requests have nothing to report. The request ID also
+            // covers bridges that leave the old task running after the text changes.
+            guard !Task.isCancelled, searchRequestID == requestID, filter == query else { return }
             searchLoad.failed(error.localizedDescription)
         }
     }
 
     func loadNextSearchPage(using client: TRPCClient) async {
-        guard let filter, hasMoreSearchResults, !isLoadingMoreSearchResults else { return }
+        guard let filter, hasMoreSearchResults, !Task.isCancelled else { return }
+        let requestID = UUID()
+        searchPageRequestID = requestID
         isLoadingMoreSearchResults = true
-        defer { isLoadingMoreSearchResults = false }
+        defer { if searchPageRequestID == requestID { isLoadingMoreSearchResults = false } }
 
         do {
             let response = try await client.call(
@@ -589,13 +642,17 @@ final class GroupDetailModel {
                     filter: filter
                 )
             )
-            guard self.filter == filter else { return }
+            try Task.checkCancellation()
+            guard searchPageRequestID == requestID, self.filter == filter else { return }
             let known = Set(searchResults.map(\.id))
             searchResults += withoutPendingDeletion(response.expenses)
                 .filter { !known.contains($0.id) }
             hasMoreSearchResults = response.hasMore
             nextSearchCursor = response.nextCursor
         } catch {
+            guard searchPageRequestID == requestID,
+                  !Task.isCancelled, !(error is CancellationError), self.filter == filter
+            else { return }
             hasMoreSearchResults = false
         }
     }

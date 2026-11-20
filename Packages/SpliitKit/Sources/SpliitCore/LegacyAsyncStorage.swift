@@ -1,3 +1,5 @@
+// This is the iOS React Native layout; migrating Android storage requires a separate reader.
+#if canImport(Darwin)
 import CryptoKit
 import Foundation
 
@@ -88,3 +90,4 @@ public struct LegacyAsyncStorage: Sendable {
             .joined()
     }
 }
+#endif

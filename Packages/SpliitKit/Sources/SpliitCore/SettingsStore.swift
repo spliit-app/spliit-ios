@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+#if SKIP_BRIDGE
+import SkipFuse
+#endif
 
 /// App settings. Today that's only which instance a *new* group starts on.
 ///
@@ -23,9 +26,9 @@ public final class SettingsStore {
 
     public nonisolated static let officialInstanceURL = URL(string: "https://spliit.app/")!
 
-    private let defaults: UserDefaults
+    private let defaults: Foundation.UserDefaults
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(defaults: Foundation.UserDefaults = .standard) {
         self.defaults = defaults
         defaultInstanceURL = Self.readDefaultInstance(from: defaults)
     }
@@ -75,7 +78,7 @@ public final class SettingsStore {
         return path.isEmpty ? "\(host)\(port)" : "\(host)\(port)/\(path)"
     }
 
-    private static func readDefaultInstance(from defaults: UserDefaults) -> URL {
+    private static func readDefaultInstance(from defaults: Foundation.UserDefaults) -> URL {
         guard let stored = defaults.string(forKey: Key.baseURL),
               let url = normalize(stored)
         else {

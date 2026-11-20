@@ -19,6 +19,9 @@
 SIMULATOR ?= iPhone 17 Pro
 DEVICE     ?= Sebastien’s iPhone
 UNSIGNED   := CODE_SIGNING_ALLOWED=NO
+# Skip's resolved build plugin runs in command-line builds as well as Xcode.
+# Apply extraction to package targets too, now that the UI is a SwiftPM module.
+XCODEBUILD := xcodebuild -skipPackagePluginValidation SWIFT_EMIT_LOC_STRINGS=YES
 
 # One simulator per worktree, named after its directory. Two runs must never share a device:
 # they would install over each other's app container, and XCUITest's parallel clones are named
@@ -56,7 +59,7 @@ ASC_KEY_ID    ?= 3NJ328MR4F
 ASC_ISSUER_ID ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup generate build build-device device strings test test-live e2e e2e-up e2e-down e2e-seed fixtures screenshots frames run shot sim sim-clean clean lint archive ipa testflight
+.PHONY: help setup generate build build-device device strings test test-live android-build android-test android-app e2e e2e-up e2e-down e2e-seed fixtures screenshots frames run shot sim sim-clean clean lint archive ipa testflight
 
 help:
 	@grep -E '^[a-z0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -67,9 +70,11 @@ setup: ## Install the tooling (XcodeGen)
 
 generate: ## Regenerate Spliit.xcodeproj from project.yml
 	@xcodegen generate --quiet
+	@mkdir -p $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm
+	@cp Package.resolved $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 	@echo "Generated $(PROJECT)."
 
-$(PROJECT): project.yml
+$(PROJECT): project.yml Package.resolved
 	@$(MAKE) generate
 
 # The device is only created, never booted, so this costs nothing on a run that already has it.
@@ -89,7 +94,7 @@ sim-clean: ## Delete this worktree's simulator, and any clones a run left behind
 	@echo "Removed any simulator named $(SIM_NAME)."
 
 build: $(PROJECT) sim ## Build the app for the simulator
-	@xcodebuild build \
+	@$(XCODEBUILD) build \
 		-project $(PROJECT) -scheme $(SCHEME) \
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
@@ -101,10 +106,28 @@ strings: build ## Check the string catalogues against the strings in the source
 	@python3 Scripts/check-strings.py $(DERIVED)
 
 test: ## Run the unit suites on the host (no simulator)
-	@cd Packages/SpliitKit && swift test
+	@cd Packages/SpliitKit && swift test --build-system native
+	@set -e; \
+		core_build=$$(cd Packages/SpliitKit && swift build --build-system native --show-bin-path); \
+		swiftc -parse-as-library -module-cache-path "$$core_build/ModuleCache" \
+			-I "$$core_build/Modules" Spliit/GroupDetailModel.swift \
+			Scripts/check-group-model.swift "$$core_build"/SpliitAPI.build/*.o \
+			"$$core_build"/SpliitCore.build/*.o -o "$$core_build/check-group-model"; \
+		python3 -c 'import subprocess, sys; subprocess.run([sys.argv[1]], check=True, timeout=30)' \
+			"$$core_build/check-group-model"
+
+android-app: ## Build the ARM64 Android debug APK (requires Skip, Gradle 9.4.1 and JDK 21)
+	@SKIP_EXPORT_ARCHS=aarch64 gradle -p Android :app:assembleDebug
+
+android-build: ## Build SpliitKit for Android (requires Skip and the Swift Android SDK)
+	@cd Packages/SpliitKit && skip android build
+
+# Skip 1.9.11 runs only one of Swift 6.4 swiftbuild's per-target test runners.
+android-test: ## Run SpliitKit tests on an Android emulator/device
+	@cd Packages/SpliitKit && skip android test --testing-library testing --build-system native
 
 test-live: ## Run the API suites against the local instance (needs `make e2e-up`)
-	@cd Packages/SpliitKit && SPLIIT_LIVE_BASE_URL=$(E2E_URL) swift test --filter Live
+	@cd Packages/SpliitKit && SPLIIT_LIVE_BASE_URL=$(E2E_URL) swift test --build-system native --filter Live
 
 # One server is enough no matter how many runs are in flight: every group is addressed by the
 # ID the server hands back, and `groups.list` takes those IDs as input, so no run can see — let
@@ -134,13 +157,14 @@ fixtures: ## Re-record the API fixtures the unit tests decode
 # purpose, when nothing is using it.
 e2e: $(PROJECT) sim ## Full end-to-end run: the UI suite against the shared server
 	@$(MAKE) e2e-up
-	@xcodebuild test \
+	@$(XCODEBUILD) test \
 		-project $(PROJECT) -scheme $(SCHEME) \
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
 		$(UNSIGNED) \
 		$(PARALLEL) \
 		$(SKIP_SCREENSHOTS) \
+		-testLanguage en -testRegion US \
 		-test-timeouts-enabled YES \
 		-maximum-test-execution-time-allowance 180 \
 		-quiet
@@ -155,7 +179,7 @@ frames: ## Re-wrap the existing captures for the listing
 		Docs/app-store/screenshots Docs/app-store/marketing Docs/app-store/captions.json
 
 build-device: $(PROJECT) ## Build a signed build for a physical device
-	@xcodebuild build \
+	@$(XCODEBUILD) build \
 		-project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'generic/platform=iOS' \
 		-derivedDataPath $(DERIVED) \
@@ -166,7 +190,7 @@ build-device: $(PROJECT) ## Build a signed build for a physical device
 # comes from project.yml and must exceed everything App Store Connect has already seen — it
 # rejects a duplicate outright, after the upload rather than before it.
 archive: $(PROJECT) ## Build a signed App Store archive
-	@xcodebuild archive \
+	@$(XCODEBUILD) archive \
 		-project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'generic/platform=iOS' \
 		-archivePath $(ARCHIVE) \
@@ -177,7 +201,7 @@ archive: $(PROJECT) ## Build a signed App Store archive
 
 ipa: archive ## Export that archive as an App Store .ipa
 	@rm -rf $(EXPORT)
-	@xcodebuild -exportArchive \
+	@$(XCODEBUILD) -exportArchive \
 		-archivePath $(ARCHIVE) \
 		-exportOptionsPlist ExportOptions.plist \
 		-exportPath $(EXPORT) \

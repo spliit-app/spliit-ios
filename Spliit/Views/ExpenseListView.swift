@@ -6,7 +6,7 @@ import SwiftUI
 /// upgrading user sees a familiar list.
 struct ExpenseListView: View {
 
-    @Environment(AppModel.self) private var app
+    @Environment(AppModel.self) var app
 
     /// The instance this group is on. Every request from this screen goes through it: a group ID
     /// only means anything to the server that issued it.
@@ -32,7 +32,10 @@ struct ExpenseListView: View {
     @ViewBuilder
     private var content: some View {
         if model.isLoadingExpenses {
-            ProgressView().controlSize(.large)
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
         } else if model.didFailToLoad || model.didFailToLoadExpenses {
             EmptyState(
                 art: .icon("wifi.exclamationmark"),

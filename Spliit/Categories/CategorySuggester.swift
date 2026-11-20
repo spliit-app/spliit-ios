@@ -1,3 +1,4 @@
+#if os(iOS)
 import FoundationModels
 import SpliitAPI
 import SpliitCore
@@ -90,3 +91,5 @@ final class CategorySuggester {
         category. Choose Uncategorized/General only when the title gives no clue at all.
         """
 }
+
+#endif

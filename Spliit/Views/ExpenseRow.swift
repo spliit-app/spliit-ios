@@ -18,22 +18,30 @@ struct ExpenseRow: View {
     /// an expense that has nothing to do with what was typed.
     var matchedInNotes = false
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AppTextSize private var dynamicTypeSize
+    @Environment(\.locale) var locale
 
     var body: some View {
         AdaptiveHStack(verticalAlignment: .top, spacing: 12) {
             CategoryIcon(category: expense.category)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(expense.title)
+                Text(verbatim: expense.title)
                     .font(.callout)
                     .italic(expense.isReimbursement)
                     .accessibilityIdentifier(AccessibilityID.ExpenseList.rowTitle(expense.id))
                     // The glyph beside the title is the only place the category appears, and a
                     // picture cannot be read out. Hanging it here rather than on the icon keeps
                     // it to one element per row, and leaves the title's own label alone.
+                    #if os(iOS)
                     .accessibilityValue(categoryDescription)
                     .accessibilityHint(Text("Opens this expense for editing"))
+                    #else
+                    .accessibilityValue(Text(verbatim: [
+                        expense.category?.displayName,
+                        String(localized: "Opens this expense for editing"),
+                    ].compactMap { $0 }.joined(separator: ". ")))
+                    #endif
 
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     // Who paid, in the colour they have on the balances screen. The names are
@@ -67,16 +75,24 @@ struct ExpenseRow: View {
                     if expense.documentCount > 0 {
                         Image(systemName: "paperclip")
                             .accessibilityLabel(
-                                Text("\(expense.documentCount) documents attached")
+                                Text(verbatim: String(localized: "\(expense.documentCount) documents attached"))
                             )
                     }
-                    Text(expense.expenseDate.formatted(date: .abbreviated, time: .omitted))
+                    Text(expense.expenseDate.formatted(
+                        Date.FormatStyle(date: .abbreviated, time: .omitted, locale: locale)
+                    ))
                 }
                 .font(.caption)
+                #if os(iOS)
                 .foregroundStyle(.tertiary)
+                #else
+                .foregroundStyle(.secondary)
+                #endif
             }
         }
+        #if os(iOS)
         .contentShape(.rect)
+        #endif
     }
 
     /// Who paid, and — once you have said who you are — what the expense does to your balance.
@@ -86,6 +102,15 @@ struct ExpenseRow: View {
     @ViewBuilder
     private var paidByLine: some View {
         if let you = activeParticipantID, let summary = yourSummary(you) {
+            #if os(Android)
+            // Skip flattens nested Text interpolation, losing its translation and tint.
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Paid by \(expense.paidBy.name) for \(paidForNames)")
+                    .foregroundStyle(.secondary)
+                summary
+            }
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+            #else
             let withPayer = Text("\(expense.paidBy.name) paid · \(summary)")
             Group {
                 if expense.paidBy.id == you {
@@ -109,6 +134,7 @@ struct ExpenseRow: View {
             .accessibilityLabel(
                 Text("Paid by \(expense.paidBy.name) for \(paidForNames). \(summary)")
             )
+            #endif
         } else {
             Text("Paid by \(expense.paidBy.name) for \(paidForNames)")
                 .foregroundStyle(.secondary)
@@ -124,7 +150,11 @@ struct ExpenseRow: View {
     /// says nothing "Paid by … for …", naming you, does not.
     private func yourSummary(_ you: String) -> Text? {
         guard let balance = ExpenseBalance.of(you, in: expense) else {
+            #if os(Android)
+            return Text("Not involved").foregroundStyle(.secondary)
+            #else
             return Text("Not involved").foregroundStyle(.tertiary)
+            #endif
         }
         guard balance != 0 else { return nil }
         return Text(balanceDescription(balance))
@@ -135,8 +165,12 @@ struct ExpenseRow: View {
     /// The amount set in the money face, inside the sentence rather than beside it, so the
     /// currency symbol stays in one element with its digits.
     private func balanceDescription(_ balance: Int) -> LocalizedStringKey {
+        #if os(Android)
+        let amount = formatter.string(minorUnits: abs(balance))
+        #else
         let amount = Text(formatter.string(minorUnits: abs(balance)))
             .font(.system(.footnote, design: .rounded, weight: .semibold).monospacedDigit())
+        #endif
         return switch ExpenseBalance.Reading(balance: balance, of: expense) {
         case .lent: "You lent \(amount)"
         case .borrowed: "You borrowed \(amount)"
@@ -155,6 +189,6 @@ struct ExpenseRow: View {
     }
 
     private var paidForNames: String {
-        expense.paidFor.map(\.participant.name).formatted(.list(type: .and))
+        expense.paidFor.map(\.participant.name).formatted(.list(type: .and).locale(locale))
     }
 }

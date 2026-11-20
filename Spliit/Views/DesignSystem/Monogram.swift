@@ -74,6 +74,7 @@ struct ParticipantDot: View {
     }
 }
 
+#if os(iOS)
 #Preview {
     VStack(alignment: .leading, spacing: 12) {
         ForEach(Array(["Sébastien Castiel", "Jane", "ana maria silva", "Bruno"].enumerated()),
@@ -87,3 +88,4 @@ struct ParticipantDot: View {
     }
     .padding()
 }
+#endif

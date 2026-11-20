@@ -20,11 +20,12 @@ struct CurrencyPickerView: View {
     /// The chosen currency, or nil for "custom symbol".
     let onSelect: (Currency?) -> Void
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) var locale
+    @State var query = ""
 
-    private let currencies = Currency.all()
-    private let suggested = Currency.suggested()
+    private var currencies: [Currency] { Currency.all(in: locale) }
+    private var suggested: [Currency] { Currency.suggested(in: locale) }
 
     var body: some View {
         Group {
@@ -34,11 +35,15 @@ struct CurrencyPickerView: View {
                 list
             }
         }
+        #if os(iOS)
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: Text("Name or code")
         )
+        #else
+        .searchable(text: $query, prompt: Text("Name or code"))
+        #endif
         .navigationTitle("Currency")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -51,7 +56,10 @@ struct CurrencyPickerView: View {
                 }
             } else {
                 Section("Suggested") {
-                    ForEach(suggestions) { row(for: $0) }
+                    // Compose requires unique row IDs across sections of the same lazy list.
+                    ForEach(suggestions.map { ("suggested-\($0.code)", $0) }, id: \.0) {
+                        row(for: $0.1)
+                    }
                 }
 
                 // Above the full list rather than below it: a hundred and fifty-nine rows is a
@@ -109,10 +117,12 @@ struct CurrencyPickerView: View {
 
                 checkmark(isSelected: currency.code == selectedCode)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(currency.code == selectedCode ? [.isSelected] : [])
+        .accessibilityAddTraits(currency.code == selectedCode ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.CurrencyPicker.row(currency.code))
     }
 
@@ -132,10 +142,12 @@ struct CurrencyPickerView: View {
 
                 checkmark(isSelected: selectedCode == nil)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(selectedCode == nil ? [.isSelected] : [])
+        .accessibilityAddTraits(selectedCode == nil ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.CurrencyPicker.customOption)
     }
 
@@ -159,7 +171,7 @@ struct CurrencyPickerView: View {
 
     /// The handful offered above the full list, with the caller's own candidate first.
     private var suggestions: [Currency] {
-        guard let promoted = promotedCode.flatMap({ Currency.named($0) }) else { return suggested }
+        guard let promoted = promotedCode.flatMap({ Currency.named($0, in: locale) }) else { return suggested }
         return [promoted] + suggested.filter { $0.code != promoted.code }
     }
 
@@ -180,8 +192,22 @@ struct CurrencyPickerView: View {
     }
 }
 
+extension AccessibilityTraits {
+    // Skip's empty initializer uses an array literal, which calls that initializer again.
+    // Both pickers use this explicit empty value and avoid array literals for selected rows.
+    static var none: Self {
+        #if os(Android)
+        Self(rawValue: 0)
+        #else
+        []
+        #endif
+    }
+}
+
+#if os(iOS)
 #Preview {
     NavigationStack {
         CurrencyPickerView(selectedCode: "CHF") { _ in }
     }
 }
+#endif

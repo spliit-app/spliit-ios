@@ -15,7 +15,7 @@ struct ActiveUserPickerView: View {
     let selection: ActiveParticipant?
     let onSelect: (ActiveParticipant) -> Void
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationStack {
@@ -56,16 +56,18 @@ struct ActiveUserPickerView: View {
             HStack(spacing: 12) {
                 Monogram(name: participant.name, position: position, size: 28)
 
-                Text(participant.name)
+                Text(verbatim: participant.name)
 
                 Spacer(minLength: 8)
 
                 checkmark(isSelected: isSelected)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.ActiveUser.option(participant.id))
     }
 
@@ -83,10 +85,12 @@ struct ActiveUserPickerView: View {
 
                 checkmark(isSelected: isSelected)
             }
+            #if os(iOS)
             .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : .none)
         .accessibilityIdentifier(AccessibilityID.ActiveUser.nobodyOption)
     }
 
@@ -107,6 +111,7 @@ struct ActiveUserPickerView: View {
     }
 }
 
+#if os(iOS)
 #Preview {
     ActiveUserPickerView(
         group: SpliitAPI.Group(
@@ -126,3 +131,4 @@ struct ActiveUserPickerView: View {
         onSelect: { _ in }
     )
 }
+#endif

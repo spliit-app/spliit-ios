@@ -1,0 +1,691 @@
+#!/usr/bin/env python3
+"""Exercise the installed Android prototype against disposable, freshly seeded groups.
+
+Run: python3 Scripts/android-smoke.py --serial emulator-5556
+Requires adb, Node, the installed APK, and the e2e server on localhost:3009.
+Does not clear app data or stop the shared server. Uses only Python's standard library.
+"""
+
+import argparse
+import json
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import subprocess
+import time
+import threading
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+
+ROOT = Path(__file__).resolve().parent.parent
+APP = "app.spliit.android.prototype"
+ACTIVITY = f"{APP}/spliit.ui.MainActivity"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--serial", required=True)
+    parser.add_argument("--lifecycle-only", action="store_true", help="Only run delayed-response cancellation checks")
+    parser.add_argument("--navigation-only", action="store_true", help="Only run group, links, search, and sharing checks")
+    parser.add_argument("--locale-only", action="store_true", help="Only run French labels, decimal entry, totals, and settlement checks")
+    parser.add_argument("--recreation-only", action="store_true", help="Debug APK: recover drafts across activity recreation and process death, then check pending writes")
+    parser.add_argument("--calculations-only", action="store_true", help="Check arithmetic controls, selection, validation, split amounts, and draft recovery")
+    args = parser.parse_args()
+    sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Library/Android/sdk"))
+    adb = shutil.which("adb") or str(sdk / "platform-tools/adb")
+
+    def run(*command):
+        return subprocess.check_output(
+            [adb, "-s", args.serial, *command], text=True, timeout=40
+        )
+
+    def shell(*command):
+        return run("shell", shlex.join(command))
+
+    def dump():
+        target = "/data/local/tmp/spliit-smoke.xml"
+        for _ in range(3):
+            shell("rm", "-f", target)
+            result = shell("uiautomator", "dump", "--compressed", target)
+            if "dumped to:" in result:
+                return ET.fromstring(shell("cat", target))
+            time.sleep(0.2)  # Android can briefly have no accessibility root during recreation.
+        raise AssertionError(result)
+
+    def find(selector, scroll=False, timeout=12, enabled=True):
+        deadline = time.monotonic() + timeout
+        for _ in range(8 if scroll else 20):
+            root = dump()
+            for node in root.iter("node"):
+                if selector in (node.get("resource-id"), node.get("text"), node.get("content-desc")):
+                    if not enabled or node.get("enabled") == "true":
+                        # A labelled SwiftUI field can expose its ID on an accessibility wrapper.
+                        return next((child for child in node.iter("node")
+                                     if child.get("class") == "android.widget.EditText"), node)
+            if time.monotonic() >= deadline:
+                break
+            if scroll:
+                bounds = list(map(int, re.findall(r"\d+", next(root.iter("node")).get("bounds"))))
+                width, height = bounds[2:]
+                shell("input", "swipe", str(width // 2), str(height * 3 // 4),
+                      str(width // 2), str(height // 3), "250")
+        visible = [n.get("text") or n.get("resource-id") for n in root.iter("node")]
+        raise AssertionError(f"Missing {selector!r}: {list(filter(None, visible))}")
+
+    def tap(selector, scroll=False):
+        node = find(selector, scroll)
+        x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+        shell("input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+
+    def enter(selector, value, scroll=False):
+        tap(selector, scroll)
+        find(selector)  # Wait for focus before sending Ctrl+A; otherwise only one character is deleted.
+        shell("input", "keycombination", "113", "29")  # Ctrl+A
+        shell("input", "keyevent", "67")  # Delete the selection.
+        shell("input", "text", value.replace(" ", "%s"))
+        shell("input", "keyevent", "4")  # Dismiss the keyboard.
+        assert find(selector).get("text") == value, f"Text entry failed for {selector}"
+
+    def swipe_delete(title):
+        node = find(title)
+        _, y1, _, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+        root = dump()
+        width = int(re.findall(r"\d+", next(root.iter("node")).get("bounds"))[2])
+        shell("input", "swipe", str(width * 9 // 10), str((y1 + y2) // 2),
+              str(width // 4), str((y1 + y2) // 2), "350")
+
+    def query(procedure, data):
+        encoded = urllib.parse.urlencode({"input": json.dumps({"json": data})})
+        with urllib.request.urlopen(f"http://localhost:3009/api/trpc/{procedure}?{encoded}", timeout=20) as response:
+            return json.load(response)["result"]["data"]["json"]
+
+    def expenses():
+        return query("groups.expenses.list", {"groupId": group_id, "limit": 50})["expenses"]
+
+    def details(title):
+        expense = next(e for e in expenses() if e["title"] == title)
+        return query("groups.expenses.get", {"groupId": group_id, "expenseId": expense["id"]})["expense"]
+
+    def seed():
+        return json.loads(subprocess.check_output(
+            ["node", str(ROOT / "e2e/seed.mjs")], text=True, timeout=90
+        ))
+
+    def recreate():
+        before = shell("pidof", APP).strip()
+        logs = shell("logcat", "-d", "-s", "SpliitLifecycleCheck:I", "*:S")
+        count = logs.count("restored=true")
+        shell("am", "start", "-W", "-n", ACTIVITY, "--ez", "recreateActivity", "true")
+        for _ in range(30):
+            logs = shell("logcat", "-d", "-s", "SpliitLifecycleCheck:I", "*:S")
+            if logs.count("restored=true") > count:
+                break
+            time.sleep(0.1)
+        assert logs.count("restored=true") > count, "Use a debug APK with the recreation trigger"
+        assert shell("pidof", APP).strip() == before, "Activity recreation restarted the process"
+
+    def kill_background_process():
+        before = shell("pidof", APP).strip()
+        shell("input", "keyevent", "3")
+        time.sleep(1)
+        shell("am", "kill", APP)
+        for _ in range(30):
+            if not shell("sh", "-c", f"pidof {APP} || true").strip():
+                break
+            time.sleep(0.1)
+        assert not shell("sh", "-c", f"pidof {APP} || true").strip(), "Background process did not exit"
+        shell("am", "start", "-W", "-n", ACTIVITY)
+        assert shell("pidof", APP).strip() != before, "Process-death test kept the old process"
+
+    # Read the original locale before changing it; restore it even on a failed assertion.
+    locales = shell("cmd", "locale", "get-app-locales", APP, "--user", "0")
+    original_locale = re.search(r"\[(.*?)\]", locales).group(1)
+    seeded = seed()
+    group = seeded["groups"]["empty"]
+    group_id = group["id"]
+    fen, gil = (group["participants"][name] for name in ("Fen", "Gil"))
+    if not args.locale_only:
+        print(f"Testing isolated Book club group {group_id}", flush=True)
+    try:
+        if args.locale_only:
+            group = seeded["groups"]["flat"]
+            group_id = group["id"]
+            dana = group["participants"]["Dana"]
+            print(f"Testing French locale with isolated Flat 3B group {group_id}", flush=True)
+            shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "fr-FR")
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+
+            def visible_text(node):
+                return " ".join(value for child in node.iter("node")
+                                for value in (child.get("text"), child.get("content-desc")) if value)
+
+            # Establish the default local instance through the UI, even on a fresh install.
+            tap("plus")
+            tap("groups.create")
+            assert "€" in visible_text(find("groupForm.currencyButton"))
+            tap("groupForm.currencyButton")
+            assert "livre sterling" in visible_text(find("currencyPicker.row.GBP")).lower()
+            tap("currencyPicker.row.GBP")
+            assert "livre sterling" in visible_text(find("groupForm.currencyButton")).lower()
+            name = f"Locale smoke {int(time.time())}"
+            enter("groupForm.name", name)
+            tap("groupForm.serverPicker")
+            tap("Autre serveur")
+            enter("groupForm.server", "http://10.0.2.2:3009")
+            tap("groupForm.save")
+            find(name)
+            find("expenses.emptyAdd")
+            print("PASS French currency names and new-group EUR default", flush=True)
+
+            shell("am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+                  f"app.spliit.spliitmobile://groups/{group_id}", APP)
+            find("Flat 3B")
+            find("Rechercher")
+            internet = details("Internet")
+            assert "60,00" in visible_text(find(f"expenses.row.{internet['id']}.amount"))
+            assert "Dana et Eli" in visible_text(find(f"expenses.row.{internet['id']}.paidBy"))
+            print("PASS French search label, money separators, and participant list", flush=True)
+
+            title = "Locale decimal"
+            tap("expenses.add")
+            enter("expenseForm.title", title)
+            enter("expenseForm.amount", "12,34")
+            tap("expenseForm.paidBy")
+            tap("Dana")
+            tap("expenseForm.split.EVENLY")
+            tap("expenseForm.save")
+            find(title)
+            saved = details(title)
+            assert saved["amount"] == 1234 and saved["splitMode"] == "EVENLY", saved
+            assert saved["paidBy"]["id"] == dana, saved
+            tap(title)
+            assert find("expenseForm.amount").get("text") == "12,34"
+            tap("expenseForm.cancel")
+            find(title)
+            tap("Totaux")
+            assert "72,34" in visible_text(find("stats.groupTotal", timeout=25))
+            tap("activeUser.stats")
+            tap(f"activeUser.option.{dana}")
+            assert "100\u00a0%" in visible_text(find("stats.yourSpending.fraction"))
+            print("PASS French decimal save, edit prefill, and totals", flush=True)
+
+            tap("Soldes")
+            tap("balances.markAsPaid.0", scroll=True)
+            # Internet is seeded 60/40: Eli owes 24.00 plus half of the new 12.34 expense.
+            assert find("expenseForm.amount").get("text") == "30,17"
+            tap("expenseForm.save")
+            find("balances.settled")
+            reimbursements = [expense for expense in expenses() if expense["isReimbursement"]]
+            assert len(reimbursements) == 1 and reimbursements[0]["amount"] == 3017, reimbursements
+            print("PASS French settlement prefill, saved minor units, and settled balances", flush=True)
+            return
+
+        shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "en-US")
+        shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+        if args.calculations_only:
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", f"http://10.0.2.2:3009/groups/{group_id}")
+            tap("addByURL.add")
+            tap(f"groups.row.{group_id}.title")
+            tap("expenses.add")
+            enter("expenseForm.title", "Calculated dinner")
+
+            amount = "expenseForm.amount"
+            def operator(symbol):
+                tap(f"expenseForm.calculation.{symbol}")
+
+            def type_text(value):
+                shell("input", "text", value)
+
+            def focus_end(selector):
+                tap(selector)
+                shell("input", "keyevent", "123")
+
+            enter(amount, "1234")
+            focus_end(amount)
+            # Move the caret left twice to exercise insertion inside existing text.
+            shell("input", "keyevent", "21", "21")
+            operator("plus")
+            assert find(amount).get("text") == "12+34"
+            shell("input", "keycombination", "113", "29")
+            operator("minus")
+            assert find(amount).get("text") == "−", "Operator must replace selected text"
+            type_text("2")
+            operator("plus")
+            type_text("5")
+            tap("expenseForm.calculation.done")
+            assert find(amount).get("text") == "3.00"
+            print("PASS operator insertion at caret, selection replacement, and Done", flush=True)
+
+            enter(amount, "11,4")
+            focus_end(amount)
+            operator("plus")
+            type_text("7,3")
+            operator("multiply")
+            type_text("2")
+            operator("minus")
+            type_text("7,3")
+            assert find(amount).get("text") == "11,4+7,3×2−7,3"
+            tap("expenseForm.title")
+            assert find(amount).get("text") == "18.70"
+            shell("input", "keyevent", "4")
+            tap("expenseForm.split.BY_AMOUNT", scroll=True)
+            first, second = (f"expenseForm.share.{person}" for person in (fen, gil))
+            enter(first, "5", scroll=True)
+            focus_end(first)
+            operator("plus")
+            type_text("6.4")
+            tap("expenseForm.calculation.done")
+            assert find(first).get("text") == "11.40"
+            enter(second, "7", scroll=True)
+            focus_end(second)
+            operator("divide")
+            type_text("0")
+            tap("expenseForm.calculation.done")
+            assert find(second).get("text") == "7÷0"
+            tap("expenseForm.save")
+            find("expenseForm.error", scroll=True)
+            assert expenses() == [], "Invalid calculation was saved"
+            enter(second, "14.6", scroll=True)
+            focus_end(second)
+            operator("divide")
+            type_text("2")
+            tap("expenseForm.save")  # Save without first resolving the focused calculation.
+            find("Calculated dinner")
+            saved = details("Calculated dinner")
+            assert saved["amount"] == 1870 and saved["splitMode"] == "BY_AMOUNT", saved
+            assert {p["participantId"]: p["shares"] for p in saved["paidFor"]} == {fen: 1140, gil: 730}, saved
+            print("PASS decimal precedence, blur, invalid division, and focused split save", flush=True)
+
+            tap("expenses.add")
+            enter("expenseForm.title", "Unfinished calculation")
+            enter(amount, "11.4")
+            focus_end(amount)
+            operator("plus")
+            recreate()
+            assert find(amount).get("text") == "11.4+"
+            kill_background_process()
+            assert find(amount).get("text") == "11.4+"
+            tap("expenseForm.cancel")
+            print("PASS unfinished expression survives activity and process recreation", flush=True)
+
+            # The same controls must use the app locale and the original currency's precision.
+            shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "fr-FR")
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+            tap(f"groups.row.{group_id}.title")
+            tap("expenses.add")
+            enter("expenseForm.title", "Calcul francais")
+            tap("expenseForm.currency", scroll=True)
+            tap("currencyPicker.row.KWD", scroll=True)
+            original = "expenseForm.originalAmount"
+            enter(original, "1", scroll=True)
+            focus_end(original)
+            assert any(node.get("content-desc") == "Diviser"
+                       for node in find("expenseForm.calculation.divide").iter("node"))
+            operator("divide")
+            type_text("3")
+            tap("expenseForm.calculation.done")
+            assert find(original).get("text") == "0,333"
+            enter("expenseForm.conversionRate", "3", scroll=True)
+            tap("expenseForm.save")
+            find("Calcul francais")
+            converted = details("Calcul francais")
+            assert converted["originalCurrency"] == "KWD" and converted["originalAmount"] == 333, converted
+            assert converted["amount"] == 100, converted
+            print("PASS French operator labels, comma result, and three-decimal foreign currency", flush=True)
+            return
+
+        if args.recreation_only:
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", f"http://10.0.2.2:3009/groups/{group_id}")
+            tap("addByURL.add")
+            tap(f"groups.row.{group_id}.title")
+            # Android may replay this original VIEW intent after recreation/process death.
+            shell("am", "start", "-W", "-S", "-a", "android.intent.action.VIEW", "-d",
+                  f"app.spliit.spliitmobile://groups/{group_id}", APP)
+            tap("expenses.add")
+            enter("expenseForm.title", "Recovered draft")
+            enter("expenseForm.amount", "12.34")
+            recreate()
+            assert find("expenseForm.title").get("text") == "Recovered draft"
+            assert find("expenseForm.amount").get("text") == "12.34"
+            print("PASS same-process activity recreation preserves the draft", flush=True)
+            kill_background_process()
+            assert find("expenseForm.title").get("text") == "Recovered draft"
+            assert find("expenseForm.amount").get("text") == "12.34"
+            tap("expenseForm.save")
+            find("Recovered draft")
+            assert details("Recovered draft")["amount"] == 1234
+            assert len(expenses()) == 1
+            print("PASS process death preserves the draft; one expense saved", flush=True)
+
+            tap("Recovered draft")
+            enter("expenseForm.title", "Recovered edit")
+            enter("expenseForm.amount", "23.45")
+            kill_background_process()
+            assert find("expenseForm.title").get("text") == "Recovered edit"
+            assert find("expenseForm.amount").get("text") == "23.45"
+            tap("expenseForm.save")
+            find("Recovered edit")
+            assert details("Recovered edit")["amount"] == 2345
+            assert len(expenses()) == 1
+            print("PASS editing identity survives process death without creating a duplicate", flush=True)
+
+            tap("expenses.add")
+            enter("expenseForm.title", "Discarded draft")
+            shell("input", "keyevent", "4")
+            find("expenses.add")
+            kill_background_process()
+            # The original group link can reopen the group, but must not reopen the discarded form.
+            find("expenses.add")
+            tap("expenses.add")
+            assert find("expenseForm.title").get("text") == ""
+            tap("expenseForm.cancel")
+            print("PASS Back discards the draft and does not resurrect it after process death", flush=True)
+
+        if not args.lifecycle_only and not args.navigation_only and not args.recreation_only:
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", f"http://10.0.2.2:3009/groups/{group_id}")
+            tap("addByURL.add")
+            tap(f"groups.row.{group_id}.title")
+            find("expenses.emptyAdd")
+
+            for mode, values, shares in [
+                ("EVENLY", None, (100, 100)),
+                ("BY_SHARES", ("1", "3"), (100, 300)),
+                ("BY_PERCENTAGE", ("25", "75"), (2500, 7500)),
+                ("BY_AMOUNT", ("20", "80"), (2000, 8000)),
+            ]:
+                title = f"Smoke {mode}"
+                tap("expenses.add")
+                enter("expenseForm.title", title)
+                enter("expenseForm.amount", "100.00")
+                tap(f"expenseForm.split.{mode}")
+                if values:
+                    enter(f"expenseForm.share.{fen}", values[0], scroll=True)
+                    enter(f"expenseForm.share.{gil}", values[1], scroll=True)
+                tap("expenseForm.save")
+                find(title)
+                saved = details(title)
+                assert saved["amount"] == 10000 and saved["splitMode"] == mode, saved
+                assert {p["participantId"]: p["shares"] for p in saved["paidFor"]} == dict(zip((fen, gil), shares)), saved
+                print(f"PASS {mode}: UI save and server shares", flush=True)
+
+            tap("Balances")
+            assert find(f"balances.row.{fen}.amount").get("text") == "£280.00"
+            assert find(f"balances.row.{gil}.amount").get("text") == "-£280.00"
+            tap("Expenses")
+            tap("Smoke EVENLY")
+            enter("expenseForm.title", "Smoke edited")
+            enter("expenseForm.amount", "120.00")
+            tap("expenseForm.save")
+            find("Smoke edited")
+            assert details("Smoke edited")["amount"] == 12000
+            print("PASS edit: persisted title and amount", flush=True)
+
+            swipe_delete("Smoke BY_AMOUNT")
+            tap("expenses.undoDelete")
+            find("Smoke BY_AMOUNT")
+            assert len(expenses()) == 4
+            print("PASS delete undo", flush=True)
+            tap("Smoke BY_AMOUNT")
+            tap("expenseForm.delete", scroll=True)
+            for _ in range(10):
+                if len(expenses()) == 3:
+                    break
+                time.sleep(1)
+            assert len(expenses()) == 3
+            print("PASS committed delete", flush=True)
+
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+            tap(f"groups.row.{group_id}.title")
+            find("Smoke edited")
+            tap("Balances")
+            assert find(f"balances.row.{fen}.amount").get("text") == "£210.00"
+            assert find(f"balances.row.{gil}.amount").get("text") == "-£210.00"
+            print("PASS restart persistence and final balances", flush=True)
+        if not args.lifecycle_only and not args.recreation_only:
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+            tap("plus")
+            tap("groups.create")
+            name = f"Android smoke {int(time.time())}"
+            enter("groupForm.name", name)
+            tap("groupForm.serverPicker")
+            tap("10.0.2.2:3009")
+            tap("groupForm.save")
+            find(name)
+            find("expenses.emptyAdd")
+            tap("group.menu")
+            tap("group.edit")
+            enter("groupForm.name", name + " edited")
+            tap("groupForm.save")
+            find(name + " edited")
+            print("PASS create and edit group on the selected local instance", flush=True)
+
+            for index, key in enumerate(("lisbon", "flat", "flat")):
+                linked = seeded["groups"][key]
+                command = ["am", "start", "-W"] + (["-S"] if index == 0 else [])
+                shell(*command, "-a", "android.intent.action.VIEW", "-d",
+                      f"app.spliit.spliitmobile://groups/{linked['id']}", APP)
+                find("Weekend in Lisbon" if key == "lisbon" else "Flat 3B")
+                find("expenses.add")
+            print("PASS cold, warm, and repeated custom-scheme links", flush=True)
+            tap("Totals")
+            find("stats.groupTotal")
+            tap("Information")
+            find("information.server")
+            tap("information.activity")
+            find("Activity")
+            shell("input", "keyevent", "4")
+            group_id = seeded["groups"]["flat"]["id"]
+            internet = details("Internet")
+            tap("Search")
+            enter("search.field", "Internet")
+            assert find(f"expenses.row.{internet['id']}.title").get("text") == "Internet"
+            tap("search.cancel")
+            tap("group.menu")
+            tap("group.share")
+            find(f"http://10.0.2.2:3009/groups/{seeded['groups']['flat']['id']}")
+            shell("input", "keyevent", "4")
+            print("PASS totals, activity, search, and instance-specific Android sharing", flush=True)
+            tap("Expenses")
+            tap("expenses.add")
+            enter("expenseForm.title", "Converted smoke")
+            rotation = shell("settings", "get", "system", "user_rotation").strip()
+            automatic = shell("settings", "get", "system", "accelerometer_rotation").strip()
+            try:
+                shell("settings", "put", "system", "accelerometer_rotation", "0")
+                shell("settings", "put", "system", "user_rotation", "1")
+                assert find("expenseForm.title").get("text") == "Converted smoke"
+                bounds = list(map(int, re.findall(r"\d+", next(dump().iter("node")).get("bounds"))))
+                assert bounds[2] > bounds[3], f"Rotation did not reach landscape: {bounds}"
+            finally:
+                shell("settings", "put", "system", "user_rotation", rotation)
+                shell("settings", "put", "system", "accelerometer_rotation", automatic)
+            print("PASS rotation preserves the expense draft", flush=True)
+            tap("expenseForm.currency", scroll=True)
+            tap("currencyPicker.row.GBP")
+            enter("expenseForm.originalAmount", "5", scroll=True)
+            enter("expenseForm.conversionRate", "1.25", scroll=True)
+            tap("expenseForm.save")
+            find("Converted smoke")
+            group_id = seeded["groups"]["flat"]["id"]
+            converted = details("Converted smoke")
+            assert converted["amount"] == 625 and converted["originalAmount"] == 500, converted
+            assert converted["originalCurrency"] == "GBP", converted
+            assert float(converted["conversionRate"]) == 1.25, converted
+            print("PASS manual currency conversion and persisted minor units", flush=True)
+            tap("Balances")
+            tap("activeUser.balances")
+            dana = seeded["groups"]["flat"]["participants"]["Dana"]
+            tap(f"activeUser.option.{dana}")
+            find(f"activeUser.badge.{dana}")
+            tap("balances.markAsPaid.0", scroll=True)
+            tap("expenseForm.save")
+            find("balances.settled")
+            reimbursement = details("Reimbursement")
+            assert reimbursement["isReimbursement"], reimbursement
+            print("PASS participant picker and settlement", flush=True)
+            if args.navigation_only:
+                return
+
+        # Delay actual server responses, not synthetic fixtures, to exercise cancellation.
+        group_started, group_finished, stats_started, save_started = (threading.Event() for _ in range(4))
+        edit_started, edit_finished = threading.Event(), threading.Event()
+        delay_group = True
+        stats_requests = 0
+        save_requests = 0
+
+        class Proxy(BaseHTTPRequestHandler):
+            def do_GET(self):
+                nonlocal stats_requests
+                is_group = self.path.startswith("/api/trpc/groups.get?") and delay_group
+                is_edit = self.path.startswith("/api/trpc/groups.expenses.get?")
+                try:
+                    if is_group:
+                        group_started.set()
+                        time.sleep(5)
+                    if is_edit:
+                        edit_started.set()
+                        time.sleep(5)
+                    if self.path.startswith("/api/trpc/groups.stats."):
+                        stats_requests += 1
+                        if stats_requests == 1:
+                            stats_started.set()
+                            time.sleep(8)
+                    try:
+                        response = urllib.request.urlopen("http://localhost:3009" + self.path, timeout=20)
+                    except urllib.error.HTTPError as error:
+                        response = error
+                    with response:
+                        data = response.read()
+                        self.send_response(response.status)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass  # Expected when the client cancels the deliberately delayed request.
+                finally:
+                    if is_group:
+                        group_finished.set()
+                    if is_edit:
+                        edit_finished.set()
+
+            def do_POST(self):
+                # Deliberately fail without writing an expense: Back must retain the draft/error.
+                nonlocal save_requests
+                self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                save_requests += 1
+                save_started.set()
+                time.sleep(15 if args.recreation_only else 8)
+                data = json.dumps({"error": {"json": {
+                    "message": "Deliberate smoke-test save failure", "code": -32603,
+                    "data": {"code": "INTERNAL_SERVER_ERROR", "httpStatus": 503}
+                }}}).encode()
+                self.send_response(503)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                try:
+                    self.wfile.write(data)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass  # Expected when the test kills the client process mid-request.
+
+            def log_message(self, *_):
+                pass
+
+        proxy = ThreadingHTTPServer(("127.0.0.1", 0), Proxy)
+        threading.Thread(target=proxy.serve_forever, daemon=True).start()
+        try:
+            # This group must not already be remembered by the navigation checks.
+            other = (seeded if args.lifecycle_only else seed())["groups"]["flat"]
+            proxy_link = f"http://10.0.2.2:{proxy.server_port}/groups/{other['id']}"
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", proxy_link)
+            tap("addByURL.add")
+            assert group_started.wait(5), "The delayed group lookup never started"
+            shell("input", "keyevent", "4")  # Android Back cancels adding the group.
+            assert group_finished.wait(10), "The delayed group response never finished"
+            assert not any(n.get("resource-id") == f"groups.row.{other['id']}.title"
+                           for n in dump().iter("node")), "Canceled lookup still added the group"
+            print("PASS Android Back cancels add-by-link", flush=True)
+
+            delay_group = False
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", proxy_link)
+            tap("addByURL.add")
+            tap(f"groups.row.{other['id']}.title")
+            # Cache the unchanged tab bar's observed bounds so returning really is immediate.
+            tab_points = {}
+            for tab in ("Totals", "Expenses"):
+                x1, y1, x2, y2 = map(int, re.findall(r"\d+", find(tab).get("bounds")))
+                tab_points[tab] = (str((x1 + x2) // 2), str((y1 + y2) // 2))
+            shell("input", "tap", *tab_points["Totals"])
+            assert stats_started.wait(5), "The delayed totals request never started"
+            shell("input", "tap", *tab_points["Expenses"])
+            find("expenses.add")
+            shell("input", "tap", *tab_points["Totals"])
+            find("stats.groupTotal", timeout=25)
+            print(f"PASS Totals loads after leaving during a delayed response ({stats_requests} requests)", flush=True)
+            tap("Expenses")
+            tap("Internet")
+            assert edit_started.wait(5), "The delayed edit request never started"
+            tap("expenseForm.cancel")
+            assert edit_finished.wait(10), "The delayed edit response never finished"
+            kill_background_process()
+            shell("am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+                  f"app.spliit.spliitmobile://groups/{other['id']}", APP)
+            find("expenses.add")
+            print("PASS canceled edit load does not resurrect a draft after its response arrives", flush=True)
+            tap("expenses.add")
+            enter("expenseForm.title", "Retain draft")
+            enter("expenseForm.amount", "5")
+            tap("expenseForm.save")
+            assert save_started.wait(5), "The deliberately failed save never started"
+            if args.recreation_only:
+                recreate()
+                assert find("expenseForm.title", enabled=False).get("text") == "Retain draft"
+            shell("input", "keyevent", "4")
+            assert find("expenseForm.title", enabled=False).get("text") == "Retain draft"
+            find("Couldn’t save the expense", timeout=20)
+            tap("OK")
+            assert find("expenseForm.title").get("text") == "Retain draft"
+            if args.recreation_only:
+                print("PASS recreation retains a running write, its error, and the draft", flush=True)
+                save_started.clear()
+                tap("expenseForm.save")
+                find("Save these details?")
+                tap("Save anyway")
+                assert save_started.wait(5)
+                kill_background_process()
+                assert find("expenseForm.title").get("text") == "Retain draft"
+                find("The previous request may already have completed. Check the group before saving these details.")
+                tap("expenseForm.save")
+                find("Save these details?")
+                tap("Cancel")
+                assert save_requests == 2, "Recovery automatically resubmitted the write"
+                print("PASS process death during a write preserves the draft and requires explicit retry", flush=True)
+            shell("input", "keyevent", "4")
+            find("expenses.add")
+            print("PASS Back retains a pending save and its error, then dismisses the idle form", flush=True)
+        finally:
+            proxy.shutdown()
+            proxy.server_close()
+    finally:
+        shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", original_locale)
+
+
+if __name__ == "__main__":
+    main()

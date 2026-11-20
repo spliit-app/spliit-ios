@@ -985,6 +985,16 @@
         }
       }
     },
+    "Discard saved draft": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abandonner le brouillon enregistré"
+          }
+        }
+      }
+    },
     "Divide": {
       "localizations": {
         "fr": {
@@ -1179,6 +1189,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rempli d’après le reçu. Vérifiez avant d’enregistrer."
+          }
+        }
+      }
+    },
+    "Finish or discard the expense in %@ first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez ou abandonnez d’abord la dépense dans %@."
           }
         }
       }
@@ -1881,12 +1901,32 @@
         }
       }
     },
+    "Save anyway": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer quand même"
+          }
+        }
+      }
+    },
     "Save as default split": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Enregistrer comme répartition par défaut"
+          }
+        }
+      }
+    },
+    "Save these details?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer ces informations ?"
           }
         }
       }
@@ -1927,6 +1967,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scanner un reçu"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher"
           }
         }
       }
@@ -2277,6 +2327,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Le groupe"
+          }
+        }
+      }
+    },
+    "The previous request may already have completed. Check the group before saving these details.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La requête précédente a peut-être déjà abouti. Vérifiez le groupe avant d’enregistrer ces informations."
+          }
+        }
+      }
+    },
+    "The saved draft can’t be read. You can discard it to start a new one. Check the group for any previous save first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le brouillon enregistré ne peut pas être lu. Vous pouvez l’abandonner pour en commencer un nouveau. Vérifiez d’abord le groupe pour voir si la dépense a déjà été enregistrée."
           }
         }
       }

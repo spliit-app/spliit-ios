@@ -1,28 +1,77 @@
 # Android integration with Skip
 
-Status: phases 1 and 2 complete in `skip-integration-plan`, originally based on upstream
-commit `80b2e984b3dc07782983f24586d7e4568ada2a02`. Phase 3 is in progress.
-The shared expense flow works on Android and iOS. Phase 3 product coverage and the
-platform libraries remain to be verified.
+## Status
 
-The local `skip-integration-plan` branch is rebased onto upstream `ebc1db3` (2.7.0):
-the eight Skip commits are replayed, followed by the platform compatibility fixes. This
-rebased history has not been pushed. See validation and platform differences below.
+`skip-integration-plan` is an **Android prototype**, rebased onto upstream `ebc1db3` (2.7.0)
+and pushed. Phases 1 and 2 are complete and phase 3 is in progress: the core product flows
+run on Android against a real server, and the iOS app is built from the same shared module.
+It is not feature parity with iOS and not a distributable Android app. The implementation log
+below records each milestone's validation as of that milestone; it is history, not a claim
+about the current head.
+
+### What this changes for iOS
+
+- **Skip is now a dependency of every build, iOS included.** `SpliitKit` depends on `skip`
+  1.9.12 and `skip-fuse` 1.0.3; the root [Package.swift](../Package.swift) adds
+  `skip-fuse-ui` 1.18.3, all pinned exactly. Their transitive packages (`skip-lib`,
+  `skip-foundation`, `skip-ui`, `skip-bridge`, `skip-android-bridge`, `swift-jni`, …) are
+  locked in the committed `Package.resolved` files, and `make generate` copies the root one
+  into the generated project so Xcode resolves the same versions. A clean build fetches them
+  from GitHub.
+- **Shared screens moved into the `SpliitUI` package** under `Spliit/`. It is a dynamic library
+  that `project.yml` embeds in the app; `iOS/` holds only the `@main` app and the
+  `AppIntentsPackage` that pulls the shared module's intents and App Shortcuts into the app's
+  metadata. Bundle ID, entitlements and XcodeGen as source of truth are unchanged.
+- **On Apple platforms `SkipFuseUI` re-exports SwiftUI**, so iOS views still render with SwiftUI.
+  The Skip modules are nevertheless compiled and linked, and the `skipstone` build plugin runs
+  on iOS builds too — which is why `xcodebuild` is passed `-skipPackagePluginValidation`. The
+  effect on iOS build time and app size has not been measured.
+- **Host tests use SwiftPM's native build system** (`--build-system native`). This retains the
+  workaround for duplicate static `SkipLib`/`SkipUnit` products seen with the earlier Swift 6.4
+  toolchain; a later plain `swift test` run on Swift 6.4.2 passed all 444 host tests.
+- **Apple integrations stay iOS-only** behind `#if os(iOS)`: Vision/VisionKit receipt scanning,
+  PhotosUI document attachments, the QR scanner, FoundationModels category suggestions, the
+  StoreKit review prompt, App Intents/Siri, iCloud key-value sync, the React Native migration and
+  Umami's device description. Android has no replacement for these yet; nothing on iOS was
+  rewritten to suit Android.
+
+### Out of scope for this prototype
+
+These are not implemented on Android. They are listed so reviewers can see what an Android
+release would still need; they are not all prerequisites for merging the prototype.
+
+- Receipt OCR and expense document attachments (viewing or uploading); receipt date detection
+  also needs Android OCR first.
+- QR group scanning and review prompts (SkipQRCode/SkipMarketplace are candidates, not added).
+- Moving the recent-groups list between installs or devices: no Android backup/restore or
+  export/import has been tested, there is no cross-platform cloud sync, and no previous Android
+  app's data is migrated. The **expense draft recovery** below is a different thing: it restores
+  an unfinished expense after activity recreation or process death within one install.
+- Verified App Links: the manifest registers `spliit.app` group URLs without an association,
+  so browsers keep them; the custom scheme and **Add by link** work.
+- Release signing, store identity and versioning: the APK uses the prototype ID
+  `app.spliit.android.prototype`, version 0.0.1, and no release signing is configured.
+  [android-apk.yml](../.github/workflows/android-apk.yml) builds the ARM64 debug APK and uploads
+  it as an artifact on pushes to `skip-integration-plan`.
+- Physical-device, TalkBack/large-text and non-ARM64 validation, and production download size.
+- Siri/App Shortcuts, Apple Intelligence suggestions and analytics have no Android equivalent.
 
 ## Recommendation
 
 Prototype **Skip Fuse + SkipFuseUI**, sharing the existing API, business logic, and ordinary
-screens. Use Skip's platform libraries for camera/media selection, QR scanning, and review
-prompts. Keep Apple's integrations on iOS and add Android implementations only where needed.
+screens. Skip's platform libraries are candidates for camera/media selection, QR scanning,
+and review prompts later. Keep Apple's integrations on iOS and add Android implementations
+only where needed.
 
-This is a practical porting candidate, but adding the Skip dependency alone will not make the
-current app compile for Android. The first milestone is one working expense flow on both
-platforms; use that result to decide whether to proceed with the rest.
+This is a practical porting candidate, but adding the Skip dependency alone did not make the
+app compile for Android. The first milestone was one working expense flow on both platforms;
+its result (phase 2 below) is what the rest builds on.
 
 ## Why Fuse fits this codebase
 
-[SpliitKit](../Packages/SpliitKit/Package.swift) already separates `SpliitAPI` and `SpliitCore`
-from the UI, with no third-party dependencies. They contain roughly 5,200 lines of Swift,
+[SpliitKit](../Packages/SpliitKit/Package.swift) already separated `SpliitAPI` and `SpliitCore`
+from the UI, and had no third-party dependencies before this work (`SpliitCore` now depends
+on `SkipFuse`; `SpliitAPI` still has none). They contain roughly 5,200 lines of Swift,
 including networking, superjson coding, validation, expense splitting, currency handling,
 local storage, and receipt-text parsing. `Spliit/` contains roughly 8,200 lines, including
 views and Apple integrations. Counts include comments and exclude tests and resources.
@@ -176,7 +225,8 @@ for existing users.
   fallbacks; see [SkipUI symbols](https://skip.dev/docs/modules/skip-ui/#system-symbols).
 - Test a real Android device for camera behavior, permission denial, photo orientation,
   repeated presentation, and background/foreground transitions. Inspect a release build.
-- Add Android CI, artifact generation, manifest metadata, and signing configuration. Determine
+- Debug-APK CI and artifact upload exist (see *Status*). Still add release builds, manifest
+  metadata, and signing configuration. Determine
   the Android application ID and release ownership explicitly. Never reuse an assumed store
   identity or check signing credentials into the repository.
 
@@ -198,7 +248,9 @@ future upstream changes remain practical to merge.
 
 ## Implementation log — 2026-09-30
 
-Phase 1 keeps the core as native Swift with no new package dependencies.
+Phase 1 kept the core as native Swift with no new package dependencies. Phase 2 later
+added `SkipFuse` and the `skipstone` plugin to `SpliitCore` for its Android resources and
+Observation bridge.
 
 - Added conditional `FoundationNetworking` imports to the API, exchange-rate client, and
   network tests; kept the Darwin-only `waitsForConnectivity` setting on Apple platforms.
@@ -227,7 +279,8 @@ Phase 1 keeps the core as native Swift with no new package dependencies.
   and applies it to both scaling and display. Existing zero-/three-decimal tests caught
   the issue; malformed-code cases also cover the CoreFoundation string-length precondition.
 
-Installed toolchain used for the prototype:
+Installed toolchain used for phase 1 (the Skip packages are now pinned at the versions in
+*Status*):
 
 | Tool | Version |
 | --- | --- |
@@ -247,8 +300,8 @@ and an emulator/device connected for tests. If multiple devices are connected, r
 With Skip 1.9.11 and Swift 6.4, the default `swiftbuild` backend emits one test runner per
 target, but Skip executes only the first (78 API tests). `make android-test` explicitly
 selects the `native` build backend so a single executable includes both test targets.
-Recheck this workaround when upgrading Skip/Swift; a successful exit alone does not prove
-the core suite ran.
+The workaround is kept with the current Skip 1.9.12 pin. Recheck it when upgrading
+Skip/Swift; a successful exit alone does not prove the core suite ran.
 
 Phase 1's core build/test exit criterion is met. Next is phase 2: a thin Android host and
 one shared UI flow, retaining XcodeGen for iOS. No Android UI, APK size/performance result,
@@ -593,7 +646,8 @@ flattens localization keys and loses text styling. The notes marker has a bundle
 icon from the same pinned Material Icons source as the existing assets. Notes matching
 still depends on a server at or past spliit#660; older servers continue matching titles.
 
-Validation: 444 host tests and 430 Android tests passed. The iOS app and UI-test bundle
+Validation recorded for this integration (`9edf498`): 444 host tests and 430 Android tests
+passed; a later host run on Swift 6.4.2 also passed all 444. The iOS app and UI-test bundle
 build, as does the Android debug APK. The catalogue check passes with 282 app, 19 core,
 4 shortcut, and 46 category keys, all translated in French; all 53 Android icon assets
 pass their checker.
@@ -606,4 +660,5 @@ Live API and end-to-end tests could not run: no Docker daemon is available and O
 cannot launch in this session. The Android fixture UI check stopped after the device
 tool failed to resolve the temporary localhost deep link twice. These checks must be
 repeated against the disposable backend before release. Apple Intelligence suggestions
-and release analytics delivery have not been exercised on hardware.
+and release analytics delivery have not been exercised on hardware. Results of the builds
+and checks run after the iOS embedding, App Shortcuts and CI fixes are not recorded here.

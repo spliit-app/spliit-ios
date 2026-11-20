@@ -98,7 +98,9 @@ bundle, and are added in the same commit as the view they belong to.
 ## Layout
 
 ```
-iOS/                thin iOS app host
+Package.swift       the SpliitUI package (shared screens, built with Skip)
+iOS/                thin iOS app host and App Intents package registration
+Android/            Gradle host for the Android prototype
 Spliit/             shared SpliitUI module: views, assets, string catalogues
   Shared/           code shared with the UI test bundle (accessibility identifiers)
 Packages/SpliitKit/
@@ -109,9 +111,21 @@ Scripts/             what the Makefile reaches for that isn't one line of shell
 e2e/                 the disposable server: compose file and seed script
 ```
 
-`SpliitAPI` and `SpliitCore` are plain SwiftPM libraries with no third-party dependencies, so
-the protocol handling, the money maths and the migration are all testable in seconds without
-launching a simulator.
+`SpliitAPI` and `SpliitCore` are SwiftPM libraries that run on the host, so the protocol
+handling, the money maths and the migration are all testable in seconds without launching a
+simulator. `SpliitAPI` has no dependencies; `SpliitCore` and `SpliitUI` depend on
+[Skip](https://skip.dev), pinned exactly and locked in the committed `Package.resolved` files.
+
+## Android prototype
+
+The same `SpliitUI` and `SpliitKit` sources also build an experimental Android app with Skip
+Fuse (`make android-app`, `make android-test`). That makes Skip part of the iOS build too: its
+packages are fetched, compiled and linked, and its build plugin runs, although on iOS the views
+still render with SwiftUI and every Apple integration stays iOS-only. The prototype is not
+feature parity — receipts, attachments, QR scanning, review prompts, moving groups between
+installs and store distribution are not done on Android. See
+[Docs/skip-integration.md](Docs/skip-integration.md) for what it changes, what it covers, and
+how it was validated.
 
 ## How it talks to Spliit
 

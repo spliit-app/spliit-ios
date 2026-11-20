@@ -70,9 +70,11 @@ setup: ## Install the tooling (XcodeGen)
 
 generate: ## Regenerate Spliit.xcodeproj from project.yml
 	@xcodegen generate --quiet
+	@mkdir -p $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm
+	@cp Package.resolved $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 	@echo "Generated $(PROJECT)."
 
-$(PROJECT): project.yml
+$(PROJECT): project.yml Package.resolved
 	@$(MAKE) generate
 
 # The device is only created, never booted, so this costs nothing on a run that already has it.

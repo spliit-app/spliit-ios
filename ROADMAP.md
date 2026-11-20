@@ -17,7 +17,8 @@ update to the existing App Store listing.
 3. **End-to-end tests from day one**, not bolted on later.
 4. **Eventually, feature parity with the web version.**
 
-Non-goals for now: Android, iPad-optimised layouts (should not *break* on iPad,
+Non-goals for now: shipping Android (a Skip prototype exists, see
+[Docs/skip-integration.md](Docs/skip-integration.md)), iPad-optimised layouts (should not *break* on iPad,
 but no split-view design work until M4), offline-first sync.
 
 ---
@@ -143,8 +144,9 @@ protocol, the money maths and the AsyncStorage migration are all unit-testable
 without launching a simulator.
 
 **State:** `@Observable` stores, `async`/`await`, Swift 6.2 with
-`MainActor`-by-default isolation. No third-party dependencies — it keeps builds
-fast, CI simple, and the App Store review surface small.
+`MainActor`-by-default isolation. The Android prototype adds Skip and its transitive
+dependencies to the shared build, including iOS; see
+[Docs/skip-integration.md](Docs/skip-integration.md).
 
 **Navigation:**
 

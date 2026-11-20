@@ -1,9 +1,13 @@
 # Android integration with Skip
 
-Status: phases 1 and 2 complete in `skip-integration-plan`, based on upstream commit
-`80b2e984b3dc07782983f24586d7e4568ada2a02`. Phases 1 and 2 are pushed. Phase 3 is in progress.
+Status: phases 1 and 2 complete in `skip-integration-plan`, originally based on upstream
+commit `80b2e984b3dc07782983f24586d7e4568ada2a02`. Phase 3 is in progress.
 The shared expense flow works on Android and iOS. Phase 3 product coverage and the
 platform libraries remain to be verified.
+
+The local `skip-integration-plan` branch is rebased onto upstream `ebc1db3` (2.7.0):
+the eight Skip commits are replayed, followed by the platform compatibility fixes. This
+rebased history has not been pushed. See validation and platform differences below.
 
 ## Recommendation
 
@@ -568,3 +572,38 @@ After adding a core source file, the root SwiftPM iOS-device build retained an o
 even though the Android and Xcode builds saw the file. Touching `Packages/SpliitKit/Package.swift`
 refreshed that graph. Check the native prebuild output as well as Gradle's final status: Skip's
 prebuild command can print Swift errors while Gradle still reports success.
+
+### Upstream 2.7 integration
+
+Integrated upstream main through `ebc1db3`, including category suggestions from expense
+titles, arithmetic in amount/share fields, calendar-day expense dates, personal balance
+summaries on expense rows, notes-search explanations, and the switch from Plausible to
+Umami. The upstream server pin and release metadata are carried forward too.
+
+The calculator reuses the Android implementation from local commit `629a152`: Compose
+inserts operators at the caret or replaces a selection, and Done clears keyboard focus.
+The currency picker keeps that branch's unique IDs for suggested currencies. iOS uses
+upstream's floating glass calculation bar. Android draft checkpoints, interrupted-save
+handling, cancellation, and locale-aware money formatting remain in place.
+
+Category suggestions use Apple Intelligence on iOS only. Umami's device description is
+also iOS-only; the Android prototype sends no analytics with Plausible disabled. Android
+balance summaries occupy their own colored line because Skip's nested `Text` interpolation
+flattens localization keys and loses text styling. The notes marker has a bundled Android
+icon from the same pinned Material Icons source as the existing assets. Notes matching
+still depends on a server at or past spliit#660; older servers continue matching titles.
+
+Validation: 444 host tests and 430 Android tests passed. The iOS app and UI-test bundle
+build, as does the Android debug APK. The catalogue check passes with 282 app, 19 core,
+4 shortcut, and 46 category keys, all translated in French; all 53 Android icon assets
+pass their checker.
+
+A read-only fixture smoke check on the iOS simulator confirmed the expense list and
+the green/red personal balance summaries, including their full accessibility labels.
+The calculation bar also evaluated `11,4+7,3` to `18,70` on Done and dismissed the keyboard.
+
+Live API and end-to-end tests could not run: no Docker daemon is available and OrbStack
+cannot launch in this session. The Android fixture UI check stopped after the device
+tool failed to resolve the temporary localhost deep link twice. These checks must be
+repeated against the disposable backend before release. Apple Intelligence suggestions
+and release analytics delivery have not been exercised on hardware.

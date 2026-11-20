@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--navigation-only", action="store_true", help="Only run group, links, search, and sharing checks")
     parser.add_argument("--locale-only", action="store_true", help="Only run French labels, decimal entry, totals, and settlement checks")
     parser.add_argument("--recreation-only", action="store_true", help="Debug APK: recover drafts across activity recreation and process death, then check pending writes")
+    parser.add_argument("--calculations-only", action="store_true", help="Check arithmetic controls, selection, validation, split amounts, and draft recovery")
     args = parser.parse_args()
     sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Library/Android/sdk"))
     adb = shutil.which("adb") or str(sdk / "platform-tools/adb")
@@ -63,7 +64,9 @@ def main():
             for node in root.iter("node"):
                 if selector in (node.get("resource-id"), node.get("text"), node.get("content-desc")):
                     if not enabled or node.get("enabled") == "true":
-                        return node
+                        # A labelled SwiftUI field can expose its ID on an accessibility wrapper.
+                        return next((child for child in node.iter("node")
+                                     if child.get("class") == "android.widget.EditText"), node)
             if time.monotonic() >= deadline:
                 break
             if scroll:
@@ -224,6 +227,120 @@ def main():
 
         shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "en-US")
         shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+        if args.calculations_only:
+            tap("plus")
+            tap("groups.addByURL")
+            enter("addByURL.field", f"http://10.0.2.2:3009/groups/{group_id}")
+            tap("addByURL.add")
+            tap(f"groups.row.{group_id}.title")
+            tap("expenses.add")
+            enter("expenseForm.title", "Calculated dinner")
+
+            amount = "expenseForm.amount"
+            def operator(symbol):
+                tap(f"expenseForm.calculation.{symbol}")
+
+            def type_text(value):
+                shell("input", "text", value)
+
+            def focus_end(selector):
+                tap(selector)
+                shell("input", "keyevent", "123")
+
+            enter(amount, "1234")
+            focus_end(amount)
+            # Move the caret left twice to exercise insertion inside existing text.
+            shell("input", "keyevent", "21", "21")
+            operator("plus")
+            assert find(amount).get("text") == "12+34"
+            shell("input", "keycombination", "113", "29")
+            operator("minus")
+            assert find(amount).get("text") == "−", "Operator must replace selected text"
+            type_text("2")
+            operator("plus")
+            type_text("5")
+            tap("expenseForm.calculation.done")
+            assert find(amount).get("text") == "3.00"
+            print("PASS operator insertion at caret, selection replacement, and Done", flush=True)
+
+            enter(amount, "11,4")
+            focus_end(amount)
+            operator("plus")
+            type_text("7,3")
+            operator("multiply")
+            type_text("2")
+            operator("minus")
+            type_text("7,3")
+            assert find(amount).get("text") == "11,4+7,3×2−7,3"
+            tap("expenseForm.title")
+            assert find(amount).get("text") == "18.70"
+            shell("input", "keyevent", "4")
+            tap("expenseForm.split.BY_AMOUNT", scroll=True)
+            first, second = (f"expenseForm.share.{person}" for person in (fen, gil))
+            enter(first, "5", scroll=True)
+            focus_end(first)
+            operator("plus")
+            type_text("6.4")
+            tap("expenseForm.calculation.done")
+            assert find(first).get("text") == "11.40"
+            enter(second, "7", scroll=True)
+            focus_end(second)
+            operator("divide")
+            type_text("0")
+            tap("expenseForm.calculation.done")
+            assert find(second).get("text") == "7÷0"
+            tap("expenseForm.save")
+            find("expenseForm.error", scroll=True)
+            assert expenses() == [], "Invalid calculation was saved"
+            enter(second, "14.6", scroll=True)
+            focus_end(second)
+            operator("divide")
+            type_text("2")
+            tap("expenseForm.save")  # Save without first resolving the focused calculation.
+            find("Calculated dinner")
+            saved = details("Calculated dinner")
+            assert saved["amount"] == 1870 and saved["splitMode"] == "BY_AMOUNT", saved
+            assert {p["participantId"]: p["shares"] for p in saved["paidFor"]} == {fen: 1140, gil: 730}, saved
+            print("PASS decimal precedence, blur, invalid division, and focused split save", flush=True)
+
+            tap("expenses.add")
+            enter("expenseForm.title", "Unfinished calculation")
+            enter(amount, "11.4")
+            focus_end(amount)
+            operator("plus")
+            recreate()
+            assert find(amount).get("text") == "11.4+"
+            kill_background_process()
+            assert find(amount).get("text") == "11.4+"
+            tap("expenseForm.cancel")
+            print("PASS unfinished expression survives activity and process recreation", flush=True)
+
+            # The same controls must use the app locale and the original currency's precision.
+            shell("cmd", "locale", "set-app-locales", APP, "--user", "0", "--locales", "fr-FR")
+            shell("am", "start", "-W", "-S", "-n", ACTIVITY)
+            tap(f"groups.row.{group_id}.title")
+            tap("expenses.add")
+            enter("expenseForm.title", "Calcul francais")
+            tap("expenseForm.currency", scroll=True)
+            tap("currencyPicker.row.KWD", scroll=True)
+            original = "expenseForm.originalAmount"
+            enter(original, "1", scroll=True)
+            focus_end(original)
+            assert any(node.get("content-desc") == "Diviser"
+                       for node in find("expenseForm.calculation.divide").iter("node"))
+            operator("divide")
+            type_text("3")
+            tap("expenseForm.calculation.done")
+            assert find(original).get("text") == "0,333"
+            enter("expenseForm.conversionRate", "3", scroll=True)
+            tap("expenseForm.save")
+            find("Calcul francais")
+            converted = details("Calcul francais")
+            assert converted["originalCurrency"] == "KWD" and converted["originalAmount"] == 333, converted
+            assert converted["amount"] == 100, converted
+            print("PASS French operator labels, comma result, and three-decimal foreign currency", flush=True)
+            return
+
         if args.recreation_only:
             tap("plus")
             tap("groups.addByURL")

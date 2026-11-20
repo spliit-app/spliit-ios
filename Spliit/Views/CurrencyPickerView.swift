@@ -56,7 +56,10 @@ struct CurrencyPickerView: View {
                 }
             } else {
                 Section("Suggested") {
-                    ForEach(suggestions) { row(for: $0) }
+                    // Compose requires unique row IDs across sections of the same lazy list.
+                    ForEach(suggestions.map { ("suggested-\($0.code)", $0) }, id: \.0) {
+                        row(for: $0.1)
+                    }
                 }
 
                 // Above the full list rather than below it: a hundred and fifty-nine rows is a

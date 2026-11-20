@@ -52,6 +52,7 @@
     "star.slash": "toggle/star_outline",
     "archivebox": "content/archive",
     "tray.and.arrow.up": "content/unarchive",
-    "circle": "image/panorama_fish_eye"
+    "circle": "image/panorama_fish_eye",
+    "note.text": "action/description"
   }
 }

@@ -58,6 +58,8 @@ struct ExpenseFormView: View {
             && app.expenseDrafts.record?.phase == .submitting && !isSaving
     }
     @FocusState var calculationField: CalculationField?
+    @State var calculationSelections: [CalculationField: TextSelection] = [:]
+    @State var calculationDismissals = 0
 
     /// The ID a new expense is created under. Minted here rather than left to the server so
     /// the form has it before saving, which is what makes the split it previews the one the
@@ -94,8 +96,10 @@ struct ExpenseFormView: View {
 
     /// What the on-device model has guessed for the category from the title, and whether it is
     /// still the form's to change. See `CategorySuggestion`.
-    @State private var categorySuggestion = CategorySuggestion()
+    @State var categorySuggestion = CategorySuggestion()
+    #if os(iOS)
     @State private var categorySuggester = CategorySuggester()
+    #endif
 
     /// Stubbed from a launch argument under UI test, so a run neither depends on reaching an
     /// external service nor gets a different answer every day.
@@ -115,21 +119,14 @@ struct ExpenseFormView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if form != nil {
-                    formBody(liveForm)
-                        .disabled(isSaving)
-                } else if failure != nil {
-                    EmptyState(
-                        art: .icon("exclamationmark.triangle"),
-                        title: Text("Couldn’t load the expense"),
-                        description: Text(failure ?? "")
-                    )
-                } else {
-                    ProgressView()
-                        #if os(iOS)
-                        .controlSize(.large)
-                        #endif
+                #if os(Android)
+                VStack(spacing: 0) {
+                    formContent.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    calculationBar
                 }
+                #else
+                formContent
+                #endif
             }
             .navigationTitle(mode.isEditing ? "Edit expense" : "New expense")
             .trackScreen(mode.isEditing ? .groupEditExpense : .groupCreateExpense)
@@ -153,11 +150,13 @@ struct ExpenseFormView: View {
             // Drawn here rather than as a `.keyboard` toolbar item, which the system lays flush
             // against the top row of keys. As a bar it can keep the same gap above the keyboard
             // that the search field does, and the two read as one design.
+            #if os(iOS)
             .safeAreaBar(edge: .bottom) {
                 if calculationField != nil {
                     calculationBar
                 }
             }
+            #endif
             .alert("Couldn’t save the expense", isPresented: .constant(failure != nil && form != nil)) {
                 Button("OK", role: .cancel) { failure = nil }
                 if keepsDrafts && (app.expenseDrafts.hasUnreadableFile || conflictingDraftID != nil) {
@@ -179,6 +178,7 @@ struct ExpenseFormView: View {
             loadTask = Task { await load() }
         }
         #if os(Android)
+        .background(ComposeView { SpliitCalculationInput(dismissCount: calculationDismissals) })
         .onChange(of: form) { checkpoint() }
         .onChange(of: app.expenseDrafts.record?.id) {
             // A write from the previous activity finished while this form was restored.
@@ -196,13 +196,33 @@ struct ExpenseFormView: View {
             loadTask?.cancel()
             rateTask?.cancel()
         }
-        .task(id: categoryQuestion) { await suggestCategory() }
         .savingDismissDisabled(isSaving)
+        #if os(iOS)
+        .task(id: categoryQuestion) { await suggestCategory() }
+        #endif
         .sensoryFeedback(Haptics.saved, trigger: savedCount)
         .sensoryFeedback(Haptics.refused, trigger: refusedCount)
     }
 
     // MARK: - Form
+
+    @ViewBuilder private var formContent: some View {
+        if form != nil {
+            formBody(liveForm)
+                .disabled(isSaving)
+        } else if failure != nil {
+            EmptyState(
+                art: .icon("exclamationmark.triangle"),
+                title: Text("Couldn’t load the expense"),
+                description: Text(failure ?? "")
+            )
+        } else {
+            ProgressView()
+                #if os(iOS)
+                .controlSize(.large)
+                #endif
+        }
+    }
 
     /// A binding whose getter reads `form` *now*, rather than the value it held when the body
     /// last ran.
@@ -256,7 +276,7 @@ struct ExpenseFormView: View {
                     } else {
                         TextField(
                             "0\(decimalSeparator)00",
-                            text: form.amountText
+                            text: form.amountText, selection: calculationSelection(for: .amount)
                         )
                         .modifier(CalculatingAmountInput(
                             text: form.amountText,
@@ -378,7 +398,7 @@ struct ExpenseFormView: View {
                         HStack(spacing: 4) {
                             TextField(
                                 "0\(decimalSeparator)00",
-                                text: form.originalAmountText
+                                text: form.originalAmountText, selection: calculationSelection(for: .originalAmount)
                             )
                             .modifier(CalculatingAmountInput(
                                 text: form.originalAmountText,
@@ -607,7 +627,7 @@ struct ExpenseFormView: View {
         VStack(alignment: dynamicTypeSize.detailAlignment, spacing: 2) {
             if splitMode != .evenly {
                 HStack(spacing: 4) {
-                    TextField("0", text: participant.valueText)
+                    TextField("0", text: participant.valueText, selection: calculationSelection(for: .participant(id)))
                         .modifier(CalculatingAmountInput(
                             text: participant.valueText,
                             minorUnitDigits: splitMode == .byAmount ? formatter.minorUnitDigits : 2,
@@ -725,6 +745,7 @@ struct ExpenseFormView: View {
 
     // MARK: - Actions
 
+    #if os(iOS)
     /// The search field's bar, in shape and spacing: glass capsules a few points apart, inset
     /// from the screen's edges and lifted off the keyboard by the gap between them.
     private var calculationBar: some View {
@@ -759,22 +780,78 @@ struct ExpenseFormView: View {
     /// The search field's height, so the two bars sit at the same size above the keyboard.
     private let calculationBarHeight: CGFloat = 44
 
+    #else
+    @ViewBuilder private var calculationBar: some View {
+        if calculationField != nil {
+            HStack { calculationControls }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.background)
+                .disabled(isSaving)
+        }
+    }
+
+    @ViewBuilder private var calculationControls: some View {
+        if calculationField != nil {
+            calculationButton("Add", symbol: "plus", expression: "+")
+            calculationButton("Subtract", symbol: "minus", expression: "−")
+            calculationButton("Multiply", symbol: "multiply", expression: "×")
+            calculationButton("Divide", symbol: "divide", expression: "÷")
+            Spacer()
+            Button("Done") {
+                calculationField = nil
+                calculationDismissals += 1
+            }
+                .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationDone)
+        }
+    }
+
+    #endif
+
+    private func calculationSelection(for field: CalculationField) -> Binding<TextSelection?> {
+        Binding(get: { calculationSelections[field] }, set: { calculationSelections[field] = $0 })
+    }
+
     private func calculationButton(
         _ title: LocalizedStringKey, symbol: String, expression: String
     ) -> some View {
         Button {
+            #if os(Android)
+            guard !isSaving, let field = calculationField, let form else { return }
+            let input: Binding<String>
+            switch field {
+            case .amount: input = liveForm.amountText
+            case .originalAmount: input = liveForm.originalAmountText
+            case .participant(let id):
+                guard let index = form.participants.firstIndex(where: { $0.id == id }) else { return }
+                input = liveForm.participants[index].valueText
+            }
+            SpliitCalculationInput.insert(
+                text: input.wrappedValue, selection: calculationSelections[field], expression: expression
+            ) { updated, selection in
+                input.wrappedValue = updated
+                calculationSelections[field] = selection
+            }
+            #else
             // Let the focused text field insert at its caret or replace its selection.
             UIApplication.shared.sendAction(
                 #selector(UIKeyInput.insertText(_:)), to: nil, from: expression, for: nil
             )
+            #endif
         } label: {
+            #if os(Android)
+            Text(verbatim: expression)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel(Text(title))
+            #else
             Label(title, systemImage: symbol)
                 .labelStyle(.iconOnly)
                 .font(.system(size: 17, weight: .semibold))
                 .frame(width: calculationBarHeight, height: calculationBarHeight)
                 .contentShape(.rect)
+            #endif
         }
-        .buttonStyle(.plain)
+        .disabled(isSaving)
         .accessibilityIdentifier(AccessibilityID.ExpenseForm.calculationOperator(symbol))
     }
 
@@ -862,9 +939,11 @@ struct ExpenseFormView: View {
             return
         }
         #endif
+        #if os(iOS)
         if !mode.isEditing, suggestsCategories {
             categorySuggester.prepare()
         }
+        #endif
         if let draft {
             form = draft
             reconcileCategory()
@@ -915,6 +994,7 @@ struct ExpenseFormView: View {
         )
     }
 
+    #if os(iOS)
     /// What to ask the model about the title, and nil when nothing should be asked. Doubles as
     /// the identity of the suggestion task, so every edit to the title abandons the question
     /// before it and starts its own.
@@ -955,6 +1035,8 @@ struct ExpenseFormView: View {
             form = draft
         }
     }
+
+    #endif
 
     #if os(iOS)
     /// Starts a receipt on its way to the bucket, and puts it on the expense once it lands.
@@ -1147,16 +1229,16 @@ struct ExpenseFormView: View {
     }
 }
 
-private enum CalculationField: Hashable {
+enum CalculationField: Hashable {
     case amount, originalAmount, participant(String)
 }
 
-private struct CalculatingAmountInput: ViewModifier {
+struct CalculatingAmountInput: ViewModifier {
     @Binding var text: String
     var minorUnitDigits: Int
     var focus: FocusState<CalculationField?>.Binding
     var field: CalculationField
-    @Environment(\.locale) private var locale
+    @Environment(\.locale) var locale
 
     func body(content: Content) -> some View {
         content
